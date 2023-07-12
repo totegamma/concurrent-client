@@ -1,10 +1,5 @@
 
-export interface Entity {
-    ccaddr: string
-    role: string
-    host: string
-    cdate: string
-}
+export type CCID = string
 
 export interface SignedObject<T> {
     signer: string
@@ -16,6 +11,13 @@ export interface SignedObject<T> {
     target?: string
 }
 
+export interface Entity {
+    ccaddr: string
+    role: string
+    host: string
+    cdate: string
+}
+
 export interface Association<T> {
     author: string
     cdate: string
@@ -25,12 +27,6 @@ export interface Association<T> {
     signature: string
     targetID: string
     targetType: string
-}
-
-export interface MessagePostRequest {
-    signedObject: string
-    signature: string
-    streams: string[]
 }
 
 export interface Message<T> {
@@ -73,5 +69,21 @@ export interface Stream<T> {
     payload: SignedObject<T>
     signature: string
     cdate: string
+}
+
+export interface ServerEvent {
+    stream: string
+    type: string
+    action: string
+    body: StreamElement
+}
+
+export interface StreamElement {
+    timestamp: string
+    id: string
+    type: string
+    author: string
+    owner: string
+    currenthost: string
 }
 

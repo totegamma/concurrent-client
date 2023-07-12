@@ -1,6 +1,6 @@
 {
   "name": "@concurrent-world/client",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -13,6 +13,13 @@
   "author": "totegamma",
   "license": "MIT",
   "devDependencies": {
+    "@types/elliptic": "^6.4.14",
+    "@types/uuid": "^9.0.2",
     "typescript": "^5.1.6"
+  },
+  "dependencies": {
+    "elliptic": "^6.5.4",
+    "ethers": "^6.6.3",
+    "uuid": "^9.0.0"
   }
 }
