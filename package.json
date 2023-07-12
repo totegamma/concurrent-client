@@ -12,7 +12,7 @@
   "keywords": [],
   "author": "totegamma",
   "license": "MIT",
-  "dependencies": {
+  "devDependencies": {
     "typescript": "^5.1.6"
   }
 }
