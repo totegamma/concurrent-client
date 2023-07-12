@@ -17,3 +17,6 @@ export * from "./schemas/rerouteMessage"
 export * from "./schemas/simpleNote"
 export * from "./schemas/userstreams"
 export * from "./schemas/utilitystream"
+
+export * from "./mock/model"
+

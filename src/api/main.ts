@@ -13,7 +13,7 @@ import { Userstreams } from '../schemas/userstreams'
 
 const apiPath = '/api/v1'
 
-export default class ConcurrentApiClient {
+export class Client {
     host: string
     userAddress: string
     privatekey: string
