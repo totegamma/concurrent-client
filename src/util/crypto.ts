@@ -30,7 +30,7 @@ const btoa = (input: string): string => {
         return window.btoa(input)
     }
     // use Buffer if we are in node
-    return Buffer.from(input).toString('base64')
+    return Buffer.from(input, 'binary').toString('base64')
 }
 
 const atob = (input: string): string => {
@@ -39,7 +39,7 @@ const atob = (input: string): string => {
         return window.atob(input)
     }
     // use Buffer if we are in node
-    return Buffer.from(input, 'base64').toString('ascii')
+    return Buffer.from(input, 'base64').toString('binary')
 }
 
 export const SignJWT = (payload: string, privatekey: string): string => {
