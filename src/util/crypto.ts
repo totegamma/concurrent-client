@@ -24,15 +24,33 @@ const makeUrlSafe = (input: string): string => {
     return input.replaceAll('=', '').replaceAll('+', '-').replaceAll('/', '_')
 }
 
+const btoa = (input: string): string => {
+    // use window.btoa if we are in the browser
+    if (typeof window !== 'undefined') {
+        return window.btoa(input)
+    }
+    // use Buffer if we are in node
+    return Buffer.from(input).toString('base64')
+}
+
+const atob = (input: string): string => {
+    // use window.atob if we are in the browser
+    if (typeof window !== 'undefined') {
+        return window.atob(input)
+    }
+    // use Buffer if we are in node
+    return Buffer.from(input, 'base64').toString('ascii')
+}
+
 export const SignJWT = (payload: string, privatekey: string): string => {
     const header = JSON.stringify({ alg: 'ECRECOVER', typ: 'JWT' })
-    const body = makeUrlSafe(window.btoa(header) + '.' + window.btoa(payload))
+    const body = makeUrlSafe(btoa(header) + '.' + btoa(payload))
     const bodyHash = keccak256(new TextEncoder().encode(body)).slice(2)
     const ellipsis = new Ec('secp256k1')
     const keyPair = ellipsis.keyFromPrivate(privatekey)
     const signature = keyPair.sign(bodyHash, 'hex', { canonical: true })
     const base64 = makeUrlSafe(
-        window.btoa(
+        btoa(
             String.fromCharCode.apply(null, [
                 ...signature.r.toArray(),
                 ...signature.s.toArray(),
@@ -47,7 +65,7 @@ export const checkJwtIsValid = (jwt: string): boolean => {
     const split = jwt.split('.')
     if (split.length !== 3) return false
     const encoded = split[1]
-    const payload = window.atob(
+    const payload = atob(
         encoded.replace('-', '+').replace('_', '/') + '=='.slice((2 - encoded.length * 3) & 3)
     )
     try {
