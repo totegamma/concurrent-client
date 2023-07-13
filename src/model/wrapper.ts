@@ -54,5 +54,6 @@ export interface A_Reroute extends Association, T_AReroute {}
 
 export interface Stream extends Commonstream {
     id: string;
+    schema: string;
 }
 

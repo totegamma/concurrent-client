@@ -40,6 +40,7 @@ export class Client {
         if (!stream) return null
         return {
             id,
+            schema: stream.schema,
             ...stream.payload.body
         }
     }
@@ -55,7 +56,7 @@ export class Client {
         const favorites: A_Favorite[] = (await Promise.all(
             favoriteAssociations.map(async (e) => {
                 return {
-                    id,
+                    id: e.id,
                     cdate: new Date(e.cdate),
                     ...e.payload.body,
                     author: await this.getUser(e.author)
@@ -67,7 +68,7 @@ export class Client {
         const reactions: EmojiAssociation[] = (await Promise.all(
             reactionAssociations.map(async (e) => {
                 return {
-                    id,
+                    id: e.id,
                     cdate: new Date(e.cdate),
                     ...e.payload.body,
                     author: await this.getUser(e.author)
@@ -79,7 +80,7 @@ export class Client {
         const replies: A_Reply[] = (await Promise.all(
             replyAssociations.map(async (e) => {
                 return {
-                    id,
+                    id: e.id,
                     cdate: new Date(e.cdate),
                     ...e.payload.body,
                     author: await this.getUser(e.author)
@@ -91,7 +92,7 @@ export class Client {
         const reroutes: A_Reroute[] = (await Promise.all(
             rerouteAssociations.map(async (e) => {
                 return {
-                    id,
+                    id: e.id,
                     cdate: new Date(e.cdate),
                     ...e.payload.body,
                     author: await this.getUser(e.author)
@@ -99,16 +100,19 @@ export class Client {
             })
         )).filter((e: any) => e.author)
 
-        const streams = await Promise.all(
+        const allstreams = (await Promise.all(
             message.streams.map(async (e) => await this.getStream(e))
-        )
+        )).filter((e: Stream | null) => (e !== null)) as Stream[]
+
+        const streams: Commonstream[] = allstreams.filter((e: Stream) => e.schema === Schemas.commonstream)
 
         switch (message.schema) {
             case Schemas.simpleNote:
                 return {
+                    id: message.id,
+                    ...message.payload.body,
                     schema: message.schema,
                     cdate: message.cdate,
-                    ...message.payload.body,
                     author,
                     favorites,
                     reactions,
@@ -122,9 +126,10 @@ export class Client {
                 const replyTarget = await this.getMessage(message.payload.body.replyToMessageId, message.payload.body.replyToMessageAuthor)
 
                  return {
+                    id: message.id,
+                    ...message.payload.body,
                     schema: message.schema,
                     cdate: message.cdate,
-                    ...message.payload.body,
                     author,
                     favorites,
                     reactions,
@@ -139,9 +144,10 @@ export class Client {
                 const rerouteTarget = await this.getMessage(message.payload.body.rerouteMessageId, message.payload.body.rerouteMessageAuthor)
 
                 return {
+                    id: message.id,
+                    ...message.payload.body,
                     schema: message.schema,
                     cdate: message.cdate,
-                    ...message.payload.body,
                     author,
                     favorites,
                     reactions,
@@ -211,7 +217,7 @@ export class Client {
 
     async favorite(target: Message): Promise<void> {
         const userStreams = await this.api.readCharacter(this.api.ccid, Schemas.userstreams)
-        const authorInbox = (await this.api.readCharacter(target.id, Schemas.userstreams))?.payload.body.notificationStream
+        const authorInbox = target.author.userstreams.notificationStream
         const targetStream = [authorInbox, userStreams?.payload.body.associationStream].filter((e) => e) as string[]
         await this.api.createAssociation<Like>(Schemas.like, {}, target.id, target.author.ccaddr, 'messages', targetStream)
         this.api.invalidateMessage(target.id)
@@ -226,7 +232,7 @@ export class Client {
 
     async addReaction(target: Message, shortcode: string, imageUrl: string): Promise<void> {
         const userStreams = await this.api.readCharacter(this.api.ccid, Schemas.userstreams)
-        const authorInbox = (await this.api.readCharacter(target.author.ccaddr, Schemas.userstreams))?.payload.body.notificationStream
+        const authorInbox = target.author.userstreams.notificationStream
         const targetStream = [authorInbox, userStreams?.payload.body.associationStream].filter((e) => e) as string[]
         await this.api.createAssociation<EmojiAssociation>(
             Schemas.emojiAssociation,
@@ -242,7 +248,7 @@ export class Client {
         this.api.invalidateMessage(target.id)
     }
 
-    async removeAssociation(target: Message, associationID: string) :Promise<void> {
+    async removeAssociation(target: Message, associationID: string): Promise<void> {
         const { content } = await this.api.deleteAssociation(associationID, target.author.ccaddr)
         this.api.invalidateMessage(content.targetID)
     }
@@ -295,4 +301,3 @@ export class Client {
     }
 
 }
-
