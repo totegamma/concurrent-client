@@ -1,6 +1,6 @@
-export * from "./api/main"
-export * from "./model/core"
+export * from "./main/client"
 export * from "./model/request"
+export * from "./model/wrapper"
 export * from "./util/crypto"
 export * from "./util/misc"
 
@@ -19,4 +19,17 @@ export * from "./schemas/userstreams"
 export * from "./schemas/utilitystream"
 
 export * from "./mock/model"
+
+export {
+    CCID,
+    Character as CoreCharacter,
+    Entity as CoreEntity,
+    Association as CoreAssociation,
+    Message as CoreMessage,
+    Host as CoreHost,
+    SignedObject,
+    Stream as CoreStream,
+    StreamElement as CoreStreamElement,
+    ServerEvent as CoreServerEvent,
+} from "./model/core"
 

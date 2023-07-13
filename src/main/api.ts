@@ -4,18 +4,12 @@ import { Entity, Message, Character, Association, Stream, SignedObject, CCID, St
 import { MessagePostRequest } from '../model/request'
 import { fetchWithTimeout } from '../util/misc'
 import { Sign, SignJWT, checkJwtIsValid } from '../util/crypto'
-import { Schemas } from '../schemas'
-import { Like } from '../schemas/like'
-import { EmojiAssociation } from '../schemas/emojiAssociation'
-import { RerouteMessage } from '../schemas/rerouteMessage'
-import { RerouteAssociation } from '../schemas/rerouteAssociation'
-import { Userstreams } from '../schemas/userstreams'
 
 const apiPath = '/api/v1'
 
-export class Client {
+export class Api {
     host: string
-    userAddress: string
+    ccid: string
     privatekey: string
     client: string
 
@@ -27,9 +21,9 @@ export class Client {
     associationCache: Record<string, Promise<Association<any>> | undefined> = {}
     streamCache: Record<string, Promise<Stream<any>> | undefined> = {}
 
-    constructor(userAddress: string, privatekey: string, host: string, client?: string) {
+    constructor(ccid: string, privatekey: string, host: string, client?: string) {
         this.host = host
-        this.userAddress = userAddress
+        this.ccid = ccid
         this.privatekey = privatekey
         this.client = client || 'N/A'
         console.log('oOoOoOoOoO API SERVICE CREATED OoOoOoOoOo')
@@ -68,7 +62,7 @@ export class Client {
     // Message
     async createMessage<T>(schema: string, body: T, streams: string[]): Promise<any> {
         const signObject: SignedObject<T> = {
-            signer: this.userAddress,
+            signer: this.ccid,
             type: 'Message',
             schema,
             body,
@@ -98,7 +92,7 @@ export class Client {
         return await res.json()
     }
 
-    async fetchMessage(id: string, host: string = ''): Promise<Message<any> | undefined> {
+    async readMessage(id: string, host: string = ''): Promise<Message<any> | undefined> {
         if (this.messageCache[id]) {
             return await this.messageCache[id]
         }
@@ -127,10 +121,10 @@ export class Client {
         return await this.messageCache[id]
     }
 
-    async fetchMessageWithAuthor(messageId: string, author: string): Promise<Message<any> | undefined> {
+    async readMessageWithAuthor(messageId: string, author: string): Promise<Message<any> | undefined> {
         const entity = await this.readEntity(author)
         if (!entity) throw new Error()
-        return await this.fetchMessage(messageId, entity.host)
+        return await this.readMessage(messageId, entity.host)
     }
 
     async deleteMessage(target: string, host: string = ''): Promise<any> {
@@ -166,7 +160,7 @@ export class Client {
         const entity = await this.readEntity(targetAuthor)
         const targetHost = entity?.host || this.host
         const signObject: SignedObject<T> = {
-            signer: this.userAddress,
+            signer: this.ccid,
             type: 'Association',
             schema,
             body,
@@ -219,7 +213,7 @@ export class Client {
             })
     }
 
-    async fetchAssociation(id: string, host: string = ''): Promise<Association<any> | undefined> {
+    async readAssociation(id: string, host: string = ''): Promise<Association<any> | undefined> {
         if (this.associationCache[id]) {
             return await this.associationCache[id]
         }
@@ -247,7 +241,7 @@ export class Client {
     // Character
     async upsertCharacter<T>(schema: string, body: T, id?: string): Promise<any> {
         const signObject: SignedObject<T> = {
-            signer: this.userAddress,
+            signer: this.ccid,
             type: 'Character',
             schema,
             body,
@@ -312,7 +306,7 @@ export class Client {
         { maintainer = [], writer = [], reader = [] }: { maintainer?: CCID[]; writer?: CCID[]; reader?: CCID[] } = {}
     ): Promise<any> {
         const signObject = {
-            signer: this.userAddress,
+            signer: this.ccid,
             type: 'Stream',
             schema,
             body,
@@ -347,7 +341,7 @@ export class Client {
     async updateStream(id: string, partialSignObject: any): Promise<any> {
         const signObject = {
             ...partialSignObject,
-            signer: this.userAddress,
+            signer: this.ccid,
             type: 'Stream',
             meta: {
                 client: this.client
@@ -556,118 +550,10 @@ export class Client {
         })
     }
 
-    // Utils
-    async getUserHomeStreams(users: string[]): Promise<string[]> {
-        return (
-            await Promise.all(
-                users.map(async (ccaddress: string) => {
-                    const entity = await this.readEntity(ccaddress)
-                    const character: Character<Userstreams> | undefined = await this.readCharacter(
-                        ccaddress,
-                        Schemas.userstreams
-                    )
-
-                    if (!character?.payload.body.homeStream) return undefined
-
-                    let streamID: string = character.payload.body.homeStream
-                    if (entity?.host && entity.host !== '') {
-                        streamID += `@${entity.host}`
-                    }
-                    return streamID
-                })
-            )
-        ).filter((e) => e) as string[]
-    }
-
-    async setupUserstreams(): Promise<void> {
-        const userstreams = await this.readCharacter(this.userAddress, Schemas.userstreams)
-        const id = userstreams?.id
-        const res0 = await this.createStream(Schemas.utilitystream, {}, { writer: [this.userAddress] })
-        const homeStream = res0.id
-        console.log('home', homeStream)
-
-        const res1 = await this.createStream(Schemas.utilitystream, {}, { reader: [this.userAddress] })
-        const notificationStream = res1.id
-        console.log('notification', notificationStream)
-
-        const res2 = await this.createStream(Schemas.utilitystream, {}, { writer: [this.userAddress] })
-        const associationStream = res2.id
-        console.log('notification', associationStream)
-
-        this.upsertCharacter<Userstreams>(
-            Schemas.userstreams,
-            {
-                homeStream,
-                notificationStream,
-                associationStream
-            },
-            id
-        ).then((data) => {
-            console.log(data)
-        })
-    }
-
-    async favoriteMessage(id: string, author: CCID): Promise<void> {
-        const userStreams = await this.readCharacter(this.userAddress, Schemas.userstreams)
-        const authorInbox = (await this.readCharacter(author, Schemas.userstreams))?.payload.body.notificationStream
-        const targetStream = [authorInbox, userStreams?.payload.body.associationStream].filter((e) => e) as string[]
-        await this.createAssociation<Like>(Schemas.like, {}, id, author, 'messages', targetStream)
-        this.invalidateMessage(id)
-    }
-
-    async addMessageReaction(id: string, author: CCID, shortcode: string, imageUrl: string): Promise<void> {
-        const userStreams = await this.readCharacter(this.userAddress, Schemas.userstreams)
-        const authorInbox = (await this.readCharacter(author, Schemas.userstreams))?.payload.body.notificationStream
-        const targetStream = [authorInbox, userStreams?.payload.body.associationStream].filter((e) => e) as string[]
-        await this.createAssociation<EmojiAssociation>(
-            Schemas.emojiAssociation,
-            {
-                shortcode,
-                imageUrl
-            },
-            id,
-            author,
-            'messages',
-            targetStream
-        )
-        this.invalidateMessage(id)
-    }
-
-    async unFavoriteMessage(associationID: string, author: string): Promise<void> {
-        const { content } = await this.deleteAssociation(associationID, author)
-        this.invalidateMessage(content.targetID)
-    }
-
-    async reRouteMessage(id: string, author: CCID, streams: string[], body?: string): Promise<void> {
-        const { content } = await this.createMessage<RerouteMessage>(
-            Schemas.rerouteMessage,
-            {
-                body,
-                rerouteMessageId: id,
-                rerouteMessageAuthor: author
-            },
-            streams
-        )
-        const createdMessageId = content.id
-
-        const userStreams = await this.readCharacter(this.userAddress, Schemas.userstreams)
-        const authorInbox = (await this.readCharacter(author, Schemas.userstreams))?.payload.body.notificationStream
-        const targetStream = [authorInbox, userStreams?.payload.body.associationStream].filter((e) => e) as string[]
-
-        await this.createAssociation<RerouteAssociation>(
-            Schemas.rerouteAssociation,
-            { messageId: createdMessageId, messageAuthor: this.userAddress },
-            id,
-            author,
-            'messages',
-            targetStream
-        )
-    }
-
     constructJWT(claim: Record<string, string>): string {
         const payload = JSON.stringify({
             jti: uuidv4(),
-            iss: this.userAddress,
+            iss: this.ccid,
             iat: Math.floor(new Date().getTime() / 1000).toString(),
             aud: this.host,
             nbf: Math.floor((new Date().getTime() - 5 * 60 * 1000) / 1000).toString(),
