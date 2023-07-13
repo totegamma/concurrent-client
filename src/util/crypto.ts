@@ -29,8 +29,12 @@ const btoa = (input: string): string => {
     if (typeof window !== 'undefined') {
         return window.btoa(input)
     }
-    // use Buffer if we are in node
-    return Buffer.from(input, 'binary').toString('base64')
+    if (typeof Buffer !== 'undefined') {
+        return Buffer.from(input, 'binary').toString('base64')
+    }
+
+    console.error('no way to encode base64')
+    return ''
 }
 
 const atob = (input: string): string => {
@@ -38,8 +42,12 @@ const atob = (input: string): string => {
     if (typeof window !== 'undefined') {
         return window.atob(input)
     }
-    // use Buffer if we are in node
-    return Buffer.from(input, 'base64').toString('binary')
+    if (typeof Buffer !== 'undefined') {
+        return Buffer.from(input, 'base64').toString('binary')
+    }
+
+    console.error('no way to decode base64')
+    return ''
 }
 
 export const SignJWT = (payload: string, privatekey: string): string => {
