@@ -1,11 +1,14 @@
 {
   "name": "@concurrent-world/client",
-  "version": "1.0.1",
+  "version": "1.0.4",
   "description": "",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/types/index.d.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "npm run build:cjs && npm run build:esm",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:esm": "tsc -p tsconfig.esm.json",
     "prepare": "npm run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
