@@ -14,4 +14,7 @@ export const Schemas = {
 
     commonstream:       'https://raw.githubusercontent.com/totegamma/concurrent-schemas/master/streams/common/0.0.1.json',
     utilitystream:      'https://raw.githubusercontent.com/totegamma/concurrent-schemas/master/streams/utility/0.0.1.json',
-}
+} as const;
+
+export type Schema = typeof Schemas[keyof typeof Schemas];
+

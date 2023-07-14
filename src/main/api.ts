@@ -1,9 +1,10 @@
 import { v4 as uuidv4 } from 'uuid'
 
-import { Entity, Message, Character, Association, Stream, SignedObject, CCID, StreamElement, Host } from '../model/core'
+import { Entity, Message, Character, Association, Stream, SignedObject, CCID, StreamElement, Host, StreamID } from '../model/core'
 import { MessagePostRequest } from '../model/request'
 import { fetchWithTimeout } from '../util/misc'
 import { Sign, SignJWT, checkJwtIsValid } from '../util/crypto'
+import { Schema } from '../schemas'
 
 const apiPath = '/api/v1'
 
@@ -60,7 +61,7 @@ export class Api {
     }
 
     // Message
-    async createMessage<T>(schema: string, body: T, streams: string[]): Promise<any> {
+    async createMessage<T>(schema: Schema, body: T, streams: string[]): Promise<any> {
         const signObject: SignedObject<T> = {
             signer: this.ccid,
             type: 'Message',
@@ -150,12 +151,12 @@ export class Api {
 
     // Association
     async createAssociation<T>(
-        schema: string,
+        schema: Schema,
         body: T,
         target: string,
         targetAuthor: CCID,
         targetType: string,
-        streams: string[]
+        streams: StreamID[]
     ): Promise<any> {
         const entity = await this.readEntity(targetAuthor)
         const targetHost = entity?.host || this.host
@@ -238,8 +239,14 @@ export class Api {
         return await this.associationCache[id]
     }
 
+    async readAssociationWithOwner(associationId: string, owner: string): Promise<Association<any> | undefined> {
+        const entity = await this.readEntity(owner)
+        if (!entity) throw new Error()
+        return await this.readAssociation(associationId, entity.host)
+    }
+
     // Character
-    async upsertCharacter<T>(schema: string, body: T, id?: string): Promise<any> {
+    async upsertCharacter<T>(schema: Schema, body: T, id?: string): Promise<any> {
         const signObject: SignedObject<T> = {
             signer: this.ccid,
             type: 'Character',

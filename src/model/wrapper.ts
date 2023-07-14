@@ -12,14 +12,17 @@ import {
     Commonstream,
 } from "..";
 
+import { Schemas, Schema } from "../schemas";
+import { AssociationID, MessageID } from "./core";
+
 export interface User extends CoreEntity {
     profile: Profile;
     userstreams: Userstreams;
 }
 
 export interface Message {
-    schema: string;
-    id: string;
+    id: MessageID;
+    schema: Schema
     author: User;
     cdate: Date;
 
@@ -31,26 +34,43 @@ export interface Message {
     reroutes: A_Reroute[];
 }
 
-export interface M_Current extends Message, T_MNote {}
+export interface M_Current extends Message, T_MNote {
+    schema: typeof Schemas.simpleNote
+}
 export interface M_Reply extends Message, T_MReply {
+    schema: typeof Schemas.replyMessage
     replyTarget: Message
 }
 export interface M_Reroute extends Message, T_MReroute {
+    schema: typeof Schemas.rerouteMessage
     rerouteTarget: Message
 }
 
 export interface Association {
-    id: string;
+    id: AssociationID;
+    schema: Schema
     author: User;
     cdate: Date;
 
-    streams: Stream[];
+    target: Message;
 }
 
-export interface A_Favorite extends Association, T_AFavorite {}
-export interface A_Reaction extends Association, T_AReaction {}
-export interface A_Reply extends Association, T_AReply {}
-export interface A_Reroute extends Association, T_AReroute {}
+export interface A_Favorite extends Association, T_AFavorite {
+    schema: typeof Schemas.like
+}
+export interface A_Reaction extends Association, T_AReaction {
+    schema: typeof Schemas.emojiAssociation
+}
+export interface A_Reply extends Association, T_AReply {
+    schema: typeof Schemas.replyAssociation
+    replyBody: M_Reply
+}
+export interface A_Reroute extends Association, T_AReroute {
+    schema: typeof Schemas.rerouteAssociation
+    rerouteBody: M_Reroute
+}
+
+export interface A_Unknown extends Association {}
 
 export interface Stream extends Commonstream {
     id: string;

@@ -3,6 +3,7 @@ import { type Profile } from '../schemas/profile'
 
 import { type Commonstream } from '../schemas/commonstream'
 import { type SimpleNote } from '../schemas/simpleNote'
+import { Schemas } from '../schemas'
 
 export const StreamMock = (streamName: string = 'MockStreamName'): Stream<Commonstream> => {
     return {
@@ -15,7 +16,7 @@ export const StreamMock = (streamName: string = 'MockStreamName'): Stream<Common
         payload: {
             signer: 'signer',
             type: 'type',
-            schema: 'schema',
+            schema: Schemas.simpleNote,
             body: {
                 name: streamName,
                 banner: 'banner',
@@ -45,7 +46,7 @@ export const MessageMock = (
         payload: {
             signer: author,
             type: 'Message',
-            schema: 'https://raw.githubusercontent.com/totegamma/concurrent-schemas/master/messages/note/0.0.1.json%22,%22body%22:%7B%22body%22:%22aaa%22%7D,%22meta%22:%7B%22client%22:%22concurrent-web feat/reply-8b07125c456cc41a5621cf98836a5667b749f5e3',
+            schema: Schemas.simpleNote,
             body: {
                 body
             },
@@ -64,12 +65,12 @@ export const CharacterProfileMock = (username: string): Character<Profile> => {
     return {
         associations: [],
         author: 'author',
-        schema: 'schema',
+        schema: Schemas.profile,
         id: 'id',
         payload: {
             signer: 'signer',
             type: 'type',
-            schema: 'schema',
+            schema: Schemas.profile,
             body: {
                 username,
                 avatar: 'avatar',

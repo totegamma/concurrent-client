@@ -1,10 +1,16 @@
+import { Schema } from "../schemas"
 
 export type CCID = string
+export type Domain = string
+export type StreamID = string
+export type MessageID = string
+export type AssociationID = string
+export type CharacterID = string
 
 export interface SignedObject<T> {
-    signer: string
+    signer: CCID
     type: string
-    schema: string
+    schema: Schema
     body: T
     meta: any
     signedAt: string
@@ -12,67 +18,67 @@ export interface SignedObject<T> {
 }
 
 export interface Entity {
-    ccaddr: string
+    ccaddr: CCID
     role: string
     host: string
     cdate: string
 }
 
 export interface Association<T> {
-    author: string
+    author: CCID
     cdate: string
-    id: string
+    id: AssociationID
     payload: T
-    schema: string
+    schema: Schema
     signature: string
-    targetID: string
-    targetType: string
+    targetID: MessageID
+    targetType: 'message' | 'character'
 }
 
 export interface Message<T> {
     associations: Array<Association<any>>
-    author: string
+    author: CCID
     cdate: string
-    id: string
+    id: MessageID
     payload: SignedObject<T>
     rawpayload: string
-    schema: string
+    schema: Schema
     signature: string
-    streams: string[]
+    streams: StreamID[]
 }
 
 export interface Character<T> {
     associations: Array<Association<any>>
-    author: string
-    schema: string
-    id: string
+    author: CCID
+    schema: Schema
+    id: CharacterID
     payload: SignedObject<T>
     signature: string
     cdate: string
 }
 
 export interface Host {
-    fqdn: string
-    ccaddr: string
+    fqdn: Domain
+    ccaddr: CCID
     role: string
     pubkey: string
     cdate: Date
 }
 
 export interface Stream<T> {
-    id: string
-    author: string
-    maintainer: string[]
-    writer: string[]
-    reader: string[]
-    schema: string
+    id: StreamID
+    author: CCID
+    maintainer: CCID[]
+    writer: CCID[]
+    reader: CCID[]
+    schema: CCID
     payload: SignedObject<T>
     signature: string
     cdate: string
 }
 
 export interface ServerEvent {
-    stream: string
+    stream: StreamID
     type: string
     action: string
     body: StreamElement
