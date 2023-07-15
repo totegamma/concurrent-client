@@ -8,9 +8,10 @@ import { RerouteAssociation } from '../schemas/rerouteAssociation'
 import { Userstreams } from '../schemas/userstreams'
 import { AssociationID, CCID, Character, Domain, MessageID, StreamID } from '../model/core'
 import { Message, Association, User, M_Current, M_Reroute, M_Reply, A_Favorite, A_Reply, A_Reroute, Stream, A_Reaction } from '../model/wrapper'
-import { Profile } from '../schemas/profile'
+import { Profile as RawProfile } from '../schemas/profile'
 import { SimpleNote } from '../schemas/simpleNote'
 import { Commonstream } from '../schemas/commonstream'
+import { Profile } from '../model/wrapper'
 
 export class Client {
     api: Api
@@ -23,7 +24,7 @@ export class Client {
 
     async getUser(id: CCID): Promise<User | null> {
         const entity = await this.api.readEntity(id)
-        const profile: Character<Profile> | undefined = await this.api.readCharacter(id, Schemas.profile)
+        const profile: Character<RawProfile> | undefined = await this.api.readCharacter(id, Schemas.profile)
         const userstreams: Character<Userstreams> | undefined = await this.api.readCharacter(id, Schemas.userstreams)
 
         if (!entity || !profile || !userstreams) return null
@@ -358,6 +359,24 @@ export class Client {
             shortname: name,
             description
         })
+    }
+
+    async createProfile(username: string, description: string, avatar: string, banner: string): Promise<Profile> {
+        return await this.api.upsertCharacter<RawProfile>(Schemas.profile, {
+            username,
+            description,
+            avatar,
+            banner
+        })
+    }
+
+    async updateProfile(id: string, username: string, description: string, avatar: string, banner: string): Promise<Profile> {
+        return await this.api.upsertCharacter<RawProfile>(Schemas.profile, {
+            username,
+            description,
+            avatar,
+            banner
+        }, id)
     }
 
 }
