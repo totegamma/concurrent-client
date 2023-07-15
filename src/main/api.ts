@@ -103,6 +103,7 @@ export class Api {
             headers: {}
         }).then(async (res) => {
             if (!res.ok) {
+                if (res.status === 404) return undefined
                 return await Promise.reject(new Error(`fetch failed: ${res.status} ${await res.text()}`))
             }
             const data = await res.json()
@@ -224,6 +225,7 @@ export class Api {
             headers: {}
         }).then(async (res) => {
             if (!res.ok) {
+                if (res.status === 404) return undefined
                 return await Promise.reject(new Error(`fetch failed: ${res.status} ${await res.text()}`))
             }
             const data = await res.json()
@@ -399,6 +401,7 @@ export class Api {
             headers: {}
         }).then(async (res) => {
             if (!res.ok) {
+                if (res.status === 404) return undefined
                 return await Promise.reject(new Error(`fetch failed: ${res.status} ${await res.text()}`))
             }
             const data = await res.json()

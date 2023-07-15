@@ -46,13 +46,19 @@ export class Client {
     }
 
     async getAssociation(id: AssociationID, owner: CCID, deep: boolean = true): Promise<A_Favorite | A_Reaction | A_Reroute | A_Reply | null> {
-        const association = await this.api.readAssociationWithOwner(id, owner)
+        const association = await this.api.readAssociationWithOwner(id, owner).catch((e) => {
+            console.log('CLIENT::getAssociation::readAssociationWithOwner::error', e)
+            return null
+        })
         if (!association) return null
 
-        const author = await this.getUser(association.author)
+        const author = await this.getUser(association.author).catch((e) => {
+            console.log('CLIENT::getAssociation::getUser::error', e)
+            return null
+        })
         if (!author) return null
 
-        const target = deep ? (await this.getMessage(association.targetID, owner, false)) : null
+        const target = deep ? (await this.getMessage(association.targetID, owner, false).catch(() => null)) : null
 
         switch (association.schema) {
             case Schemas.like:
@@ -74,7 +80,12 @@ export class Client {
                     ...association.payload.body
                 } as A_Reaction
             case Schemas.replyAssociation:
-                const replyBody = deep ? (await this.getMessage(association.payload.body.messageId, association.payload.body.messageAuthor, false)) : null
+                const replyBody = deep
+                    ? (await this.getMessage(
+                        association.payload.body.messageId,
+                        association.payload.body.messageAuthor,
+                        false).catch(() => null))
+                    : null
                 return {
                     id: association.id,
                     schema: association.schema,
@@ -85,7 +96,12 @@ export class Client {
                     ...association.payload.body
                 } as A_Reply
             case Schemas.rerouteAssociation:
-                const rerouteBody = deep ? (await this.getMessage(association.payload.body.messageId, association.payload.body.messageAuthor, false)) : null
+                const rerouteBody = deep
+                    ? (await this.getMessage(
+                        association.payload.body.messageId,
+                        association.payload.body.messageAuthor,
+                        false).catch(() => null))
+                    : null
                 return {
                     id: association.id,
                     schema: association.schema,
@@ -102,15 +118,24 @@ export class Client {
     }
 
     async getMessage(id: MessageID, authorID: CCID, deep: boolean = true): Promise<M_Current | M_Reroute | M_Reply | null> {
-        const message = await this.api.readMessageWithAuthor(id, authorID)
+        const message = await this.api.readMessageWithAuthor(id, authorID).catch((e) => {
+            console.log('CLIENT::getMessage::readMessageWithAuthor::error', e)
+            return null
+        })
         if (!message) return null
 
-        const author = await this.getUser(authorID)
+        const author = await this.getUser(authorID).catch((e) => {
+            console.log('CLIENT::getMessage::getUser::error', e)
+            return null
+        })
         if (!author) return null
 
         const allAssociations: Association[] = deep ? (await Promise.all(
             message.associations.map(async (e) => {
-                return await this.getAssociation(e.id, e.author, false)
+                return await this.getAssociation(e.id, authorID, false).catch((e) => {
+                    console.log('CLIENT::getMessage::getAssociation::error', e)
+                    return null
+                })
             })
         )).filter((e: Association | null) => (e !== null)) as Association[] : []
 
@@ -120,7 +145,7 @@ export class Client {
         const reroutes: A_Reroute[] = allAssociations.filter((e) => e.schema === Schemas.rerouteAssociation) as A_Reroute[]
 
         const allstreams = (await Promise.all(
-            message.streams.map(async (e) => await this.getStream(e))
+            message.streams.map(async (e) => await this.getStream(e).catch(() => null))
         )).filter((e: Stream | null) => (e !== null)) as Stream[]
 
         const streams: Commonstream[] = allstreams.filter((e: Stream) => e.schema === Schemas.commonstream)
@@ -142,7 +167,10 @@ export class Client {
 
             case Schemas.replyMessage:
 
-                const replyTarget = await this.getMessage(message.payload.body.replyToMessageId, message.payload.body.replyToMessageAuthor)
+                const replyTarget = await this.getMessage(
+                    message.payload.body.replyToMessageId,
+                    message.payload.body.replyToMessageAuthor
+                ).catch(() => null)
 
                  return {
                     id: message.id,
@@ -160,7 +188,10 @@ export class Client {
 
             case Schemas.rerouteMessage:
 
-                const rerouteTarget = await this.getMessage(message.payload.body.rerouteMessageId, message.payload.body.rerouteMessageAuthor)
+                const rerouteTarget = await this.getMessage(
+                    message.payload.body.rerouteMessageId,
+                    message.payload.body.rerouteMessageAuthor
+                ).catch(() => null)
 
                 return {
                     id: message.id,
