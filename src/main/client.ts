@@ -30,8 +30,18 @@ export class Client {
 
         return {
             ...entity,
-            profile: profile.payload.body,
-            userstreams: userstreams.payload.body
+            profile: {
+                id: profile.id,
+                schema: profile.schema,
+                cdate: new Date(profile.cdate),
+                ...profile.payload.body
+            },
+            userstreams: {
+                id: userstreams.id,
+                schema: userstreams.schema,
+                cdate: new Date(userstreams.cdate),
+                ...userstreams.payload.body
+            }
         }
     }
 

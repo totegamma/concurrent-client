@@ -1,24 +1,35 @@
 import {
     CoreEntity,
-    Profile,
-    Like as T_AFavorite,
-    EmojiAssociation as T_AReaction,
-    ReplyAssociation as T_AReply,
-    ReplyMessage as T_MReply,
-    RerouteAssociation as T_AReroute,
-    RerouteMessage as T_MReroute,
-    SimpleNote as T_MNote,
-    Userstreams,
-    Commonstream,
+    RawProfile,
+    RawCommonstream,
+    RawUserstreams,
+    RawLike,
+    RawEmojiAssociation,
+    RawReplyAssociation,
+    RawReplyMessage,
+    RawRerouteAssociation,
+    RawRerouteMessage,
+    RawSimpleNote,
 } from "..";
 
+
 import { Schemas, Schema } from "../schemas";
-import { AssociationID, MessageID } from "./core";
+import { AssociationID, CharacterID, MessageID } from "./core";
 
 export interface User extends CoreEntity {
     profile: Profile;
     userstreams: Userstreams;
 }
+
+export interface Character {
+    id: CharacterID;
+    schema: Schema;
+    cdate: Date;
+}
+
+export interface Userstreams extends Character, RawUserstreams {}
+export interface Profile extends Character, RawProfile {}
+export interface Commonstream extends Character, RawCommonstream {}
 
 export interface Message {
     id: MessageID;
@@ -34,14 +45,14 @@ export interface Message {
     reroutes: A_Reroute[];
 }
 
-export interface M_Current extends Message, T_MNote {
+export interface M_Current extends Message, RawSimpleNote {
     schema: typeof Schemas.simpleNote
 }
-export interface M_Reply extends Message, T_MReply {
+export interface M_Reply extends Message, RawReplyMessage {
     schema: typeof Schemas.replyMessage
     replyTarget: Message
 }
-export interface M_Reroute extends Message, T_MReroute {
+export interface M_Reroute extends Message, RawRerouteMessage {
     schema: typeof Schemas.rerouteMessage
     rerouteTarget: Message
 }
@@ -55,24 +66,24 @@ export interface Association {
     target: Message;
 }
 
-export interface A_Favorite extends Association, T_AFavorite {
+export interface A_Favorite extends Association, RawLike {
     schema: typeof Schemas.like
 }
-export interface A_Reaction extends Association, T_AReaction {
+export interface A_Reaction extends Association, RawEmojiAssociation {
     schema: typeof Schemas.emojiAssociation
 }
-export interface A_Reply extends Association, T_AReply {
+export interface A_Reply extends Association, RawReplyAssociation {
     schema: typeof Schemas.replyAssociation
     replyBody: M_Reply
 }
-export interface A_Reroute extends Association, T_AReroute {
+export interface A_Reroute extends Association, RawRerouteAssociation {
     schema: typeof Schemas.rerouteAssociation
     rerouteBody: M_Reroute
 }
 
 export interface A_Unknown extends Association {}
 
-export interface Stream extends Commonstream {
+export interface Stream extends RawCommonstream {
     id: string;
     schema: string;
 }
