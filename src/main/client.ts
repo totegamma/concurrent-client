@@ -12,6 +12,7 @@ import { Profile as RawProfile } from '../schemas/profile'
 import { SimpleNote } from '../schemas/simpleNote'
 import { Commonstream } from '../schemas/commonstream'
 import { Profile } from '../model/wrapper'
+import { Socket } from './socket'
 
 export class Client {
     api: Api
@@ -379,4 +380,7 @@ export class Client {
         }, id)
     }
 
+    newSocket(): Socket {
+        return new Socket(this.api.host)
+    }
 }
