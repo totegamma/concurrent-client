@@ -13,6 +13,8 @@ import { SimpleNote } from '../schemas/simpleNote'
 import { Commonstream } from '../schemas/commonstream'
 import { Profile } from '../model/wrapper'
 import { Socket } from './socket'
+import {ReplyMessage} from "../schemas/replyMessage";
+import {ReplyAssociation} from "../schemas/replyAssociation";
 
 export class Client {
     api: Api
@@ -338,6 +340,35 @@ export class Client {
             author,
             'messages',
             targetStream
+        )
+    }
+
+    async reply(id: MessageID, author: CCID, streams: StreamID[], body: string) {
+        const data = await this.api.createMessage<ReplyMessage>(
+          Schemas.replyMessage,
+          {
+              replyToMessageId: id,
+              replyToMessageAuthor: author,
+              body: body
+          },
+          streams
+        )
+
+        const userStreams = await this.api.readCharacter(this.api.ccid, Schemas.userstreams)
+        const authorInbox = (await this.api.readCharacter(author, Schemas.userstreams))?.payload.body
+          .notificationStream
+
+        const targetStream = [authorInbox, userStreams?.payload.body.associationStream].filter(
+          (e) => e
+        ) as string[]
+
+        await this.api.createAssociation<ReplyAssociation>(
+          Schemas.replyAssociation,
+          { messageId: data.content.id, messageAuthor: this.api.ccid },
+          id,
+          author,
+          'messages',
+          targetStream || []
         )
     }
 
