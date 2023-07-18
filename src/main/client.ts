@@ -27,7 +27,6 @@ export class Client {
 
     async getUser(id: CCID): Promise<User | null> {
         const entity = await this.api.readEntity(id)
-        console.log('CLIENT::getUser::entity', entity)
         if (!entity) return null
         const rawProfile: Character<RawProfile> | undefined = await this.api.readCharacter(id, Schemas.profile)
         const rawUserstreams: Character<Userstreams> | undefined = await this.api.readCharacter(id, Schemas.userstreams)

@@ -1,6 +1,6 @@
 import { ServerEvent, StreamID } from '../model/core';
 
-const WS = window?.WebSocket || require('ws');
+const WS = typeof window === 'undefined' ? require('ws') : window.WebSocket;
 type socketEvent = 'open' | 'close' | 'error' | 'MessageCreated' | 'MessageDeleted' | 'AssociationCreated' | 'AssociationDeleted'
 
 export class Socket {
