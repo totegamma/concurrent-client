@@ -17,8 +17,8 @@ import { Schemas, Schema } from "../schemas";
 import { AssociationID, CharacterID, MessageID } from "./core";
 
 export interface User extends CoreEntity {
-    profile: Profile;
-    userstreams: Userstreams;
+    profile?: Profile;
+    userstreams?: Userstreams;
 }
 
 export interface Character {

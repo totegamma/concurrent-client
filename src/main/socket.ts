@@ -1,14 +1,39 @@
-import { EventEmitter } from 'events';
 import { ServerEvent, StreamID } from '../model/core';
 
-const WS = global.WebSocket || require('ws');
+const WS = window?.WebSocket || require('ws');
+type socketEvent = 'open' | 'close' | 'error' | 'MessageCreated' | 'MessageDeleted' | 'AssociationCreated' | 'AssociationDeleted'
 
-export class Socket extends EventEmitter {
+export class Socket {
 
     ws: any;
+    fns: Record<socketEvent, Set<(...args: any[]) => void>>
+
+    on(type: socketEvent, fn: (...args: any[]) => void) {
+        if (this.fns[type]) {
+            this.fns[type].add(fn)
+        } else {
+            this.fns[type] = new Set([fn])
+        }
+    }
+    off(type: socketEvent, fn: (...args: any[]) => void) {
+        this.fns[type]?.delete(fn)
+    }
+    emit(type: socketEvent, ...args: any[]) {
+        for (const fn of this.fns[type] || []) fn(...args)
+    }
 
     constructor(domain: string) {
-        super();
+
+        this.fns = {
+            open: new Set(),
+            close: new Set(),
+            error: new Set(),
+            MessageCreated: new Set(),
+            MessageDeleted: new Set(),
+            AssociationCreated: new Set(),
+            AssociationDeleted: new Set(),
+        }
+
         this.ws = new WS('wss://' + domain + '/api/v1/socket');
 
         this.ws.onopen = () => {
