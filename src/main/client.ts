@@ -15,14 +15,19 @@ import { Profile } from '../model/wrapper'
 import { Socket } from './socket'
 import {ReplyMessage} from "../schemas/replyMessage";
 import {ReplyAssociation} from "../schemas/replyAssociation";
+import { CommputeCCID, KeyPair, LoadKey } from "../util/crypto";
 
 export class Client {
     api: Api
     ccid: CCID
+    keyPair: KeyPair;
 
-    constructor(ccid: CCID, privatekey: string, host: Domain, client?: string) {
-        this.ccid = ccid
-        this.api = new Api(ccid, privatekey, host, client)
+    constructor(privatekey: string, host: Domain, client?: string) {
+        const keyPair = LoadKey(privatekey)
+        if (!keyPair) throw new Error('invalid private key')
+        this.keyPair = keyPair
+        this.ccid = CommputeCCID(keyPair.publickey)
+        this.api = new Api(this.ccid, privatekey, host, client)
     }
 
     async getUser(id: CCID): Promise<User | null> {

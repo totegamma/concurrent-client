@@ -1,10 +1,37 @@
 import { ec as Ec } from 'elliptic'
-import { keccak256, recoverAddress } from 'ethers'
+import { computeAddress, keccak256, recoverAddress } from 'ethers'
+
+export interface KeyPair {
+    privatekey: string
+    publickey: string
+}
 
 export const validateSignature = (body: string, signature: string, expectedAuthor: string): boolean => {
     const messageHash = keccak256(new TextEncoder().encode(body))
     const recovered = recoverAddress(messageHash, '0x' + signature)
     return recovered.slice(2) === expectedAuthor.slice(2)
+}
+
+export const LoadKey = (privateKey: string): KeyPair | null => {
+    try {
+        const ellipsis = new Ec('secp256k1')
+        const keyPair = ellipsis.keyFromPrivate(privateKey)
+        if (!keyPair.getPrivate()) return null
+        const privatekey = keyPair.getPrivate().toString('hex')
+        const publickey = keyPair.getPublic().encode('hex', false)
+        return {
+            privatekey,
+            publickey,
+        }
+    } catch (error) {
+        return null
+    }
+}
+
+export const CommputeCCID = (publickey: string): string => {
+    const ethAddress = computeAddress('0x' + publickey)
+    const ccaddress = 'CC' + ethAddress.slice(2)
+    return ccaddress
 }
 
 export const Sign = (privatekey: string, payload: string): string => {
