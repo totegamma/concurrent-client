@@ -22,19 +22,27 @@ export class Client {
     ccid: CCID
     keyPair: KeyPair;
 
+    user: User | null = null
+
     constructor(privatekey: string, host: Domain, client?: string) {
         const keyPair = LoadKey(privatekey)
         if (!keyPair) throw new Error('invalid private key')
         this.keyPair = keyPair
         this.ccid = CommputeCCID(keyPair.publickey)
         this.api = new Api(this.ccid, privatekey, host, client)
+
+        this.getUser(this.ccid).then((user) => {
+            if (user) {
+                this.user = user
+            }
+        })
     }
 
-    async getUser(id: CCID): Promise<User | null> {
+    async getUser(id: CCID): Promise<User | null | undefined> {
         const entity = await this.api.readEntity(id)
         if (!entity) return null
-        const rawProfile: Character<RawProfile> | undefined = await this.api.readCharacter(id, Schemas.profile)
-        const rawUserstreams: Character<Userstreams> | undefined = await this.api.readCharacter(id, Schemas.userstreams)
+        const rawProfile: Character<RawProfile> | null | undefined = await this.api.readCharacter(id, Schemas.profile)
+        const rawUserstreams: Character<Userstreams> | null | undefined = await this.api.readCharacter(id, Schemas.userstreams)
 
         let profile = undefined
         if (rawProfile) {
@@ -63,7 +71,7 @@ export class Client {
         }
     }
 
-    async getStream(id: StreamID): Promise<Stream | null> {
+    async getStream(id: StreamID): Promise<Stream | null | undefined> {
         const stream = await this.api.readStream(id)
         if (!stream) return null
         return {
@@ -73,7 +81,7 @@ export class Client {
         }
     }
 
-    async getAssociation(id: AssociationID, owner: CCID, deep: boolean = true): Promise<A_Favorite | A_Reaction | A_Reroute | A_Reply | null> {
+    async getAssociation(id: AssociationID, owner: CCID, deep: boolean = true): Promise<A_Favorite | A_Reaction | A_Reroute | A_Reply | null | undefined > {
         const association = await this.api.readAssociationWithOwner(id, owner).catch((e) => {
             console.log('CLIENT::getAssociation::readAssociationWithOwner::error', e)
             return null
@@ -145,7 +153,7 @@ export class Client {
         }
     }
 
-    async getMessage(id: MessageID, authorID: CCID, deep: boolean = true): Promise<M_Current | M_Reroute | M_Reply | null> {
+    async getMessage(id: MessageID, authorID: CCID, deep: boolean = true): Promise<M_Current | M_Reroute | M_Reply | null | undefined> {
         const message = await this.api.readMessageWithAuthor(id, authorID).catch((e) => {
             console.log('CLIENT::getMessage::readMessageWithAuthor::error', e)
             return null
@@ -165,7 +173,7 @@ export class Client {
                     return null
                 })
             })
-        )).filter((e: Association | null) => (e !== null)) as Association[] : []
+        )).filter((e: Association | null | undefined) => e) as Association[] : []
 
         const favorites: A_Favorite[] =  allAssociations.filter((e) => e.schema === Schemas.like) as A_Favorite[]
         const reactions: A_Reaction[] = allAssociations.filter((e) => e.schema === Schemas.emojiAssociation) as A_Reaction[]
@@ -174,7 +182,7 @@ export class Client {
 
         const allstreams = (await Promise.all(
             message.streams.map(async (e) => await this.getStream(e).catch(() => null))
-        )).filter((e: Stream | null) => (e !== null)) as Stream[]
+        )).filter((e: Stream | null | undefined) => e) as Stream[]
 
         const streams: Commonstream[] = allstreams.filter((e: Stream) => e.schema === Schemas.commonstream)
 
@@ -244,7 +252,7 @@ export class Client {
             await Promise.all(
                 users.map(async (ccaddress: string) => {
                     const entity = await this.api.readEntity(ccaddress)
-                    const character: Character<Userstreams> | undefined = await this.api.readCharacter(
+                    const character: Character<Userstreams> | null | undefined = await this.api.readCharacter(
                         ccaddress,
                         Schemas.userstreams
                     )

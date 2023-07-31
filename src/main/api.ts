@@ -16,11 +16,12 @@ export class Api {
 
     token?: string
 
-    entityCache: Record<string, Promise<Entity> | undefined> = {}
-    messageCache: Record<string, Promise<Message<any>> | undefined> = {}
-    characterCache: Record<string, Promise<Character<any>> | undefined> = {}
-    associationCache: Record<string, Promise<Association<any>> | undefined> = {}
-    streamCache: Record<string, Promise<Stream<any>> | undefined> = {}
+    entityCache: Record<string, Promise<Entity> | null | undefined> = {}
+    messageCache: Record<string, Promise<Message<any>> | null | undefined> = {}
+    characterCache: Record<string, Promise<Character<any>> | null | undefined> = {}
+    associationCache: Record<string, Promise<Association<any>> | null | undefined> = {}
+    streamCache: Record<string, Promise<Stream<any>> | null | undefined> = {}
+    hostCache: Record<string, Promise<Host> | null | undefined> = {}
 
     constructor(ccid: string, privatekey: string, host: string, client?: string) {
         this.host = host
@@ -93,7 +94,7 @@ export class Api {
         return await res.json()
     }
 
-    async readMessage(id: string, host: string = ''): Promise<Message<any> | undefined> {
+    async readMessage(id: string, host: string = ''): Promise<Message<any> | null | undefined> {
         if (this.messageCache[id]) {
             return await this.messageCache[id]
         }
@@ -103,7 +104,7 @@ export class Api {
             headers: {}
         }).then(async (res) => {
             if (!res.ok) {
-                if (res.status === 404) return undefined
+                if (res.status === 404) return null 
                 return await Promise.reject(new Error(`fetch failed: ${res.status} ${await res.text()}`))
             }
             const data = await res.json()
@@ -123,7 +124,7 @@ export class Api {
         return await this.messageCache[id]
     }
 
-    async readMessageWithAuthor(messageId: string, author: string): Promise<Message<any> | undefined> {
+    async readMessageWithAuthor(messageId: string, author: string): Promise<Message<any> | null | undefined> {
         const entity = await this.readEntity(author)
         if (!entity) throw new Error()
         return await this.readMessage(messageId, entity.host)
@@ -215,7 +216,7 @@ export class Api {
             })
     }
 
-    async readAssociation(id: string, host: string = ''): Promise<Association<any> | undefined> {
+    async readAssociation(id: string, host: string = ''): Promise<Association<any> | null | undefined> {
         if (this.associationCache[id]) {
             return await this.associationCache[id]
         }
@@ -225,7 +226,7 @@ export class Api {
             headers: {}
         }).then(async (res) => {
             if (!res.ok) {
-                if (res.status === 404) return undefined
+                if (res.status === 404) return null
                 return await Promise.reject(new Error(`fetch failed: ${res.status} ${await res.text()}`))
             }
             const data = await res.json()
@@ -241,7 +242,7 @@ export class Api {
         return await this.associationCache[id]
     }
 
-    async readAssociationWithOwner(associationId: string, owner: string): Promise<Association<any> | undefined> {
+    async readAssociationWithOwner(associationId: string, owner: string): Promise<Association<any> | null | undefined> {
         const entity = await this.readEntity(owner)
         if (!entity) throw new Error()
         return await this.readAssociation(associationId, entity.host)
@@ -282,7 +283,7 @@ export class Api {
             })
     }
 
-    async readCharacter(author: string, schema: string): Promise<Character<any> | undefined> {
+    async readCharacter(author: string, schema: string): Promise<Character<any> | null | undefined> {
         if (this.characterCache[author + schema]) {
             return await this.characterCache[author + schema]
         }
@@ -390,7 +391,7 @@ export class Api {
         )
     }
 
-    async readStream(id: string): Promise<Stream<any> | undefined> {
+    async readStream(id: string): Promise<Stream<any> | null | undefined> {
         if (this.streamCache[id]) {
             return await this.streamCache[id]
         }
@@ -401,7 +402,7 @@ export class Api {
             headers: {}
         }).then(async (res) => {
             if (!res.ok) {
-                if (res.status === 404) return undefined
+                if (res.status === 404) return null
                 return await Promise.reject(new Error(`fetch failed: ${res.status} ${await res.text()}`))
             }
             const data = await res.json()
@@ -505,12 +506,30 @@ export class Api {
     }
 
     // Host
-    async getHostProfile(remote?: string): Promise<Host> {
+    async readHost(remote?: string): Promise<Host | null | undefined> {
         const fqdn = remote ?? this.host
         if (!fqdn) throw new Error()
-        return await fetch(`https://${fqdn}${apiPath}/host`).then(async (data) => {
-            return await data.json()
+        if (this.hostCache[fqdn]) {
+            return await this.hostCache[fqdn]
+        }
+
+        this.hostCache[fqdn] = fetch(`https://${fqdn}${apiPath}/host`, {
+            method: 'GET',
+            headers: {}
+        }).then(async (res) => {
+            if (!res.ok) {
+                if (res.status === 404) return null
+                return await Promise.reject(new Error(`fetch failed: ${res.status} ${await res.text()}`))
+            }
+            const data = await res.json()
+            if (!data.ccaddr) {
+                return undefined
+            }
+            const host = data
+            this.hostCache[fqdn] = host
+            return host
         })
+        return await this.hostCache[fqdn]
     }
 
     async getKnownHosts(remote?: string): Promise<Host[]> {
@@ -520,7 +539,7 @@ export class Api {
     }
 
     // Entity
-    async readEntity(ccaddr: CCID): Promise<Entity | undefined> {
+    async readEntity(ccaddr: CCID): Promise<Entity | null | undefined> {
         if (this.entityCache[ccaddr]) {
             return await this.entityCache[ccaddr]
         }
@@ -539,14 +558,14 @@ export class Api {
     }
 
     // KV
-    async readKV(key: string): Promise<string | undefined> {
+    async readKV(key: string): Promise<string | null | undefined> {
         return await this.fetchWithCredential(`https://${this.host}${apiPath}/kv/${key}`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
             const kv = await res.json()
             if (!kv || kv.content === '') {
-                return undefined
+                return null
             }
             return kv.content
         })
