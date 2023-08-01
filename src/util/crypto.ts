@@ -84,11 +84,20 @@ export const SignJWT = (payload: string, privatekey: string): string => {
     const ellipsis = new Ec('secp256k1')
     const keyPair = ellipsis.keyFromPrivate(privatekey)
     const signature = keyPair.sign(bodyHash, 'hex', { canonical: true })
+
+    const r_raw = signature.r.toArray()
+    const r_padded = new Uint8Array(32)
+    r_padded.set(r_raw, 32 - r_raw.length)
+
+    const s_raw = signature.s.toArray()
+    const s_padded = new Uint8Array(32)
+    s_padded.set(s_raw, 32 - s_raw.length)
+
     const base64 = makeUrlSafe(
         btoa(
             String.fromCharCode.apply(null, [
-                ...signature.r.toArray(),
-                ...signature.s.toArray(),
+                ...r_padded,
+                ...s_padded,
                 signature.recoveryParam ?? 0
             ])
         )
