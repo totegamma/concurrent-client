@@ -96,7 +96,8 @@ export class Api {
 
     async readMessage(id: string, host: string = ''): Promise<Message<any> | null | undefined> {
         if (this.messageCache[id]) {
-            return await this.messageCache[id]
+            const value = await this.messageCache[id]
+            if (value !== undefined) return value
         }
         const messageHost = !host ? this.host : host
         this.messageCache[id] = fetch(`https://${messageHost}${apiPath}/messages/${id}`, {
@@ -218,7 +219,8 @@ export class Api {
 
     async readAssociation(id: string, host: string = ''): Promise<Association<any> | null | undefined> {
         if (this.associationCache[id]) {
-            return await this.associationCache[id]
+            const value = await this.associationCache[id]
+            if (value !== undefined) return value
         }
         const associationHost = !host ? this.host : host
         this.associationCache[id] = fetch(`https://${associationHost}${apiPath}/associations/${id}`, {
@@ -285,7 +287,8 @@ export class Api {
 
     async readCharacter(author: string, schema: string): Promise<Character<any> | null | undefined> {
         if (this.characterCache[author + schema]) {
-            return await this.characterCache[author + schema]
+            const value = await this.characterCache[author + schema]
+            if (value !== undefined) return value
         }
         const entity = await this.readEntity(author)
         let characterHost = entity?.host ?? this.host
@@ -393,7 +396,8 @@ export class Api {
 
     async readStream(id: string): Promise<Stream<any> | null | undefined> {
         if (this.streamCache[id]) {
-            return await this.streamCache[id]
+            const value = await this.streamCache[id]
+            if (value !== undefined) return value
         }
         const key = id.split('@')[0]
         const host = id.split('@')[1] ?? this.host
@@ -510,7 +514,8 @@ export class Api {
         const fqdn = remote ?? this.host
         if (!fqdn) throw new Error()
         if (this.hostCache[fqdn]) {
-            return await this.hostCache[fqdn]
+            const value = await this.hostCache[fqdn]
+            if (value !== undefined) return value
         }
 
         this.hostCache[fqdn] = fetch(`https://${fqdn}${apiPath}/host`, {
@@ -541,7 +546,8 @@ export class Api {
     // Entity
     async readEntity(ccaddr: CCID): Promise<Entity | null | undefined> {
         if (this.entityCache[ccaddr]) {
-            return await this.entityCache[ccaddr]
+            const value = await this.entityCache[ccaddr]
+            if (value !== undefined) return value
         }
         this.entityCache[ccaddr] = fetch(`https://${this.host}${apiPath}/entity/${ccaddr}`, {
             method: 'GET',
@@ -555,6 +561,10 @@ export class Api {
             return entity
         })
         return await this.entityCache[ccaddr]
+    }
+
+    invalidateEntity(ccid: CCID): void {
+        delete this.entityCache[ccid]
     }
 
     // KV
