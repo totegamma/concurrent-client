@@ -100,7 +100,7 @@ export class Api {
             if (value !== undefined) return value
         }
         const messageHost = !host ? this.host : host
-        this.messageCache[id] = fetch(`https://${messageHost}${apiPath}/messages/${id}`, {
+        this.messageCache[id] = fetchWithTimeout(`https://${messageHost}${apiPath}/messages/${id}`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
@@ -223,7 +223,7 @@ export class Api {
             if (value !== undefined) return value
         }
         const associationHost = !host ? this.host : host
-        this.associationCache[id] = fetch(`https://${associationHost}${apiPath}/associations/${id}`, {
+        this.associationCache[id] = fetchWithTimeout(`https://${associationHost}${apiPath}/associations/${id}`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
@@ -293,7 +293,7 @@ export class Api {
         const entity = await this.readEntity(author)
         let characterHost = entity?.host ?? this.host
         if (!characterHost || characterHost === '') characterHost = this.host
-        this.characterCache[author + schema] = fetch(
+        this.characterCache[author + schema] = fetchWithTimeout(
             `https://${characterHost}${apiPath}/characters?author=${author}&schema=${encodeURIComponent(schema)}`,
             {
                 method: 'GET',
@@ -383,7 +383,7 @@ export class Api {
     }
 
     async getStreamListBySchema(schema: string, remote?: string): Promise<Array<Stream<any>>> {
-        return await fetch(`https://${remote ?? this.host}${apiPath}/stream/list?schema=${schema}`).then(
+        return await fetchWithTimeout(`https://${remote ?? this.host}${apiPath}/stream/list?schema=${schema}`, {}).then(
             async (data) => {
                 return await data.json().then((arr) => {
                     return arr.map((e: any) => {
@@ -401,7 +401,7 @@ export class Api {
         }
         const key = id.split('@')[0]
         const host = id.split('@')[1] ?? this.host
-        this.streamCache[id] = fetch(`https://${host}${apiPath}/stream?stream=${key}`, {
+        this.streamCache[id] = fetchWithTimeout(`https://${host}${apiPath}/stream?stream=${key}`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
@@ -441,11 +441,15 @@ export class Api {
                 console.warn('invalid query')
                 continue
             }
-            const response = await fetch(
-                `https://${host}${apiPath}/stream/recent?streams=${plan[host].join(',')}`,
-                requestOptions
-            ).then(async (res) => await res.json())
-            result = [...result, ...response]
+            try {
+                const response = await fetchWithTimeout(
+                    `https://${host}${apiPath}/stream/recent?streams=${plan[host].join(',')}`,
+                    requestOptions
+                ).then(async (res) => await res.json())
+                result = [...result, ...response]
+            } catch (e) {
+                console.warn(e)
+            }
         }
         // sort result
         result.sort((a, b) => {
@@ -486,11 +490,15 @@ export class Api {
                 console.warn('invalid query')
                 continue
             }
-            const response = await fetch(
-                `https://${host}${apiPath}/stream/range?streams=${plan[host].join(',')}${sinceQuery}${untilQuery}`,
-                requestOptions
-            ).then(async (res) => await res.json())
-            result = [...result, ...response]
+            try {
+                const response = await fetchWithTimeout(
+                    `https://${host}${apiPath}/stream/range?streams=${plan[host].join(',')}${sinceQuery}${untilQuery}`,
+                    requestOptions
+                ).then(async (res) => await res.json())
+                result = [...result, ...response]
+            } catch (e) {
+                console.warn(e)
+            }
         }
         // sort result
         result.sort((a, b) => {
@@ -518,7 +526,7 @@ export class Api {
             if (value !== undefined) return value
         }
 
-        this.hostCache[fqdn] = fetch(`https://${fqdn}${apiPath}/host`, {
+        this.hostCache[fqdn] = fetchWithTimeout(`https://${fqdn}${apiPath}/host`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
@@ -538,7 +546,7 @@ export class Api {
     }
 
     async getKnownHosts(remote?: string): Promise<Host[]> {
-        return await fetch(`https://${remote ?? this.host}${apiPath}/host/list`).then(async (data) => {
+        return await fetchWithTimeout(`https://${remote ?? this.host}${apiPath}/host/list`, {}).then(async (data) => {
             return await data.json()
         })
     }
@@ -549,7 +557,7 @@ export class Api {
             const value = await this.entityCache[ccaddr]
             if (value !== undefined) return value
         }
-        this.entityCache[ccaddr] = fetch(`https://${this.host}${apiPath}/entity/${ccaddr}`, {
+        this.entityCache[ccaddr] = fetchWithTimeout(`https://${this.host}${apiPath}/entity/${ccaddr}`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
