@@ -8,6 +8,12 @@ import { Schema } from '../schemas'
 
 const apiPath = '/api/v1'
 
+class DomainOfflineError extends Error {
+    constructor(domain: string) {
+        super(`domain ${domain} is offline`)
+    }
+}
+
 export class Api {
     host: string
     ccid: string
@@ -45,6 +51,11 @@ export class Api {
             })
     }
 
+    async fetchWithOnlineCheck(domain: string, path: string, init: RequestInit, timeoutMs?: number): Promise<Response> {
+        const host = await this.readHost(domain)
+        if (!host) return Promise.reject(new DomainOfflineError(domain))
+        return await fetchWithTimeout(`https://${domain}${apiPath}${path}`, init, timeoutMs)
+    }
 
     async fetchWithCredential(url: RequestInfo, init: RequestInit, timeoutMs?: number): Promise<Response> {
         let jwt = this.token
@@ -100,7 +111,7 @@ export class Api {
             if (value !== undefined) return value
         }
         const messageHost = !host ? this.host : host
-        this.messageCache[id] = fetchWithTimeout(`https://${messageHost}${apiPath}/messages/${id}`, {
+        this.messageCache[id] = this.fetchWithOnlineCheck(messageHost, `/messages/${id}`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
@@ -223,7 +234,7 @@ export class Api {
             if (value !== undefined) return value
         }
         const associationHost = !host ? this.host : host
-        this.associationCache[id] = fetchWithTimeout(`https://${associationHost}${apiPath}/associations/${id}`, {
+        this.associationCache[id] = this.fetchWithOnlineCheck(associationHost, `/associations/${id}`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
@@ -293,8 +304,9 @@ export class Api {
         const entity = await this.readEntity(author)
         let characterHost = entity?.host ?? this.host
         if (!characterHost || characterHost === '') characterHost = this.host
-        this.characterCache[author + schema] = fetchWithTimeout(
-            `https://${characterHost}${apiPath}/characters?author=${author}&schema=${encodeURIComponent(schema)}`,
+        this.characterCache[author + schema] = this.fetchWithOnlineCheck(
+            characterHost,
+            `/characters?author=${author}&schema=${encodeURIComponent(schema)}`,
             {
                 method: 'GET',
                 headers: {}
@@ -401,7 +413,7 @@ export class Api {
         }
         const key = id.split('@')[0]
         const host = id.split('@')[1] ?? this.host
-        this.streamCache[id] = fetchWithTimeout(`https://${host}${apiPath}/stream?stream=${key}`, {
+        this.streamCache[id] = this.fetchWithOnlineCheck(host, `/stream?stream=${key}`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
@@ -442,8 +454,9 @@ export class Api {
                 continue
             }
             try {
-                const response = await fetchWithTimeout(
-                    `https://${host}${apiPath}/stream/recent?streams=${plan[host].join(',')}`,
+                const response = await this.fetchWithOnlineCheck(
+                    host,
+                    `/stream/recent?streams=${plan[host].join(',')}`,
                     requestOptions
                 ).then(async (res) => await res.json())
                 result = [...result, ...response]
@@ -491,8 +504,15 @@ export class Api {
                 continue
             }
             try {
+                /*
                 const response = await fetchWithTimeout(
                     `https://${host}${apiPath}/stream/range?streams=${plan[host].join(',')}${sinceQuery}${untilQuery}`,
+                    requestOptions
+                ).then(async (res) => await res.json())
+                */
+                const response = await this.fetchWithOnlineCheck(
+                    host,
+                    `/stream/range?streams=${plan[host].join(',')}${sinceQuery}${untilQuery}`,
                     requestOptions
                 ).then(async (res) => await res.json())
                 result = [...result, ...response]
@@ -531,16 +551,18 @@ export class Api {
             headers: {}
         }).then(async (res) => {
             if (!res.ok) {
-                if (res.status === 404) return null
-                return await Promise.reject(new Error(`fetch failed: ${res.status} ${await res.text()}`))
+                return null
             }
             const data = await res.json()
             if (!data.ccaddr) {
-                return undefined
+                return null
             }
             const host = data
             this.hostCache[fqdn] = host
             return host
+        }).catch((e) => {
+            console.warn(e)
+            return null
         })
         return await this.hostCache[fqdn]
     }
