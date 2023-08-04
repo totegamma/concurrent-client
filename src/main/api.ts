@@ -363,6 +363,29 @@ export class Api {
             })
     }
 
+    async deleteStream(id: string): Promise<any> {
+        const requestOptions = {
+            method: 'DELETE'
+        }
+
+        return await this.fetchWithCredential(`https://${this.host}${apiPath}/stream/${id}`, requestOptions)
+            .then(async (res) => await res.json())
+            .then((data) => {
+                return data
+            })
+    }
+
+    async removeFromStream(elementID: string, stream: string): Promise<any> {
+        const requestOptions = {
+            method: 'DELETE'
+        }
+
+        return await this.fetchWithCredential(
+            `https://${this.host}${apiPath}/stream/${stream}/${elementID}`,
+            requestOptions
+        ).then(async (res) => await res.json())
+    }
+
     async updateStream(id: string, partialSignObject: any): Promise<any> {
         const signObject = {
             ...partialSignObject,
