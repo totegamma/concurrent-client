@@ -1,9 +1,8 @@
-import { v4 as uuidv4 } from 'uuid'
 
 import { Entity, Message, Character, Association, Stream, SignedObject, CCID, StreamElement, Host, StreamID } from '../model/core'
 import { MessagePostRequest } from '../model/request'
 import { fetchWithTimeout } from '../util/misc'
-import { Sign, SignJWT, checkJwtIsValid } from '../util/crypto'
+import { Sign, IssueJWT, checkJwtIsValid } from '../util/crypto'
 import { Schema } from '../schemas'
 
 const apiPath = '/api/v1'
@@ -14,13 +13,26 @@ class DomainOfflineError extends Error {
     }
 }
 
+class JWTExpiredError extends Error {
+    constructor() {
+        super('JWT expired')
+    }
+}
+
+class InvalidKeyError extends Error {
+    constructor() {
+        super('Invalid key')
+    }
+}
+
 export class Api {
     host: string
-    ccid: string
-    privatekey: string
-    client: string
 
+    ccid?: string
+    privatekey?: string
     token?: string
+
+    client: string
 
     entityCache: Record<string, Promise<Entity> | null | undefined> = {}
     messageCache: Record<string, Promise<Message<any>> | null | undefined> = {}
@@ -29,16 +41,18 @@ export class Api {
     streamCache: Record<string, Promise<Stream<any>> | null | undefined> = {}
     hostCache: Record<string, Promise<Host> | null | undefined> = {}
 
-    constructor(ccid: string, privatekey: string, host: string, client?: string) {
-        this.host = host
-        this.ccid = ccid
-        this.privatekey = privatekey
-        this.client = client || 'N/A'
+    constructor(conf: {host: string, ccid?: string, privatekey?: string, client?: string, token?: string}) {
+        this.host = conf.host
+        this.ccid = conf.ccid
+        this.privatekey = conf.privatekey
+        this.client = conf.client || 'N/A'
+        this.token = conf.token
         console.log('oOoOoOoOoO API SERVICE CREATED OoOoOoOoOo')
     }
 
     async getJWT(): Promise<string> {
-        const requestJwt = this.constructJWT({})
+        if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
+        const requestJwt = IssueJWT(this.privatekey, {iss: this.ccid, aud: this.host})
         const requestOptions = {
             method: 'GET',
             headers: { authorization: requestJwt }
@@ -60,13 +74,14 @@ export class Api {
     async fetchWithCredential(url: RequestInfo, init: RequestInit, timeoutMs?: number): Promise<Response> {
         let jwt = this.token
         if (!jwt || !checkJwtIsValid(jwt)) {
+            if (!this.privatekey) return Promise.reject(new JWTExpiredError())
             jwt = await this.getJWT()
         }
         const requestInit = {
             ...init,
             headers: {
                 ...init.headers,
-                authorization: 'Bearer ' + jwt
+                authorization: 'Bearer ' + this.token
             }
         }
         return await fetchWithTimeout(url, requestInit, timeoutMs)
@@ -74,6 +89,7 @@ export class Api {
 
     // Message
     async createMessage<T>(schema: Schema, body: T, streams: string[]): Promise<any> {
+        if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
         const signObject: SignedObject<T> = {
             signer: this.ccid,
             type: 'Message',
@@ -172,6 +188,7 @@ export class Api {
         targetType: string,
         streams: StreamID[]
     ): Promise<any> {
+        if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
         const entity = await this.readEntity(targetAuthor)
         const targetHost = entity?.host || this.host
         const signObject: SignedObject<T> = {
@@ -263,6 +280,7 @@ export class Api {
 
     // Character
     async upsertCharacter<T>(schema: Schema, body: T, id?: string): Promise<any> {
+        if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
         const signObject: SignedObject<T> = {
             signer: this.ccid,
             type: 'Character',
@@ -330,6 +348,7 @@ export class Api {
         body: T,
         { maintainer = [], writer = [], reader = [] }: { maintainer?: CCID[]; writer?: CCID[]; reader?: CCID[] } = {}
     ): Promise<any> {
+        if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
         const signObject = {
             signer: this.ccid,
             type: 'Stream',
@@ -387,6 +406,7 @@ export class Api {
     }
 
     async updateStream(id: string, partialSignObject: any): Promise<any> {
+        if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
         const signObject = {
             ...partialSignObject,
             signer: this.ccid,
@@ -527,12 +547,6 @@ export class Api {
                 continue
             }
             try {
-                /*
-                const response = await fetchWithTimeout(
-                    `https://${host}${apiPath}/stream/range?streams=${plan[host].join(',')}${sinceQuery}${untilQuery}`,
-                    requestOptions
-                ).then(async (res) => await res.json())
-                */
                 const response = await this.fetchWithOnlineCheck(
                     host,
                     `/stream/range?streams=${plan[host].join(',')}${sinceQuery}${untilQuery}`,
@@ -590,6 +604,13 @@ export class Api {
         return await this.hostCache[fqdn]
     }
 
+    async deleteHost(remote: string): Promise<void> {
+        await this.fetchWithCredential(`https://${this.host}${apiPath}/host/${remote}`, {
+            method: 'DELETE',
+            headers: {}
+        })
+    }
+
     async getKnownHosts(remote?: string): Promise<Host[]> {
         return await fetchWithTimeout(`https://${remote ?? this.host}${apiPath}/host/list`, {}).then(async (data) => {
             return await data.json()
@@ -614,6 +635,29 @@ export class Api {
             return entity
         })
         return await this.entityCache[ccaddr]
+    }
+
+    async createEntity(entity: Entity): Promise<void> {
+        await this.fetchWithCredential(`https://${this.host}${apiPath}/entity`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(entity)
+        })
+    }
+
+    async deleteEntity(ccid: CCID): Promise<void> {
+        await this.fetchWithCredential(`https://${this.host}${apiPath}/entity/${ccid}`, {
+            method: 'DELETE',
+            headers: {}
+        })
+    }
+
+    async getEntities(): Promise<Entity[]> {
+        return await fetchWithTimeout(`https://${this.host}${apiPath}/entity/list`, {}).then(async (data) => {
+            return await data.json()
+        })
     }
 
     invalidateEntity(ccid: CCID): void {
@@ -642,16 +686,14 @@ export class Api {
         })
     }
 
-    constructJWT(claim: Record<string, string>): string {
-        const payload = JSON.stringify({
-            jti: uuidv4(),
-            iss: this.ccid,
-            iat: Math.floor(new Date().getTime() / 1000).toString(),
-            aud: this.host,
-            nbf: Math.floor((new Date().getTime() - 5 * 60 * 1000) / 1000).toString(),
-            exp: Math.floor((new Date().getTime() + 5 * 60 * 1000) / 1000).toString(),
-            ...claim
+    // Admin
+    async sayHello (remote: string): Promise<string> {
+        return await this.fetchWithCredential(`https://${this.host}${apiPath}/admin/sayhello/${remote}`, {
+        }).then(async (data) => {
+            return await data.json()
         })
-        return SignJWT(payload, this.privatekey)
     }
+
+
+
 }

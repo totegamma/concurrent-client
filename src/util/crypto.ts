@@ -1,4 +1,5 @@
 import { ec as Ec } from 'elliptic'
+import { v4 as uuidv4 } from 'uuid'
 import { computeAddress, keccak256, recoverAddress } from 'ethers'
 
 export interface KeyPair {
@@ -130,3 +131,33 @@ function toHexString(byteArray: Uint8Array | number[]): string {
         return ('0' + (byte & 0xff).toString(16)).slice(-2)
     }).join('')
 }
+
+interface JwtPayload {
+    iss?: string // 発行者
+    sub?: string // 用途
+    aud?: string // 想定利用者
+    exp?: string // 失効時刻
+    nbf?: string // 有効になる時刻
+    iat?: string // 発行時刻
+    jti?: string // JWT ID
+}
+
+export const IsValid256k1PrivateKey = (key: string): boolean => {
+    if (!/^[0-9a-f]{64}$/i.test(key)) return false
+    const privateKey = BigInt(`0x${key}`)
+    const n = BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141')
+    return privateKey > BigInt(0) && privateKey < n
+}
+
+export const IssueJWT = (key: string, claim?: JwtPayload): string => {
+    if (!IsValid256k1PrivateKey(key)) return ''
+    const payload = JSON.stringify({
+        jti: uuidv4(),
+        iat: Math.floor(new Date().getTime() / 1000).toString(),
+        nbf: Math.floor((new Date().getTime() - 5 * 60 * 1000) / 1000).toString(),
+        exp: Math.floor((new Date().getTime() + 5 * 60 * 1000) / 1000).toString(),
+        ...claim
+    })
+    return SignJWT(payload, key)
+}
+

@@ -20,16 +20,23 @@ import { CommputeCCID, KeyPair, LoadKey } from "../util/crypto";
 export class Client {
     api: Api
     ccid: CCID
+    domain: Domain
     keyPair: KeyPair;
 
     user: User | null = null
 
-    constructor(privatekey: string, host: Domain, client?: string) {
+    constructor(privatekey: string, domain: Domain, client?: string) {
         const keyPair = LoadKey(privatekey)
         if (!keyPair) throw new Error('invalid private key')
         this.keyPair = keyPair
         this.ccid = CommputeCCID(keyPair.publickey)
-        this.api = new Api(this.ccid, privatekey, host, client)
+        this.domain = domain
+        this.api = new Api({
+            host: domain,
+            ccid: this.ccid,
+            privatekey,
+            client
+        })
 
         this.getUser(this.ccid).then((user) => {
             if (user) {
@@ -274,9 +281,9 @@ export class Client {
     }
 
     async setupUserstreams(): Promise<void> {
-        const userstreams = await this.api.readCharacter(this.api.ccid, Schemas.userstreams)
+        const userstreams = await this.api.readCharacter(this.ccid, Schemas.userstreams)
         const id = userstreams?.id
-        const res0 = await this.api.createStream(Schemas.utilitystream, {}, { writer: [this.api.ccid] })
+        const res0 = await this.api.createStream(Schemas.utilitystream, {}, { writer: [this.ccid] })
         const homeStream = res0.id
         console.log('home', homeStream)
 
@@ -284,7 +291,7 @@ export class Client {
         const notificationStream = res1.id
         console.log('notification', notificationStream)
 
-        const res2 = await this.api.createStream(Schemas.utilitystream, {}, { writer: [this.api.ccid] })
+        const res2 = await this.api.createStream(Schemas.utilitystream, {}, { writer: [this.ccid] })
         const associationStream = res2.id
         console.log('notification', associationStream)
 
@@ -302,7 +309,7 @@ export class Client {
     }
 
     async favorite(target: Message): Promise<void> {
-        const userStreams = await this.api.readCharacter(this.api.ccid, Schemas.userstreams)
+        const userStreams = await this.api.readCharacter(this.ccid, Schemas.userstreams)
         const authorInbox = target.author.userstreams?.notificationStream
         const targetStream = [authorInbox, userStreams?.payload.body.associationStream].filter((e) => e) as string[]
         await this.api.createAssociation<Like>(Schemas.like, {}, target.id, target.author.ccaddr, 'messages', targetStream)
@@ -317,7 +324,7 @@ export class Client {
     }
 
     async addReaction(target: Message, shortcode: string, imageUrl: string): Promise<void> {
-        const userStreams = await this.api.readCharacter(this.api.ccid, Schemas.userstreams)
+        const userStreams = await this.api.readCharacter(this.ccid, Schemas.userstreams)
         const authorInbox = target.author.userstreams?.notificationStream
         const targetStream = [authorInbox, userStreams?.payload.body.associationStream].filter((e) => e) as string[]
         await this.api.createAssociation<EmojiAssociation>(
@@ -351,13 +358,13 @@ export class Client {
         )
         const createdMessageId = content.id
 
-        const userStreams = await this.api.readCharacter(this.api.ccid, Schemas.userstreams)
+        const userStreams = await this.api.readCharacter(this.ccid, Schemas.userstreams)
         const authorInbox = (await this.api.readCharacter(author, Schemas.userstreams))?.payload.body.notificationStream
         const targetStream = [authorInbox, userStreams?.payload.body.associationStream].filter((e) => e) as string[]
 
         await this.api.createAssociation<RerouteAssociation>(
             Schemas.rerouteAssociation,
-            { messageId: createdMessageId, messageAuthor: this.api.ccid },
+            { messageId: createdMessageId, messageAuthor: this.ccid },
             id,
             author,
             'messages',
@@ -376,7 +383,7 @@ export class Client {
           streams
         )
 
-        const userStreams = await this.api.readCharacter(this.api.ccid, Schemas.userstreams)
+        const userStreams = await this.api.readCharacter(this.ccid, Schemas.userstreams)
         const authorInbox = (await this.api.readCharacter(author, Schemas.userstreams))?.payload.body
           .notificationStream
 
@@ -386,7 +393,7 @@ export class Client {
 
         await this.api.createAssociation<ReplyAssociation>(
           Schemas.replyAssociation,
-          { messageId: data.content.id, messageAuthor: this.api.ccid },
+          { messageId: data.content.id, messageAuthor: this.ccid },
           id,
           author,
           'messages',
