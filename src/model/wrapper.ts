@@ -86,5 +86,9 @@ export interface A_Unknown extends Association {}
 export interface Stream extends RawCommonstream {
     id: string;
     schema: string;
+    author: string;
+    maintainer: string[];
+    writer: string[];
+    reader: string[];
 }
 
