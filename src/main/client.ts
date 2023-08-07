@@ -84,6 +84,11 @@ export class Client {
         return {
             id,
             schema: stream.schema,
+            author: stream.author,
+            maintainer: stream.maintainer,
+            writer: stream.writer,
+            reader: stream.reader,
+            cdate: new Date(stream.cdate),
             ...stream.payload.body
         }
     }
@@ -410,6 +415,12 @@ export class Client {
         const streams = await this.api.getStreamListBySchema(Schemas.commonstream, domain)
         return streams.map((e) => { return {
             id: e.id,
+            schema: e.schema,
+            author: e.author,
+            maintainer: e.maintainer,
+            writer: e.writer,
+            reader: e.reader,
+            cdate: new Date(e.cdate),
             ...e.payload.body
         }})
     }

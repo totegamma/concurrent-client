@@ -90,5 +90,6 @@ export interface Stream extends RawCommonstream {
     maintainer: string[];
     writer: string[];
     reader: string[];
+    cdate: Date;
 }
 
