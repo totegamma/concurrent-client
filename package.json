@@ -1,6 +1,6 @@
 {
   "name": "@concurrent-world/client",
-  "version": "1.5.2",
+  "version": "1.5.6",
   "description": "",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",

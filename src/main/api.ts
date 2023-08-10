@@ -637,13 +637,17 @@ export class Api {
         return await this.entityCache[ccaddr]
     }
 
-    async createEntity(entity: Entity): Promise<void> {
-        await this.fetchWithCredential(`https://${this.host}${apiPath}/entity`, {
+    async createEntity(ccaddr: string, meta: any = {}, token?: string): Promise<Response> {
+        return await this.fetchWithCredential(`https://${this.host}${apiPath}/entity`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(entity)
+            body: JSON.stringify({
+                ccaddr: ccaddr,
+                meta: JSON.stringify(meta),
+                token
+            })
         })
     }
 
@@ -694,6 +698,16 @@ export class Api {
         })
     }
 
-
-
+    async createEntityWithAdmin(ccaddr: string, meta: any = {}): Promise<Response> {
+        return await this.fetchWithCredential(`https://${this.host}${apiPath}/admin/entity`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                ccaddr: ccaddr,
+                meta: JSON.stringify(meta)
+            })
+        })
+    }
 }
