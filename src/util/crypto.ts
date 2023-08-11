@@ -158,6 +158,7 @@ export const IssueJWT = (key: string, claim?: JwtPayload): string => {
         exp: Math.floor((new Date().getTime() + 5 * 60 * 1000) / 1000).toString(),
         ...claim
     })
+    console.log(payload)
     return SignJWT(payload, key)
 }
 

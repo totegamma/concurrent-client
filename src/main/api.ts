@@ -52,12 +52,16 @@ export class Api {
 
     async getJWT(): Promise<string> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
-        const requestJwt = IssueJWT(this.privatekey, {iss: this.ccid, aud: this.host})
+        const requestJwt = IssueJWT(this.privatekey, {
+            sub: 'CONCURRENT_APICLAIM',
+            iss: this.ccid,
+            aud: this.host
+        })
         const requestOptions = {
             method: 'GET',
             headers: { authorization: requestJwt }
         }
-        return await fetchWithTimeout(`https://${this.host}${apiPath}/auth/claim`, requestOptions)
+        return await fetchWithTimeout(this.host, `${apiPath}/auth/claim`, requestOptions)
             .then(async (res) => await res.json())
             .then((data) => {
                 this.token = data.jwt
@@ -68,10 +72,10 @@ export class Api {
     async fetchWithOnlineCheck(domain: string, path: string, init: RequestInit, timeoutMs?: number): Promise<Response> {
         const host = await this.readHost(domain)
         if (!host) return Promise.reject(new DomainOfflineError(domain))
-        return await fetchWithTimeout(`https://${domain}${apiPath}${path}`, init, timeoutMs)
+        return await fetchWithTimeout(domain, `${apiPath}${path}`, init, timeoutMs)
     }
 
-    async fetchWithCredential(url: RequestInfo, init: RequestInit, timeoutMs?: number): Promise<Response> {
+    async fetchWithCredential(domain: string, path: string, init: RequestInit, timeoutMs?: number): Promise<Response> {
         let jwt = this.token
         if (!jwt || !checkJwtIsValid(jwt)) {
             if (!this.privatekey) return Promise.reject(new JWTExpiredError())
@@ -84,7 +88,7 @@ export class Api {
                 authorization: 'Bearer ' + this.token
             }
         }
-        return await fetchWithTimeout(url, requestInit, timeoutMs)
+        return await fetchWithTimeout(domain, path, requestInit, timeoutMs)
     }
 
     // Message
@@ -116,7 +120,7 @@ export class Api {
             body: JSON.stringify(request)
         }
 
-        const res = await this.fetchWithCredential(`https://${this.host}${apiPath}/messages`, requestOptions)
+        const res = await this.fetchWithCredential(this.host, `${apiPath}/messages`, requestOptions)
 
         return await res.json()
     }
@@ -168,7 +172,7 @@ export class Api {
             })
         }
 
-        return await this.fetchWithCredential(`https://${targetHost}${apiPath}/messages`, requestOptions)
+        return await this.fetchWithCredential(targetHost, `${apiPath}/messages`, requestOptions)
             .then(async (res) => await res.json())
             .then((data) => {
                 return data
@@ -217,7 +221,7 @@ export class Api {
             })
         }
 
-        return await this.fetchWithCredential(`https://${targetHost}${apiPath}/associations`, requestOptions)
+        return await this.fetchWithCredential(targetHost, `${apiPath}/associations`, requestOptions)
             .then(async (res) => await res.json())
             .then((data) => {
                 return data
@@ -238,7 +242,7 @@ export class Api {
             })
         }
 
-        return await this.fetchWithCredential(`https://${targetHost}${apiPath}/associations`, requestOptions)
+        return await this.fetchWithCredential(targetHost, `${apiPath}/associations`, requestOptions)
             .then(async (res) => await res.json())
             .then((data: { status: string; content: Association<any> }) => {
                 return data
@@ -307,7 +311,7 @@ export class Api {
             body: JSON.stringify(request)
         }
 
-        return await this.fetchWithCredential(`https://${this.host}${apiPath}/characters`, requestOptions)
+        return await this.fetchWithCredential(this.host, `${apiPath}/characters`, requestOptions)
             .then(async (res) => await res.json())
             .then((data) => {
                 return data
@@ -375,7 +379,7 @@ export class Api {
             })
         }
 
-        return await this.fetchWithCredential(`https://${this.host}${apiPath}/stream`, requestOptions)
+        return await this.fetchWithCredential(this.host, `${apiPath}/stream`, requestOptions)
             .then(async (res) => await res.json())
             .then((data) => {
                 return data
@@ -387,7 +391,7 @@ export class Api {
             method: 'DELETE'
         }
 
-        return await this.fetchWithCredential(`https://${this.host}${apiPath}/stream/${id}`, requestOptions)
+        return await this.fetchWithCredential(this.host, `${apiPath}/stream/${id}`, requestOptions)
             .then(async (res) => await res.json())
             .then((data) => {
                 return data
@@ -400,7 +404,8 @@ export class Api {
         }
 
         return await this.fetchWithCredential(
-            `https://${this.host}${apiPath}/stream/${stream}/${elementID}`,
+            this.host,
+            `${apiPath}/stream/${stream}/${elementID}`,
             requestOptions
         ).then(async (res) => await res.json())
     }
@@ -430,7 +435,7 @@ export class Api {
             })
         }
 
-        return await this.fetchWithCredential(`https://${this.host}${apiPath}/stream`, requestOptions)
+        return await this.fetchWithCredential(this.host, `${apiPath}/stream`, requestOptions)
             .then(async (res) => await res.json())
             .then((data) => {
                 return data
@@ -438,7 +443,7 @@ export class Api {
     }
 
     async getStreamListBySchema(schema: string, remote?: string): Promise<Array<Stream<any>>> {
-        return await fetchWithTimeout(`https://${remote ?? this.host}${apiPath}/stream/list?schema=${schema}`, {}).then(
+        return await fetchWithTimeout(remote ?? this.host, `${apiPath}/stream/list?schema=${schema}`, {}).then(
             async (data) => {
                 return await data.json().then((arr) => {
                     return arr.map((e: any) => {
@@ -583,7 +588,7 @@ export class Api {
             if (value !== undefined) return value
         }
 
-        this.hostCache[fqdn] = fetchWithTimeout(`https://${fqdn}${apiPath}/host`, {
+        this.hostCache[fqdn] = fetchWithTimeout(fqdn, `${apiPath}/host`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
@@ -605,14 +610,14 @@ export class Api {
     }
 
     async deleteHost(remote: string): Promise<void> {
-        await this.fetchWithCredential(`https://${this.host}${apiPath}/host/${remote}`, {
+        await this.fetchWithCredential(this.host, `${apiPath}/host/${remote}`, {
             method: 'DELETE',
             headers: {}
         })
     }
 
     async getKnownHosts(remote?: string): Promise<Host[]> {
-        return await fetchWithTimeout(`https://${remote ?? this.host}${apiPath}/host/list`, {}).then(async (data) => {
+        return await fetchWithTimeout(remote ?? this.host, `${apiPath}/host/list`, {}).then(async (data) => {
             return await data.json()
         })
     }
@@ -623,7 +628,7 @@ export class Api {
             const value = await this.entityCache[ccaddr]
             if (value !== undefined) return value
         }
-        this.entityCache[ccaddr] = fetchWithTimeout(`https://${this.host}${apiPath}/entity/${ccaddr}`, {
+        this.entityCache[ccaddr] = fetchWithTimeout(this.host, `${apiPath}/entity/${ccaddr}`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
@@ -638,7 +643,7 @@ export class Api {
     }
 
     async createEntity(ccaddr: string, meta: any = {}, token?: string): Promise<Response> {
-        return await this.fetchWithCredential(`https://${this.host}${apiPath}/entity`, {
+        return await this.fetchWithCredential(this.host, `${apiPath}/entity`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -652,14 +657,14 @@ export class Api {
     }
 
     async deleteEntity(ccid: CCID): Promise<void> {
-        await this.fetchWithCredential(`https://${this.host}${apiPath}/entity/${ccid}`, {
+        await this.fetchWithCredential(this.host, `${apiPath}/entity/${ccid}`, {
             method: 'DELETE',
             headers: {}
         })
     }
 
     async getEntities(): Promise<Entity[]> {
-        return await fetchWithTimeout(`https://${this.host}${apiPath}/entity/list`, {}).then(async (data) => {
+        return await fetchWithTimeout(this.host, `${apiPath}/entity/list`, {}).then(async (data) => {
             return await data.json()
         })
     }
@@ -670,7 +675,7 @@ export class Api {
 
     // KV
     async readKV(key: string): Promise<string | null | undefined> {
-        return await this.fetchWithCredential(`https://${this.host}${apiPath}/kv/${key}`, {
+        return await this.fetchWithCredential(this.host, `${apiPath}/kv/${key}`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
@@ -683,7 +688,7 @@ export class Api {
     }
 
     async writeKV(key: string, value: string): Promise<void> {
-        await this.fetchWithCredential(`https://${this.host}${apiPath}/kv/${key}`, {
+        await this.fetchWithCredential(this.host, `${apiPath}/kv/${key}`, {
             method: 'PUT',
             headers: {},
             body: value
@@ -692,14 +697,14 @@ export class Api {
 
     // Admin
     async sayHello (remote: string): Promise<string> {
-        return await this.fetchWithCredential(`https://${this.host}${apiPath}/admin/sayhello/${remote}`, {
+        return await this.fetchWithCredential(this.host, `${apiPath}/admin/sayhello/${remote}`, {
         }).then(async (data) => {
             return await data.json()
         })
     }
 
     async createEntityWithAdmin(ccaddr: string, meta: any = {}): Promise<Response> {
-        return await this.fetchWithCredential(`https://${this.host}${apiPath}/admin/entity`, {
+        return await this.fetchWithCredential(this.host, `${apiPath}/admin/entity`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

@@ -1,6 +1,7 @@
 
 export const fetchWithTimeout = async (
-    url: RequestInfo,
+    domain: string,
+    path: string,
     init: RequestInit,
     timeoutMs = 15 * 1000
 ): Promise<Response> => {
@@ -8,6 +9,8 @@ export const fetchWithTimeout = async (
     const clientTimeout = setTimeout(() => {
         controller.abort()
     }, timeoutMs)
+
+    const url = domain ? `https://${domain}${path}` : path
 
     try {
         const reqConfig: RequestInit = { ...init, signal: controller.signal }
