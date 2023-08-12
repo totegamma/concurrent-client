@@ -31,8 +31,8 @@ export const LoadKey = (privateKey: string): KeyPair | null => {
 
 export const CommputeCCID = (publickey: string): string => {
     const ethAddress = computeAddress('0x' + publickey)
-    const ccaddress = 'CC' + ethAddress.slice(2)
-    return ccaddress
+    const ccid = 'CC' + ethAddress.slice(2)
+    return ccid
 }
 
 export const Sign = (privatekey: string, payload: string): string => {

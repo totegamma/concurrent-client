@@ -1,5 +1,5 @@
 
-import { Entity, Message, Character, Association, Stream, SignedObject, CCID, StreamElement, Host, StreamID } from '../model/core'
+import { Entity, Message, Character, Association, Stream, SignedObject, CCID, StreamElement, Domain, StreamID, FQDN } from '../model/core'
 import { MessagePostRequest } from '../model/request'
 import { fetchWithTimeout } from '../util/misc'
 import { Sign, IssueJWT, checkJwtIsValid } from '../util/crypto'
@@ -39,7 +39,7 @@ export class Api {
     characterCache: Record<string, Promise<Character<any>> | null | undefined> = {}
     associationCache: Record<string, Promise<Association<any>> | null | undefined> = {}
     streamCache: Record<string, Promise<Stream<any>> | null | undefined> = {}
-    hostCache: Record<string, Promise<Host> | null | undefined> = {}
+    hostCache: Record<string, Promise<Domain> | null | undefined> = {}
 
     constructor(conf: {host: string, ccid?: string, privatekey?: string, client?: string, token?: string}) {
         this.host = conf.host
@@ -70,7 +70,7 @@ export class Api {
     }
 
     async fetchWithOnlineCheck(domain: string, path: string, init: RequestInit, timeoutMs?: number): Promise<Response> {
-        const host = await this.readHost(domain)
+        const host = await this.readDomain(domain)
         if (!host) return Promise.reject(new DomainOfflineError(domain))
         return await fetchWithTimeout(domain, `${apiPath}${path}`, init, timeoutMs)
     }
@@ -159,7 +159,7 @@ export class Api {
     async readMessageWithAuthor(messageId: string, author: string): Promise<Message<any> | null | undefined> {
         const entity = await this.readEntity(author)
         if (!entity) throw new Error()
-        return await this.readMessage(messageId, entity.host)
+        return await this.readMessage(messageId, entity.domain)
     }
 
     async deleteMessage(target: string, host: string = ''): Promise<any> {
@@ -194,7 +194,7 @@ export class Api {
     ): Promise<any> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
         const entity = await this.readEntity(targetAuthor)
-        const targetHost = entity?.host || this.host
+        const targetHost = entity?.domain || this.host
         const signObject: SignedObject<T> = {
             signer: this.ccid,
             type: 'Association',
@@ -233,7 +233,7 @@ export class Api {
         targetAuthor: CCID
     ): Promise<{ status: string; content: Association<any> }> {
         const entity = await this.readEntity(targetAuthor)
-        const targetHost = entity?.host || this.host
+        const targetHost = entity?.domain || this.host
         const requestOptions = {
             method: 'DELETE',
             headers: { 'content-type': 'application/json' },
@@ -279,7 +279,7 @@ export class Api {
     async readAssociationWithOwner(associationId: string, owner: string): Promise<Association<any> | null | undefined> {
         const entity = await this.readEntity(owner)
         if (!entity) throw new Error()
-        return await this.readAssociation(associationId, entity.host)
+        return await this.readAssociation(associationId, entity.domain)
     }
 
     // Character
@@ -324,7 +324,7 @@ export class Api {
             if (value !== undefined) return value
         }
         const entity = await this.readEntity(author)
-        let characterHost = entity?.host ?? this.host
+        let characterHost = entity?.domain ?? this.host
         if (!characterHost || characterHost === '') characterHost = this.host
         this.characterCache[author + schema] = this.fetchWithOnlineCheck(
             characterHost,
@@ -442,7 +442,7 @@ export class Api {
             })
     }
 
-    async getStreamListBySchema(schema: string, remote?: string): Promise<Array<Stream<any>>> {
+    async getStreamListBySchema(schema: string, remote?: FQDN): Promise<Array<Stream<any>>> {
         return await fetchWithTimeout(remote ?? this.host, `${apiPath}/stream/list?schema=${schema}`, {}).then(
             async (data) => {
                 return await data.json().then((arr) => {
@@ -579,8 +579,8 @@ export class Api {
         return result
     }
 
-    // Host
-    async readHost(remote?: string): Promise<Host | null | undefined> {
+    // Domain
+    async readDomain(remote?: string): Promise<Domain | null | undefined> {
         const fqdn = remote ?? this.host
         if (!fqdn) throw new Error()
         if (this.hostCache[fqdn]) {
@@ -596,7 +596,7 @@ export class Api {
                 return null
             }
             const data = await res.json()
-            if (!data.ccaddr) {
+            if (!data.ccid) {
                 return null
             }
             const host = data
@@ -609,50 +609,60 @@ export class Api {
         return await this.hostCache[fqdn]
     }
 
-    async deleteHost(remote: string): Promise<void> {
+    async deleteDomain(remote: string): Promise<void> {
         await this.fetchWithCredential(this.host, `${apiPath}/host/${remote}`, {
             method: 'DELETE',
             headers: {}
         })
     }
 
-    async getKnownHosts(remote?: string): Promise<Host[]> {
+    async getDomains(remote?: string): Promise<Domain[]> {
         return await fetchWithTimeout(remote ?? this.host, `${apiPath}/host/list`, {}).then(async (data) => {
             return await data.json()
         })
     }
 
     // Entity
-    async readEntity(ccaddr: CCID): Promise<Entity | null | undefined> {
-        if (this.entityCache[ccaddr]) {
-            const value = await this.entityCache[ccaddr]
+    async readEntity(ccid: CCID): Promise<Entity | null | undefined> {
+        if (this.entityCache[ccid]) {
+            const value = await this.entityCache[ccid]
             if (value !== undefined) return value
         }
-        this.entityCache[ccaddr] = fetchWithTimeout(this.host, `${apiPath}/entity/${ccaddr}`, {
+        this.entityCache[ccid] = fetchWithTimeout(this.host, `${apiPath}/entity/${ccid}`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
             const entity = await res.json()
-            if (!entity || entity.ccaddr === '') {
+            if (!entity || entity.ccid === '') {
                 return undefined
             }
-            this.entityCache[ccaddr] = entity
+            this.entityCache[ccid] = entity
             return entity
         })
-        return await this.entityCache[ccaddr]
+        return await this.entityCache[ccid]
     }
 
-    async createEntity(ccaddr: string, meta: any = {}, token?: string): Promise<Response> {
+    async createEntity(ccid: string, meta: any = {}, token?: string): Promise<Response> {
         return await this.fetchWithCredential(this.host, `${apiPath}/entity`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                ccaddr: ccaddr,
+                ccid: ccid,
                 meta: JSON.stringify(meta),
                 token
             })
+        })
+    }
+
+    async updateEntity(entity: Entity): Promise<Response> {
+        return await this.fetchWithCredential(this.host, `${apiPath}/entity/${entity.ccid}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(entity)
         })
     }
 
@@ -703,14 +713,14 @@ export class Api {
         })
     }
 
-    async createEntityWithAdmin(ccaddr: string, meta: any = {}): Promise<Response> {
+    async createEntityWithAdmin(ccid: string, meta: any = {}): Promise<Response> {
         return await this.fetchWithCredential(this.host, `${apiPath}/admin/entity`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                ccaddr: ccaddr,
+                ccid: ccid,
                 meta: JSON.stringify(meta)
             })
         })

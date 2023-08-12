@@ -6,7 +6,7 @@ import { EmojiAssociation } from '../schemas/emojiAssociation'
 import { RerouteMessage } from '../schemas/rerouteMessage'
 import { RerouteAssociation } from '../schemas/rerouteAssociation'
 import { Userstreams } from '../schemas/userstreams'
-import { AssociationID, CCID, Character, Domain, MessageID, StreamID } from '../model/core'
+import { AssociationID, CCID, Character, FQDN, MessageID, StreamID } from '../model/core'
 import { Message, Association, User, M_Current, M_Reroute, M_Reply, A_Favorite, A_Reply, A_Reroute, Stream, A_Reaction } from '../model/wrapper'
 import { Profile as RawProfile } from '../schemas/profile'
 import { SimpleNote } from '../schemas/simpleNote'
@@ -20,19 +20,19 @@ import { CommputeCCID, KeyPair, LoadKey } from "../util/crypto";
 export class Client {
     api: Api
     ccid: CCID
-    domain: Domain
+    host: FQDN
     keyPair: KeyPair;
 
     user: User | null = null
 
-    constructor(privatekey: string, domain: Domain, client?: string) {
+    constructor(privatekey: string, host: FQDN, client?: string) {
         const keyPair = LoadKey(privatekey)
         if (!keyPair) throw new Error('invalid private key')
         this.keyPair = keyPair
         this.ccid = CommputeCCID(keyPair.publickey)
-        this.domain = domain
+        this.host = host
         this.api = new Api({
-            host: domain,
+            host,
             ccid: this.ccid,
             privatekey,
             client
@@ -262,18 +262,18 @@ export class Client {
     async getUserHomeStreams(users: StreamID[]): Promise<string[]> {
         return (
             await Promise.all(
-                users.map(async (ccaddress: string) => {
-                    const entity = await this.api.readEntity(ccaddress)
+                users.map(async (ccid: string) => {
+                    const entity = await this.api.readEntity(ccid)
                     const character: Character<Userstreams> | null | undefined = await this.api.readCharacter(
-                        ccaddress,
+                        ccid,
                         Schemas.userstreams
                     )
 
                     if (!character?.payload.body.homeStream) return undefined
 
                     let streamID: string = character.payload.body.homeStream
-                    if (entity?.host && entity.host !== '') {
-                        streamID += `@${entity.host}`
+                    if (entity?.domain && entity.domain !== '') {
+                        streamID += `@${entity.domain}`
                     }
                     return streamID
                 })
@@ -317,14 +317,14 @@ export class Client {
         const userStreams = await this.api.readCharacter(this.ccid, Schemas.userstreams)
         const authorInbox = target.author.userstreams?.notificationStream
         const targetStream = [authorInbox, userStreams?.payload.body.associationStream].filter((e) => e) as string[]
-        await this.api.createAssociation<Like>(Schemas.like, {}, target.id, target.author.ccaddr, 'messages', targetStream)
+        await this.api.createAssociation<Like>(Schemas.like, {}, target.id, target.author.ccid, 'messages', targetStream)
         this.api.invalidateMessage(target.id)
     }
 
     async unFavorite(target: Message): Promise<void> {
-        const associationID = target.favorites.find((e) => e.author.ccaddr === this.ccid)?.id
+        const associationID = target.favorites.find((e) => e.author.ccid === this.ccid)?.id
         if (!associationID) return
-        const { content } = await this.api.deleteAssociation(associationID, target.author.ccaddr)
+        const { content } = await this.api.deleteAssociation(associationID, target.author.ccid)
         this.api.invalidateMessage(content.targetID)
     }
 
@@ -339,7 +339,7 @@ export class Client {
                 imageUrl
             },
             target.id,
-            target.author.ccaddr,
+            target.author.ccid,
             'messages',
             targetStream
         )
@@ -347,7 +347,7 @@ export class Client {
     }
 
     async removeAssociation(target: Message, associationID: AssociationID): Promise<void> {
-        const { content } = await this.api.deleteAssociation(associationID, target.author.ccaddr)
+        const { content } = await this.api.deleteAssociation(associationID, target.author.ccid)
         this.api.invalidateMessage(content.targetID)
     }
 
@@ -411,8 +411,8 @@ export class Client {
     }
 
 
-    async getCommonStreams(domain: Domain): Promise<Stream[]> {
-        const streams = await this.api.getStreamListBySchema(Schemas.commonstream, domain)
+    async getCommonStreams(remote: FQDN): Promise<Stream[]> {
+        const streams = await this.api.getStreamListBySchema(Schemas.commonstream, remote)
         return streams.map((e) => { return {
             id: e.id,
             schema: e.schema,

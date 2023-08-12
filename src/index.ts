@@ -28,7 +28,7 @@ export {
     Entity as CoreEntity,
     Association as CoreAssociation,
     Message as CoreMessage,
-    Host as CoreHost,
+    Domain as CoreDomain,
     SignedObject,
     Stream as CoreStream,
     StreamElement as CoreStreamElement,

@@ -1,7 +1,7 @@
 import { Schema } from "../schemas"
 
 export type CCID = string
-export type Domain = string
+export type FQDN = string
 export type StreamID = string
 export type MessageID = string
 export type AssociationID = string
@@ -18,10 +18,11 @@ export interface SignedObject<T> {
 }
 
 export interface Entity {
-    ccaddr: CCID
+    ccid: CCID
     role: string
-    host: string
+    domain: FQDN 
     cdate: string
+    score: number
 }
 
 export interface Association<T> {
@@ -57,9 +58,9 @@ export interface Character<T> {
     cdate: string
 }
 
-export interface Host {
-    fqdn: Domain
-    ccaddr: CCID
+export interface Domain {
+    fqdn: FQDN
+    ccid: CCID
     role: string
     pubkey: string
     cdate: Date
@@ -90,6 +91,6 @@ export interface StreamElement {
     type: string
     author: string
     owner: string
-    currenthost: string
+    domain: string
 }
 
