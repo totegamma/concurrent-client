@@ -62,7 +62,6 @@ export interface Association {
     schema: Schema
     author: User;
     cdate: Date;
-
     target: Message;
 }
 

@@ -64,6 +64,7 @@ export interface Domain {
     role: string
     pubkey: string
     cdate: Date
+    score: number
 }
 
 export interface Stream<T> {

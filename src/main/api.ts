@@ -120,7 +120,7 @@ export class Api {
             body: JSON.stringify(request)
         }
 
-        const res = await this.fetchWithCredential(this.host, `${apiPath}/messages`, requestOptions)
+        const res = await this.fetchWithCredential(this.host, `${apiPath}/message`, requestOptions)
 
         return await res.json()
     }
@@ -131,7 +131,7 @@ export class Api {
             if (value !== undefined) return value
         }
         const messageHost = !host ? this.host : host
-        this.messageCache[id] = this.fetchWithOnlineCheck(messageHost, `/messages/${id}`, {
+        this.messageCache[id] = this.fetchWithOnlineCheck(messageHost, `/message/${id}`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
@@ -166,13 +166,9 @@ export class Api {
         const targetHost = !host ? this.host : host
         const requestOptions = {
             method: 'DELETE',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-                id: target
-            })
         }
 
-        return await this.fetchWithCredential(targetHost, `${apiPath}/messages`, requestOptions)
+        return await this.fetchWithCredential(targetHost, `${apiPath}/message/${target}`, requestOptions)
             .then(async (res) => await res.json())
             .then((data) => {
                 return data
@@ -221,7 +217,7 @@ export class Api {
             })
         }
 
-        return await this.fetchWithCredential(targetHost, `${apiPath}/associations`, requestOptions)
+        return await this.fetchWithCredential(targetHost, `${apiPath}/association`, requestOptions)
             .then(async (res) => await res.json())
             .then((data) => {
                 return data
@@ -236,13 +232,9 @@ export class Api {
         const targetHost = entity?.domain || this.host
         const requestOptions = {
             method: 'DELETE',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-                id: target
-            })
         }
 
-        return await this.fetchWithCredential(targetHost, `${apiPath}/associations`, requestOptions)
+        return await this.fetchWithCredential(targetHost, `${apiPath}/association/${target}`, requestOptions)
             .then(async (res) => await res.json())
             .then((data: { status: string; content: Association<any> }) => {
                 return data
@@ -255,7 +247,7 @@ export class Api {
             if (value !== undefined) return value
         }
         const associationHost = !host ? this.host : host
-        this.associationCache[id] = this.fetchWithOnlineCheck(associationHost, `/associations/${id}`, {
+        this.associationCache[id] = this.fetchWithOnlineCheck(associationHost, `/association/${id}`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
@@ -311,7 +303,7 @@ export class Api {
             body: JSON.stringify(request)
         }
 
-        return await this.fetchWithCredential(this.host, `${apiPath}/characters`, requestOptions)
+        return await this.fetchWithCredential(this.host, `${apiPath}/character`, requestOptions)
             .then(async (res) => await res.json())
             .then((data) => {
                 return data
@@ -443,7 +435,7 @@ export class Api {
     }
 
     async getStreamListBySchema(schema: string, remote?: FQDN): Promise<Array<Stream<any>>> {
-        return await fetchWithTimeout(remote ?? this.host, `${apiPath}/stream/list?schema=${schema}`, {}).then(
+        return await fetchWithTimeout(remote ?? this.host, `${apiPath}/streams?schema=${schema}`, {}).then(
             async (data) => {
                 return await data.json().then((arr) => {
                     return arr.map((e: any) => {
@@ -461,7 +453,7 @@ export class Api {
         }
         const key = id.split('@')[0]
         const host = id.split('@')[1] ?? this.host
-        this.streamCache[id] = this.fetchWithOnlineCheck(host, `/stream?stream=${key}`, {
+        this.streamCache[id] = this.fetchWithOnlineCheck(host, `/stream/${key}`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
@@ -504,7 +496,7 @@ export class Api {
             try {
                 const response = await this.fetchWithOnlineCheck(
                     host,
-                    `/stream/recent?streams=${plan[host].join(',')}`,
+                    `/streams/recent?streams=${plan[host].join(',')}`,
                     requestOptions
                 ).then(async (res) => await res.json())
                 result = [...result, ...response]
@@ -554,7 +546,7 @@ export class Api {
             try {
                 const response = await this.fetchWithOnlineCheck(
                     host,
-                    `/stream/range?streams=${plan[host].join(',')}${sinceQuery}${untilQuery}`,
+                    `/streams/range?streams=${plan[host].join(',')}${sinceQuery}${untilQuery}`,
                     requestOptions
                 ).then(async (res) => await res.json())
                 result = [...result, ...response]
@@ -588,7 +580,7 @@ export class Api {
             if (value !== undefined) return value
         }
 
-        this.hostCache[fqdn] = fetchWithTimeout(fqdn, `${apiPath}/host`, {
+        this.hostCache[fqdn] = fetchWithTimeout(fqdn, `${apiPath}/domain`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
@@ -610,15 +602,25 @@ export class Api {
     }
 
     async deleteDomain(remote: string): Promise<void> {
-        await this.fetchWithCredential(this.host, `${apiPath}/host/${remote}`, {
+        await this.fetchWithCredential(this.host, `${apiPath}/domain/${remote}`, {
             method: 'DELETE',
             headers: {}
         })
     }
 
     async getDomains(remote?: string): Promise<Domain[]> {
-        return await fetchWithTimeout(remote ?? this.host, `${apiPath}/host/list`, {}).then(async (data) => {
+        return await fetchWithTimeout(remote ?? this.host, `${apiPath}/domains`, {}).then(async (data) => {
             return await data.json()
+        })
+    }
+
+    async updateDomain(domain: Domain): Promise<Response> {
+        return await this.fetchWithCredential(this.host, `${apiPath}/domain`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(domain)
         })
     }
 
@@ -674,7 +676,7 @@ export class Api {
     }
 
     async getEntities(): Promise<Entity[]> {
-        return await fetchWithTimeout(this.host, `${apiPath}/entity/list`, {}).then(async (data) => {
+        return await fetchWithTimeout(this.host, `${apiPath}/entities`, {}).then(async (data) => {
             return await data.json()
         })
     }
