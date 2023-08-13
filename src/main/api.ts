@@ -2,7 +2,7 @@
 import { Entity, Message, Character, Association, Stream, SignedObject, CCID, StreamElement, Domain, StreamID, FQDN } from '../model/core'
 import { MessagePostRequest } from '../model/request'
 import { fetchWithTimeout } from '../util/misc'
-import { Sign, IssueJWT, checkJwtIsValid } from '../util/crypto'
+import { Sign, IssueJWT, checkJwtIsValid, parseJWT, JwtPayload } from '../util/crypto'
 import { Schema } from '../schemas'
 
 const apiPath = '/api/v1'
@@ -644,7 +644,7 @@ export class Api {
         return await this.entityCache[ccid]
     }
 
-    async createEntity(ccid: string, meta: any = {}, token?: string): Promise<Response> {
+    async register(ccid: string, meta: any = {}, token?: string, captcha?: string): Promise<Response> {
         return await this.fetchWithCredential(this.host, `${apiPath}/entity`, {
             method: 'POST',
             headers: {
@@ -653,7 +653,21 @@ export class Api {
             body: JSON.stringify({
                 ccid: ccid,
                 meta: JSON.stringify(meta),
-                token
+                token,
+                captcha
+            })
+        })
+    }
+
+    async createEntity(ccid: string, meta: any = {}): Promise<Response> {
+        return await this.fetchWithCredential(this.host, `${apiPath}/admin/entity`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                ccid: ccid,
+                meta: JSON.stringify(meta)
             })
         })
     }
@@ -715,16 +729,8 @@ export class Api {
         })
     }
 
-    async createEntityWithAdmin(ccid: string, meta: any = {}): Promise<Response> {
-        return await this.fetchWithCredential(this.host, `${apiPath}/admin/entity`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                ccid: ccid,
-                meta: JSON.stringify(meta)
-            })
-        })
+    getTokenClaims(): JwtPayload {
+        if (!this.token) return {}
+        return parseJWT(this.token)
     }
 }

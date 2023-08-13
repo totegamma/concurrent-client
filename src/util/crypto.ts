@@ -106,24 +106,28 @@ export const SignJWT = (payload: string, privatekey: string): string => {
     return body + '.' + base64
 }
 
-export const checkJwtIsValid = (jwt: string): boolean => {
+export const parseJWT = (jwt: string): JwtPayload => {
     const split = jwt.split('.')
-    if (split.length !== 3) return false
+    if (split.length !== 3) return {}
     const encoded = split[1]
     const payload = atob(
         encoded.replace('-', '+').replace('_', '/') + '=='.slice((2 - encoded.length * 3) & 3)
     )
     try {
-        const claims = JSON.parse(payload)
-        const nbf = parseInt(claims.nbf)
-        const exp = parseInt(claims.exp)
-        const now = Math.floor(new Date().getTime() / 1000)
-
-        return nbf < now && now < exp
+        return JSON.parse(payload)
     } catch (e) {
         console.log(e)
     }
-    return false
+    return {}
+}
+
+export const checkJwtIsValid = (jwt: string): boolean => {
+    const claims = parseJWT(jwt)
+    if (!claims) return false
+    if (!claims.exp) return true
+    const exp = parseInt(claims.exp)
+    const now = Math.floor(new Date().getTime() / 1000)
+    return now < exp
 }
 
 function toHexString(byteArray: Uint8Array | number[]): string {
@@ -132,14 +136,14 @@ function toHexString(byteArray: Uint8Array | number[]): string {
     }).join('')
 }
 
-interface JwtPayload {
+export interface JwtPayload {
     iss?: string // 発行者
     sub?: string // 用途
     aud?: string // 想定利用者
     exp?: string // 失効時刻
-    nbf?: string // 有効になる時刻
     iat?: string // 発行時刻
     jti?: string // JWT ID
+    tag?: string // comma separated list of tags
 }
 
 export const IsValid256k1PrivateKey = (key: string): boolean => {
@@ -154,7 +158,6 @@ export const IssueJWT = (key: string, claim?: JwtPayload): string => {
     const payload = JSON.stringify({
         jti: uuidv4(),
         iat: Math.floor(new Date().getTime() / 1000).toString(),
-        nbf: Math.floor((new Date().getTime() - 5 * 60 * 1000) / 1000).toString(),
         exp: Math.floor((new Date().getTime() + 5 * 60 * 1000) / 1000).toString(),
         ...claim
     })
