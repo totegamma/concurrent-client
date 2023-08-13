@@ -19,7 +19,7 @@ export interface SignedObject<T> {
 
 export interface Entity {
     ccid: CCID
-    role: string
+    tag: string
     domain: FQDN 
     cdate: string
     score: number
@@ -61,7 +61,7 @@ export interface Character<T> {
 export interface Domain {
     fqdn: FQDN
     ccid: CCID
-    role: string
+    tag: string
     pubkey: string
     cdate: Date
     score: number
