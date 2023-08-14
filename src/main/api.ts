@@ -39,7 +39,7 @@ export class Api {
     characterCache: Record<string, Promise<Character<any>> | null | undefined> = {}
     associationCache: Record<string, Promise<Association<any>> | null | undefined> = {}
     streamCache: Record<string, Promise<Stream<any>> | null | undefined> = {}
-    hostCache: Record<string, Promise<Domain> | null | undefined> = {}
+    domainCache: Record<string, Promise<Domain> | null | undefined> = {}
 
     constructor(conf: {host: string, ccid?: string, privatekey?: string, client?: string, token?: string}) {
         this.host = conf.host
@@ -575,12 +575,12 @@ export class Api {
     async readDomain(remote?: string): Promise<Domain | null | undefined> {
         const fqdn = remote ?? this.host
         if (!fqdn) throw new Error()
-        if (this.hostCache[fqdn]) {
-            const value = await this.hostCache[fqdn]
+        if (this.domainCache[fqdn]) {
+            const value = await this.domainCache[fqdn]
             if (value !== undefined) return value
         }
 
-        this.hostCache[fqdn] = fetchWithTimeout(fqdn, `${apiPath}/domain`, {
+        this.domainCache[fqdn] = fetchWithTimeout(fqdn, `${apiPath}/domain`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
@@ -592,13 +592,13 @@ export class Api {
                 return null
             }
             const host = data
-            this.hostCache[fqdn] = host
+            this.domainCache[fqdn] = host
             return host
         }).catch((e) => {
             console.warn(e)
             return null
         })
-        return await this.hostCache[fqdn]
+        return await this.domainCache[fqdn]
     }
 
     async deleteDomain(remote: string): Promise<void> {
