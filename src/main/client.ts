@@ -281,8 +281,8 @@ export class Client {
         ).filter((e) => e) as string[]
     }
 
-    async createCurrent(body: string, streams: StreamID[]): Promise<Error | null> {
-        return await this.api.createMessage<SimpleNote>(Schemas.simpleNote, {body}, streams)
+    async createCurrent(body: string, streams: StreamID[], emojis: Record<string, {imageURL?: string, animURL?: string}>): Promise<Error | null> {
+        return await this.api.createMessage<SimpleNote>(Schemas.simpleNote, {body, emojis}, streams)
     }
 
     async setupUserstreams(): Promise<void> {
@@ -351,11 +351,12 @@ export class Client {
         this.api.invalidateMessage(content.targetID)
     }
 
-    async reroute(id: MessageID, author: CCID, streams: StreamID[], body?: string): Promise<void> {
+    async reroute(id: MessageID, author: CCID, streams: StreamID[], body?: string, emojis?: Record<string, {imageURL?: string, animURL?: string}>): Promise<void> {
         const { content } = await this.api.createMessage<RerouteMessage>(
             Schemas.rerouteMessage,
             {
                 body,
+                emojis,
                 rerouteMessageId: id,
                 rerouteMessageAuthor: author
             },
@@ -377,13 +378,14 @@ export class Client {
         )
     }
 
-    async reply(id: MessageID, author: CCID, streams: StreamID[], body: string) {
+    async reply(id: MessageID, author: CCID, streams: StreamID[], body: string, emojis?: Record<string, {imageURL?: string, animURL?: string}>): Promise<void> {
         const data = await this.api.createMessage<ReplyMessage>(
           Schemas.replyMessage,
           {
               replyToMessageId: id,
               replyToMessageAuthor: author,
-              body: body
+              body,
+              emojis
           },
           streams
         )

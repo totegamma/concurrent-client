@@ -10,6 +10,9 @@ export interface ReplyMessage {
   replyToMessageAuthor: string;
   body: string;
   emojis?: {
-    [k: string]: string | number;
-  }[];
+    [k: string]: {
+      imageURL?: string;
+      animURL?: string;
+    };
+  };
 }

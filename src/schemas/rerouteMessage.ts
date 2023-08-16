@@ -10,8 +10,9 @@ export interface RerouteMessage {
   rerouteMessageAuthor: string;
   body?: string;
   emojis?: {
-    shortcode?: string;
-    imageUrl?: string;
-    [k: string]: unknown;
-  }[];
+    [k: string]: {
+      imageURL?: string;
+      animURL?: string;
+    };
+  };
 }

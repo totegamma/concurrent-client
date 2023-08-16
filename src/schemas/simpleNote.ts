@@ -8,6 +8,9 @@
 export interface SimpleNote {
   body: string;
   emojis?: {
-    [k: string]: string | number;
-  }[];
+    [k: string]: {
+      imageURL?: string;
+      animURL?: string;
+    };
+  };
 }
