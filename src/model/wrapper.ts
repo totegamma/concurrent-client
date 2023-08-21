@@ -14,11 +14,11 @@ import {
 
 
 import { Schemas, Schema } from "../schemas";
+import { Profilev3 } from "../schemas/profilev3";
 import { AssociationID, CharacterID, MessageID } from "./core";
 
 export interface User extends CoreEntity {
-    profile?: Profile;
-    userstreams?: Userstreams;
+    profiles: Profilev3[];
 }
 
 export interface Character {
@@ -35,6 +35,7 @@ export interface Message {
     id: MessageID;
     schema: Schema
     author: User;
+    authorProfile: Profilev3;
     cdate: Date;
 
     streams: Stream[];

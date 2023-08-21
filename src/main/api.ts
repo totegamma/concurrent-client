@@ -36,7 +36,7 @@ export class Api {
 
     entityCache: Record<string, Promise<Entity> | null | undefined> = {}
     messageCache: Record<string, Promise<Message<any>> | null | undefined> = {}
-    characterCache: Record<string, Promise<Character<any>> | null | undefined> = {}
+    characterCache: Record<string, Promise<Character<any>[]> | null | undefined> = {}
     associationCache: Record<string, Promise<Association<any>> | null | undefined> = {}
     streamCache: Record<string, Promise<Stream<any>> | null | undefined> = {}
     domainCache: Record<string, Promise<Domain> | null | undefined> = {}
@@ -310,7 +310,7 @@ export class Api {
             })
     }
 
-    async readCharacter(author: string, schema: string): Promise<Character<any> | null | undefined> {
+    async readCharacters<T>(author: string, schema: string): Promise<Character<T>[] | null | undefined> {
         if (this.characterCache[author + schema]) {
             const value = await this.characterCache[author + schema]
             if (value !== undefined) return value
@@ -327,13 +327,9 @@ export class Api {
             }
         ).then(async (res) => {
             const data = await res.json()
-            if (data.characters.length === 0) {
-                return null
-            }
-            const character = data.characters[0]
-            character.payload = JSON.parse(character.payload)
-            this.characterCache[author + schema] = character
-            return character
+            const rawcharacters = data.characters
+            const characters: Character<T>[] = rawcharacters.map((r: any) => {return {...r, payload: JSON.parse(r.payload)}})
+            return characters
         })
         return await this.characterCache[author + schema]
     }

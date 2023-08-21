@@ -5,7 +5,6 @@ import { Like } from '../schemas/like'
 import { EmojiAssociation } from '../schemas/emojiAssociation'
 import { RerouteMessage } from '../schemas/rerouteMessage'
 import { RerouteAssociation } from '../schemas/rerouteAssociation'
-import { Userstreams } from '../schemas/userstreams'
 import { AssociationID, CCID, Character, FQDN, MessageID, StreamID } from '../model/core'
 import { Message, Association, User, M_Current, M_Reroute, M_Reply, A_Favorite, A_Reply, A_Reroute, Stream, A_Reaction } from '../model/wrapper'
 import { Profile as RawProfile } from '../schemas/profile'
@@ -16,6 +15,7 @@ import { Socket } from './socket'
 import {ReplyMessage} from "../schemas/replyMessage";
 import {ReplyAssociation} from "../schemas/replyAssociation";
 import { CommputeCCID, KeyPair, LoadKey } from "../util/crypto";
+import { Profilev3 } from '../schemas/profilev3'
 
 export class Client {
     api: Api
@@ -48,33 +48,16 @@ export class Client {
     async getUser(id: CCID): Promise<User | null | undefined> {
         const entity = await this.api.readEntity(id)
         if (!entity) return null
-        const rawProfile: Character<RawProfile> | null | undefined = await this.api.readCharacter(id, Schemas.profile)
-        const rawUserstreams: Character<Userstreams> | null | undefined = await this.api.readCharacter(id, Schemas.userstreams)
+        const rawProfiles = await this.api.readCharacters<Profilev3>(id, Schemas.profilev3)
 
-        let profile = undefined
-        if (rawProfile) {
-            profile = {
+        return {
+            ...entity,
+            profiles: rawProfiles ? rawProfiles.map((rawProfile) => ({
                 id: rawProfile.id,
                 schema: rawProfile.schema,
                 cdate: new Date(rawProfile.cdate),
                 ...rawProfile.payload.body
-            }
-        }
-
-        let userstreams = undefined
-        if (rawUserstreams) {
-            userstreams = {
-                id: rawUserstreams.id,
-                schema: rawUserstreams.schema,
-                cdate: new Date(rawUserstreams.cdate),
-                ...rawUserstreams.payload.body
-            }
-        }
-
-        return {
-            ...entity,
-            profile,
-            userstreams
+            })) : [],
         }
     }
 
@@ -259,32 +242,11 @@ export class Client {
         }
     }
 
-    async getUserHomeStreams(users: StreamID[]): Promise<string[]> {
-        return (
-            await Promise.all(
-                users.map(async (ccid: string) => {
-                    const entity = await this.api.readEntity(ccid)
-                    const character: Character<Userstreams> | null | undefined = await this.api.readCharacter(
-                        ccid,
-                        Schemas.userstreams
-                    )
-
-                    if (!character?.payload.body.homeStream) return undefined
-
-                    let streamID: string = character.payload.body.homeStream
-                    if (entity?.domain && entity.domain !== '') {
-                        streamID += `@${entity.domain}`
-                    }
-                    return streamID
-                })
-            )
-        ).filter((e) => e) as string[]
-    }
-
     async createCurrent(body: string, streams: StreamID[], emojis?: Record<string, {imageURL?: string, animURL?: string}>): Promise<Error | null> {
         return await this.api.createMessage<SimpleNote>(Schemas.simpleNote, {body, emojis}, streams)
     }
 
+    /*
     async setupUserstreams(): Promise<void> {
         const userstreams = await this.api.readCharacter(this.ccid, Schemas.userstreams)
         const id = userstreams?.id
@@ -312,11 +274,10 @@ export class Client {
             console.log(data)
         })
     }
+    */
 
-    async favorite(target: Message): Promise<void> {
-        const userStreams = await this.api.readCharacter(this.ccid, Schemas.userstreams)
-        const authorInbox = target.author.userstreams?.notificationStream
-        const targetStream = [authorInbox, userStreams?.payload.body.associationStream].filter((e) => e) as string[]
+    async favorite(target: Message, performer: Profilev3): Promise<void> {
+        const targetStream = [target.authorProfile.notificationStream, performer.associationStream].filter((e) => e) as string[]
         await this.api.createAssociation<Like>(Schemas.like, {}, target.id, target.author.ccid, 'messages', targetStream)
         this.api.invalidateMessage(target.id)
     }
@@ -328,7 +289,7 @@ export class Client {
         this.api.invalidateMessage(content.targetID)
     }
 
-    async addReaction(target: Message, shortcode: string, imageUrl: string): Promise<void> {
+    async addReaction(target: Message, performer: Profilev3, shortcode: string, imageUrl: string): Promise<void> {
         const userStreams = await this.api.readCharacter(this.ccid, Schemas.userstreams)
         const authorInbox = target.author.userstreams?.notificationStream
         const targetStream = [authorInbox, userStreams?.payload.body.associationStream].filter((e) => e) as string[]
