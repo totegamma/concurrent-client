@@ -281,7 +281,7 @@ export class Client {
         ).filter((e) => e) as string[]
     }
 
-    async createCurrent(body: string, streams: StreamID[], emojis: Record<string, {imageURL?: string, animURL?: string}>): Promise<Error | null> {
+    async createCurrent(body: string, streams: StreamID[], emojis?: Record<string, {imageURL?: string, animURL?: string}>): Promise<Error | null> {
         return await this.api.createMessage<SimpleNote>(Schemas.simpleNote, {body, emojis}, streams)
     }
 
