@@ -5,4 +5,11 @@
  * and run json-schema-to-typescript to regenerate this file.
  */
 
-export interface Like {}
+export interface Like {
+  profileOverride?: {
+    username?: string;
+    avatar?: string;
+    description?: string;
+    link?: string;
+  };
+}

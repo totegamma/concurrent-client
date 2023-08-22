@@ -8,4 +8,10 @@
 export interface RerouteAssociation {
   messageId: string;
   messageAuthor: string;
+  profileOverride?: {
+    username?: string;
+    avatar?: string;
+    description?: string;
+    link?: string;
+  };
 }

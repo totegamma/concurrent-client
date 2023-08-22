@@ -13,4 +13,10 @@ export interface SimpleNote {
       animURL?: string;
     };
   };
+  profileOverride?: {
+    username?: string;
+    avatar?: string;
+    description?: string;
+    link?: string;
+  };
 }

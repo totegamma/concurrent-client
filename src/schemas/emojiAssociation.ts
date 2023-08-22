@@ -8,4 +8,10 @@
 export interface EmojiAssociation {
   imageUrl: string;
   shortcode: string;
+  profileOverride?: {
+    username?: string;
+    avatar?: string;
+    description?: string;
+    link?: string;
+  };
 }
