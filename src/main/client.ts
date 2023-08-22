@@ -259,28 +259,6 @@ export class Client {
         }
     }
 
-    async getUserHomeStreams(users: StreamID[]): Promise<string[]> {
-        return (
-            await Promise.all(
-                users.map(async (ccid: string) => {
-                    const entity = await this.api.readEntity(ccid)
-                    const character: Character<Userstreams> | null | undefined = await this.api.readCharacter(
-                        ccid,
-                        Schemas.userstreams
-                    )
-
-                    if (!character?.payload.body.homeStream) return undefined
-
-                    let streamID: string = character.payload.body.homeStream
-                    if (entity?.domain && entity.domain !== '') {
-                        streamID += `@${entity.domain}`
-                    }
-                    return streamID
-                })
-            )
-        ).filter((e) => e) as string[]
-    }
-
     async createCurrent(body: string, streams: StreamID[], emojis?: Record<string, {imageURL?: string, animURL?: string}>): Promise<Error | null> {
         return await this.api.createMessage<SimpleNote>(Schemas.simpleNote, {body, emojis}, streams)
     }
