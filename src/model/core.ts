@@ -6,6 +6,8 @@ export type StreamID = string
 export type MessageID = string
 export type AssociationID = string
 export type CharacterID = string
+export type CollectionID = string
+export type CollectionItemID = string
 
 export interface SignedObject<T> {
     signer: CCID
@@ -93,5 +95,24 @@ export interface StreamElement {
     author: string
     owner: string
     domain: string
+}
+
+export interface Collection<T> {
+    id: string
+    isPublic: boolean
+    author: CCID
+    maintainer: CCID[]
+    writer: CCID[]
+    reader: CCID[]
+    schema: Schema
+    cdate: Date
+    mdate: Date
+    items: CollectionItem<T>[]
+}
+
+export interface CollectionItem<T> {
+    id: string
+    collectionId: string
+    payload: T
 }
 

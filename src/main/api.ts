@@ -1,5 +1,5 @@
 
-import { Entity, Message, Character, Association, Stream, SignedObject, CCID, StreamElement, Domain, StreamID, FQDN } from '../model/core'
+import { Entity, Message, Character, Association, Stream, SignedObject, CCID, StreamElement, Domain, StreamID, FQDN, Collection, CollectionID, CollectionItem } from '../model/core'
 import { MessagePostRequest } from '../model/request'
 import { fetchWithTimeout } from '../util/misc'
 import { Sign, IssueJWT, checkJwtIsValid, parseJWT, JwtPayload } from '../util/crypto'
@@ -338,12 +338,17 @@ export class Api {
         return await this.characterCache[author + schema]
     }
 
+    invalidateCharacter(target: string): void {
+        delete this.characterCache[target]
+    }
+
+
     // Stream
     async createStream<T>(
         schema: string,
         body: T,
         { maintainer = [], writer = [], reader = [] }: { maintainer?: CCID[]; writer?: CCID[]; reader?: CCID[] } = {}
-    ): Promise<any> {
+    ): Promise<Stream<T>> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
         const signObject = {
             signer: this.ccid,
@@ -697,6 +702,115 @@ export class Api {
 
     invalidateEntity(ccid: CCID): void {
         delete this.entityCache[ccid]
+    }
+
+    // Collection
+    async readCollection<T>(id: CollectionID): Promise<Collection<T> | null | undefined> {
+        const key = id.split('@')[0]
+        const domain = id.split('@')[1] ?? this.host
+        return await this.fetchWithCredential(domain, `${apiPath}/collection/${key}`, {
+            method: 'GET',
+            headers: {}
+        }).then(async (res) => {
+            if (!res.ok) {
+                if (res.status === 404) return null
+                return await Promise.reject(new Error(`fetch failed: ${res.status} ${await res.text()}`))
+            }
+            const data = await res.json()
+            if (data.status !== 'ok') {
+                return undefined
+            }
+            const collection = data.content
+            collection.id = id
+            collection.items = collection.items.map((item: CollectionItem<T>) => {return {
+                ...item,
+                payload: JSON.parse(item.payload as string)
+            }})
+            return collection
+        })
+    }
+
+    async createCollection<T>(
+        schema: string,
+        isPublic: boolean,
+        { maintainer = [], writer = [], reader = [] }: { maintainer?: CCID[]; writer?: CCID[]; reader?: CCID[] } = {}
+    ): Promise<Collection<T>> {
+        return await this.fetchWithCredential(this.host, `${apiPath}/collection`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                isPublic,
+                schema,
+                author: this.ccid,
+                maintainer,
+                writer,
+                reader
+            })
+        }).then(async (res) => await res.json())
+        .then((data) => {
+            if (data.status !== 'ok') {
+                return Promise.reject(new Error(data.message))
+            }
+            return data.content
+        })
+    }
+
+    async updateCollection(collection: Collection<any>): Promise<Response> {
+        return await this.fetchWithCredential(this.host, `${apiPath}/collection/${collection.id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(collection)
+        })
+    }
+
+    async deleteCollection(id: CollectionID): Promise<void> {
+        await this.fetchWithCredential(this.host, `${apiPath}/collection/${id}`, {
+            method: 'DELETE',
+            headers: {}
+        })
+    }
+
+    async addCollectionItem<T>(collectionID: CollectionID, item: T): Promise<T> {
+        return await this.fetchWithCredential(this.host, `${apiPath}/collection/${collectionID}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(item)
+        }).then(async (res) => {
+            if (!res.ok) {
+                return await Promise.reject(new Error(`fetch failed: ${res.status} ${await res.text()}`))
+            }
+            const data = await res.json()
+            return data.content
+        })
+    }
+
+    async updateCollectionItem(id: CollectionID, item: any): Promise<Response> {
+        return await this.fetchWithCredential(this.host, `${apiPath}/collection/${id}/${item.id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(item)
+        })
+    }
+
+    async deleteCollectionItem<T>(id: CollectionID, item: string): Promise<T> {
+        return await this.fetchWithCredential(this.host, `${apiPath}/collection/${id}/${item}`, {
+            method: 'DELETE',
+            headers: {}
+        }).then(async (res) => await res.json())
+        .then((data) => {
+            if (data.status !== 'ok') {
+                return Promise.reject(new Error(data.message))
+            }
+            return data.content
+        })
     }
 
     // KV

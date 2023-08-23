@@ -6,7 +6,7 @@ import { EmojiAssociation } from '../schemas/emojiAssociation'
 import { RerouteMessage } from '../schemas/rerouteMessage'
 import { RerouteAssociation } from '../schemas/rerouteAssociation'
 import { Userstreams } from '../schemas/userstreams'
-import { AssociationID, CCID, Character, FQDN, MessageID, StreamID } from '../model/core'
+import { AssociationID, CCID, Character, CollectionItemID, FQDN, MessageID, StreamID } from '../model/core'
 import { Message, Association, User, M_Current, M_Reroute, M_Reply, A_Favorite, A_Reply, A_Reroute, Stream, A_Reaction } from '../model/wrapper'
 import { Profile as RawProfile } from '../schemas/profile'
 import { SimpleNote } from '../schemas/simpleNote'
@@ -16,6 +16,8 @@ import { Socket } from './socket'
 import {ReplyMessage} from "../schemas/replyMessage";
 import {ReplyAssociation} from "../schemas/replyAssociation";
 import { CommputeCCID, KeyPair, LoadKey } from "../util/crypto";
+import { UserAck } from '../schemas/userAck'
+import { UserAckCollection } from '../schemas/userAckCollection'
 
 export class Client {
     api: Api
@@ -264,26 +266,43 @@ export class Client {
     }
 
     async setupUserstreams(): Promise<void> {
-        const userstreams = await this.api.readCharacter(this.ccid, Schemas.userstreams)
+        const userstreams: Character<Userstreams> | null | undefined = await this.api.readCharacter(this.ccid, Schemas.userstreams)
         const id = userstreams?.id
-        const res0 = await this.api.createStream(Schemas.utilitystream, {}, { writer: [this.ccid] })
-        const homeStream = res0.id
-        console.log('home', homeStream)
+        let homeStream = userstreams?.payload.body.homeStream
+        if (!homeStream) {
+            const res0 = await this.api.createStream(Schemas.utilitystream, {}, { writer: [this.ccid] })
+            homeStream = res0.id
+            console.log('home', homeStream)
+        }
 
-        const res1 = await this.api.createStream(Schemas.utilitystream, {}, {})
-        const notificationStream = res1.id
-        console.log('notification', notificationStream)
+        let notificationStream = userstreams?.payload.body.notificationStream
+        if (!notificationStream) {
+            const res1 = await this.api.createStream(Schemas.utilitystream, {}, {})
+            notificationStream = res1.id
+            console.log('notification', notificationStream)
+        }
 
-        const res2 = await this.api.createStream(Schemas.utilitystream, {}, { writer: [this.ccid] })
-        const associationStream = res2.id
-        console.log('notification', associationStream)
+        let associationStream = userstreams?.payload.body.associationStream
+        if (!associationStream) {
+            const res2 = await this.api.createStream(Schemas.utilitystream, {}, { writer: [this.ccid] })
+            const associationStream = res2.id
+            console.log('notification', associationStream)
+        }
+
+        let ackCollection = userstreams?.payload.body.ackCollection
+        if (!ackCollection) {
+            const res3 = await this.api.createCollection(Schemas.userAckCollection, true, {})
+            ackCollection = res3.id
+            console.log('ack', ackCollection)
+        }
 
         this.api.upsertCharacter<Userstreams>(
             Schemas.userstreams,
             {
                 homeStream,
                 notificationStream,
-                associationStream
+                associationStream,
+                ackCollection
             },
             id
         ).then((data) => {
@@ -292,9 +311,7 @@ export class Client {
     }
 
     async favorite(target: Message): Promise<void> {
-        const userStreams = await this.api.readCharacter(this.ccid, Schemas.userstreams)
-        const authorInbox = target.author.userstreams?.notificationStream
-        const targetStream = [authorInbox, userStreams?.payload.body.associationStream].filter((e) => e) as string[]
+        const targetStream = [target.author.userstreams?.notificationStream, this.user?.userstreams?.associationStream].filter((e) => e) as string[]
         await this.api.createAssociation<Like>(Schemas.like, {}, target.id, target.author.ccid, 'messages', targetStream)
         this.api.invalidateMessage(target.id)
     }
@@ -304,6 +321,30 @@ export class Client {
         if (!associationID) return
         const { content } = await this.api.deleteAssociation(associationID, target.author.ccid)
         this.api.invalidateMessage(content.targetID)
+    }
+
+    async ackUser(user: User): Promise<void> {
+        if (!user.profile || !user.userstreams) return
+        const collectionID = this.user?.userstreams?.ackCollection
+        if (!collectionID) return
+
+        const targetStream = [user.userstreams?.notificationStream, this.user?.userstreams?.associationStream].filter((e) => e) as string[]
+        const association = await this.api.createAssociation<UserAck>(Schemas.userAck, {}, user.profile.id, user.ccid, 'characters', targetStream)
+
+        await this.api.addCollectionItem<UserAckCollection>(collectionID, {
+            ccid: user.ccid,
+            association: association.id
+        })
+    }
+
+    async unAckUser(itemID: CollectionItemID): Promise<void> {
+        const collectionID = this.user?.userstreams?.ackCollection
+        if (!collectionID) return
+
+        const deleted = await this.api.deleteCollectionItem<UserAckCollection>(collectionID, itemID)
+        if (!deleted || !deleted.association || !deleted.ccid) return
+        const { content } = await this.api.deleteAssociation(deleted.association, deleted.ccid)
+        this.api.invalidateCharacter(content.targetID)
     }
 
     async addReaction(target: Message, shortcode: string, imageUrl: string): Promise<void> {
