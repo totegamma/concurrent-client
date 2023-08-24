@@ -285,8 +285,8 @@ export class Client {
         let associationStream = userstreams?.payload.body.associationStream
         if (!associationStream) {
             const res2 = await this.api.createStream(Schemas.utilitystream, {}, { writer: [this.ccid] })
-            const associationStream = res2.id
-            console.log('notification', associationStream)
+            associationStream = res2.id
+            console.log('association', associationStream)
         }
 
         let ackCollection = userstreams?.payload.body.ackCollection
@@ -330,10 +330,12 @@ export class Client {
 
         const targetStream = [user.userstreams?.notificationStream, this.user?.userstreams?.associationStream].filter((e) => e) as string[]
         const association = await this.api.createAssociation<UserAck>(Schemas.userAck, {}, user.profile.id, user.ccid, 'characters', targetStream)
+        console.log('createdAssociation', association)
+        console.log('id', association.content.id)
 
         await this.api.addCollectionItem<UserAckCollection>(collectionID, {
             ccid: user.ccid,
-            association: association.id
+            association: association.content.id
         })
     }
 
@@ -342,8 +344,11 @@ export class Client {
         if (!collectionID) return
 
         const deleted = await this.api.deleteCollectionItem<UserAckCollection>(collectionID, itemID)
-        if (!deleted || !deleted.association || !deleted.ccid) return
-        const { content } = await this.api.deleteAssociation(deleted.association, deleted.ccid)
+        console.log('deleted', deleted)
+        if (!deleted || !deleted.payload.association || !deleted.payload.ccid) return
+        console.log('deletedAssociation', deleted.payload.association)
+        const { content } = await this.api.deleteAssociation(deleted.payload.association, deleted.payload.ccid)
+        console.log('deletedAssociationContent', content)
         this.api.invalidateCharacter(content.targetID)
     }
 

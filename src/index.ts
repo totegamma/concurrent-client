@@ -19,6 +19,7 @@ export { RerouteMessage as RawRerouteMessage } from "./schemas/rerouteMessage"
 export { SimpleNote as RawSimpleNote } from "./schemas/simpleNote"
 export { Userstreams as RawUserstreams } from "./schemas/userstreams"
 export { Utilitystream as RawUtilityStream } from "./schemas/utilitystream"
+export { UserAckCollection as RawUserAckCollection } from "./schemas/userAckCollection"
 
 export * from "./mock/model"
 

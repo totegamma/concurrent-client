@@ -800,7 +800,7 @@ export class Api {
         })
     }
 
-    async deleteCollectionItem<T>(id: CollectionID, item: string): Promise<T> {
+    async deleteCollectionItem<T>(id: CollectionID, item: string): Promise<CollectionItem<T>> {
         return await this.fetchWithCredential(this.host, `${apiPath}/collection/${id}/${item}`, {
             method: 'DELETE',
             headers: {}
@@ -809,7 +809,9 @@ export class Api {
             if (data.status !== 'ok') {
                 return Promise.reject(new Error(data.message))
             }
-            return data.content
+            const deleted = data.content
+            deleted.payload = JSON.parse(deleted.payload as string)
+            return deleted
         })
     }
 
