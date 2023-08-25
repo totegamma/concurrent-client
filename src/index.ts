@@ -20,6 +20,7 @@ export { SimpleNote as RawSimpleNote } from "./schemas/simpleNote"
 export { Userstreams as RawUserstreams } from "./schemas/userstreams"
 export { Utilitystream as RawUtilityStream } from "./schemas/utilitystream"
 export { UserAckCollection as RawUserAckCollection } from "./schemas/userAckCollection"
+export { UserAck as RawUserAck } from "./schemas/userAck"
 
 export * from "./mock/model"
 

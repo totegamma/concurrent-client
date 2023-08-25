@@ -10,6 +10,7 @@ import {
     RawRerouteAssociation,
     RawRerouteMessage,
     RawSimpleNote,
+    RawUserAck,
 } from "..";
 
 
@@ -28,7 +29,9 @@ export interface Character {
 }
 
 export interface Userstreams extends Character, RawUserstreams {}
-export interface Profile extends Character, RawProfile {}
+export interface Profile extends Character, RawProfile {
+    ackedby: User[]
+}
 export interface Commonstream extends Character, RawCommonstream {}
 
 export interface Message {
@@ -65,6 +68,10 @@ export interface Association {
     target: Message;
 }
 
+export interface A_UserAck extends Association, RawUserAck {
+    schema: typeof Schemas.userAck
+}
+
 export interface A_Favorite extends Association, RawLike {
     schema: typeof Schemas.like
 }
@@ -79,6 +86,7 @@ export interface A_Reroute extends Association, RawRerouteAssociation {
     schema: typeof Schemas.rerouteAssociation
     rerouteBody: M_Reroute
 }
+
 
 export interface A_Unknown extends Association {}
 

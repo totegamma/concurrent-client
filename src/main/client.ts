@@ -47,11 +47,15 @@ export class Client {
         })
     }
 
-    async getUser(id: CCID): Promise<User | null | undefined> {
+    async getUser(id: CCID, deep: boolean = true): Promise<User | null | undefined> {
         const entity = await this.api.readEntity(id)
         if (!entity) return null
         const rawProfile: Character<RawProfile> | null | undefined = await this.api.readCharacter(id, Schemas.profile)
         const rawUserstreams: Character<Userstreams> | null | undefined = await this.api.readCharacter(id, Schemas.userstreams)
+
+        const ackedby: User[] = deep ? (await Promise.all(rawProfile?.associations?.filter((e) => e.schema === Schemas.userAck).map((e) => {
+            return this.getUser(e.author, false)
+        }) || [])).filter((e) => e !== null) as User[] : []
 
         let profile = undefined
         if (rawProfile) {
@@ -59,6 +63,7 @@ export class Client {
                 id: rawProfile.id,
                 schema: rawProfile.schema,
                 cdate: new Date(rawProfile.cdate),
+                ackedby,
                 ...rawProfile.payload.body
             }
         }
