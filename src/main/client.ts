@@ -40,6 +40,15 @@ export class Client {
             client
         })
 
+    }
+
+    static async create(privatekey: string, host: FQDN, client?: string): Promise<Client> {
+        const c = new Client(privatekey, host, client)
+        await c.load()
+        return c
+    }
+
+    async load(): Promise<void> {
         this.getUser(this.ccid).then((user) => {
             if (user) {
                 this.user = user
