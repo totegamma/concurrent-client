@@ -25,6 +25,7 @@ export interface Entity {
     domain: FQDN 
     cdate: string
     score: number
+    certs: Certificate[]
 }
 
 export interface Association<T> {
@@ -114,5 +115,10 @@ export interface CollectionItem<T> {
     id: string
     collectionId: string
     payload: T
+}
+
+export interface Certificate {
+    icon: string
+    description: string
 }
 
