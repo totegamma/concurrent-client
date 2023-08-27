@@ -49,11 +49,9 @@ export class Client {
     }
 
     async load(): Promise<void> {
-        this.getUser(this.ccid).then((user) => {
-            if (user) {
-                this.user = user
-            }
-        })
+        const user = await this.getUser(this.ccid)
+        if (!user) throw new Error('user not found')
+        this.user = user
     }
 
     async getUser(id: CCID, deep: boolean = true): Promise<User | null | undefined> {
