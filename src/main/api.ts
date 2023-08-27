@@ -643,7 +643,7 @@ export class Api {
             if (!entity || entity.ccid === '') {
                 return undefined
             }
-            this.entityCache[ccid] = entity
+            entity.certs = JSON.parse(entity.certs)
             return entity
         })
         return await this.entityCache[ccid]
@@ -678,12 +678,14 @@ export class Api {
     }
 
     async updateEntity(entity: Entity): Promise<Response> {
+        const body: any = entity
+        body.certs = JSON.stringify(entity.certs)
         return await this.fetchWithCredential(this.host, `${apiPath}/entity/${entity.ccid}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(entity)
+            body: JSON.stringify(body)
         })
     }
 
