@@ -18,6 +18,7 @@ import {ReplyAssociation} from "../schemas/replyAssociation";
 import { CommputeCCID, KeyPair, LoadKey } from "../util/crypto";
 import { UserAck } from '../schemas/userAck'
 import { UserAckCollection } from '../schemas/userAckCollection'
+import {ProfileOverride} from "../mock/model";
 
 export class Client {
     api: Api
@@ -273,8 +274,8 @@ export class Client {
         }
     }
 
-    async createCurrent(body: string, streams: StreamID[], emojis?: Record<string, {imageURL?: string, animURL?: string}>): Promise<Error | null> {
-        return await this.api.createMessage<SimpleNote>(Schemas.simpleNote, {body, emojis}, streams)
+    async createCurrent(body: string, streams: StreamID[], emojis: Record<string, {imageURL?: string, animURL?: string}> = {}, profileOverride: ProfileOverride): Promise<Error | null> {
+        return await this.api.createMessage<SimpleNote>(Schemas.simpleNote, {body, emojis, profileOverride}, streams)
     }
 
     async setupUserstreams(): Promise<void> {
