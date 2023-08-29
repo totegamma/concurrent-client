@@ -94,3 +94,10 @@ export const StreamElementMock: StreamElement = {
     owner: 'owner',
     domain: 'domain'
 }
+
+export interface ProfileOverride {
+    username?: string;
+    avatar?: string;
+    description?: string;
+    link?: string;
+}
