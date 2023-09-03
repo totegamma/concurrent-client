@@ -274,7 +274,7 @@ export class Client {
         }
     }
 
-    async createCurrent(body: string, streams: StreamID[], emojis: Record<string, {imageURL?: string, animURL?: string}> = {}, profileOverride: ProfileOverride): Promise<Error | null> {
+    async createCurrent(body: string, streams: StreamID[], emojis: Record<string, {imageURL?: string, animURL?: string}> = {}, profileOverride: ProfileOverride = {}): Promise<Error | null> {
         return await this.api.createMessage<SimpleNote>(Schemas.simpleNote, {body, emojis, profileOverride}, streams)
     }
 
