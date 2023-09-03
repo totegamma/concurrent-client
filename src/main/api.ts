@@ -347,7 +347,7 @@ export class Api {
     async createStream<T>(
         schema: string,
         body: T,
-        { maintainer = [], writer = [], reader = [] }: { maintainer?: CCID[]; writer?: CCID[]; reader?: CCID[] } = {}
+        { maintainer = [], writer = [], reader = [], visible = true }: { maintainer?: CCID[]; writer?: CCID[]; reader?: CCID[]; visible?: boolean } = {}
     ): Promise<Stream<T>> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
         const signObject = {
@@ -361,7 +361,8 @@ export class Api {
             signedAt: new Date().toISOString(),
             maintainer,
             writer,
-            reader
+            reader,
+            visible
         }
 
         const signedObject = JSON.stringify(signObject)
@@ -734,7 +735,7 @@ export class Api {
 
     async createCollection<T>(
         schema: string,
-        isPublic: boolean,
+        visible: boolean,
         { maintainer = [], writer = [], reader = [] }: { maintainer?: CCID[]; writer?: CCID[]; reader?: CCID[] } = {}
     ): Promise<Collection<T>> {
         return await this.fetchWithCredential(this.host, `${apiPath}/collection`, {
@@ -743,7 +744,7 @@ export class Api {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                isPublic,
+                visible,
                 schema,
                 author: this.ccid,
                 maintainer,

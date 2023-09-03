@@ -8,6 +8,7 @@ import { Schemas } from '../schemas'
 export const StreamMock = (streamName: string = 'MockStreamName'): Stream<Commonstream> => {
     return {
         id: 'streamid',
+        visible: true,
         author: 'author',
         maintainer: ['maintainer'],
         writer: ['writer'],
@@ -92,7 +93,7 @@ export const StreamElementMock: StreamElement = {
     type: 'type',
     author: 'author',
     owner: 'owner',
-    domain: 'domain'
+    domain: 'domain',
 }
 
 export interface ProfileOverride {

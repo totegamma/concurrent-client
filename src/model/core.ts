@@ -72,6 +72,7 @@ export interface Domain {
 
 export interface Stream<T> {
     id: StreamID
+    visible: boolean
     author: CCID
     maintainer: CCID[]
     writer: CCID[]
@@ -100,7 +101,7 @@ export interface StreamElement {
 
 export interface Collection<T> {
     id: string
-    isPublic: boolean
+    visible: boolean
     author: CCID
     maintainer: CCID[]
     writer: CCID[]
