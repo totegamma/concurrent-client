@@ -104,7 +104,8 @@ export class Client {
             writer: stream.writer,
             reader: stream.reader,
             cdate: new Date(stream.cdate),
-            ...stream.payload.body
+            ...stream.payload,
+            ...stream.payload.body // TODO: remove this
         }
     }
 
@@ -460,7 +461,8 @@ export class Client {
             writer: e.writer,
             reader: e.reader,
             cdate: new Date(e.cdate),
-            ...e.payload.body
+            ...e.payload,
+            ...e.payload.body // TODO: remove this
         }})
     }
 

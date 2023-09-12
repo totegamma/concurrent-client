@@ -78,8 +78,7 @@ export interface Stream<T> {
     writer: CCID[]
     reader: CCID[]
     schema: CCID
-    payload: SignedObject<T>
-    signature: string
+    payload: T
     cdate: string
 }
 

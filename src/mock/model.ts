@@ -15,21 +15,12 @@ export const StreamMock = (streamName: string = 'MockStreamName'): Stream<Common
         reader: ['reader'],
         schema: 'schema',
         payload: {
-            signer: 'signer',
-            type: 'type',
-            schema: Schemas.simpleNote,
-            body: {
-                name: streamName,
-                banner: 'banner',
-                description: 'description',
-                icon: 'icon',
-                shortname: 'shortname'
-            },
-            meta: 'meta',
-            signedAt: 'signedAt',
-            target: 'target'
+            name: streamName,
+            banner: 'banner',
+            description: 'description',
+            icon: 'icon',
+            shortname: 'shortname'
         },
-        signature: 'signature',
         cdate: 'cdate'
     }
 }

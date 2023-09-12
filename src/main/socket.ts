@@ -93,7 +93,11 @@ export class Socket {
     }
 
     listen(streams: StreamID[]) {
-        this.ws.send(JSON.stringify({ channels: streams }))
+        this.ws.send(JSON.stringify({ type: 'listen', channels: streams }))
+    }
+
+    ping() {
+        this.ws.send(JSON.stringify({ type: 'ping' }))
     }
 
     waitOpen() {

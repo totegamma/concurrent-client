@@ -346,42 +346,38 @@ export class Api {
     // Stream
     async createStream<T>(
         schema: string,
-        body: T,
+        payload: T,
         { maintainer = [], writer = [], reader = [], visible = true }: { maintainer?: CCID[]; writer?: CCID[]; reader?: CCID[]; visible?: boolean } = {}
     ): Promise<Stream<T>> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
-        const signObject = {
-            signer: this.ccid,
-            type: 'Stream',
-            schema,
-            body,
-            meta: {
-                client: this.client
-            },
-            signedAt: new Date().toISOString(),
-            maintainer,
-            writer,
-            reader,
-            visible
-        }
-
-        const signedObject = JSON.stringify(signObject)
-        const signature = Sign(this.privatekey, signedObject)
 
         const requestOptions = {
-            method: 'PUT',
+            method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({
-                signedObject,
-                signature
+                visible,
+                schema,
+                payload: JSON.stringify(payload),
+                author: this.ccid,
+                maintainer,
+                writer,
+                reader,
             })
         }
 
         return await this.fetchWithCredential(this.host, `${apiPath}/stream`, requestOptions)
             .then(async (res) => await res.json())
             .then((data) => {
-                return data
+                return data.content
             })
+    }
+
+    async updateStream(stream: Stream<any>): Promise<Stream<any>> {
+        return await this.fetchWithCredential(this.host, `${apiPath}/stream/${stream.id}`, {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(stream)
+        }).then(async (res) => (await res.json()).content)
     }
 
     async deleteStream(id: string): Promise<any> {
@@ -406,38 +402,6 @@ export class Api {
             `${apiPath}/stream/${stream}/${elementID}`,
             requestOptions
         ).then(async (res) => await res.json())
-    }
-
-    async updateStream(id: string, partialSignObject: any): Promise<any> {
-        if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
-        const signObject = {
-            ...partialSignObject,
-            signer: this.ccid,
-            type: 'Stream',
-            meta: {
-                client: this.client
-            },
-            signedAt: new Date().toISOString()
-        }
-
-        const signedObject = JSON.stringify(signObject)
-        const signature = Sign(this.privatekey, signedObject)
-
-        const requestOptions = {
-            method: 'PUT',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-                id,
-                signedObject,
-                signature
-            })
-        }
-
-        return await this.fetchWithCredential(this.host, `${apiPath}/stream`, requestOptions)
-            .then(async (res) => await res.json())
-            .then((data) => {
-                return data
-            })
     }
 
     async getStreamListBySchema(schema: string, remote?: FQDN): Promise<Array<Stream<any>>> {

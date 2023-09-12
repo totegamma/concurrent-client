@@ -32,7 +32,6 @@ export interface Userstreams extends Character, RawUserstreams {}
 export interface Profile extends Character, RawProfile {
     ackedby: User[]
 }
-export interface Commonstream extends Character, RawCommonstream {}
 
 export interface Message {
     id: MessageID;
