@@ -13,8 +13,8 @@ import { SimpleNote } from '../schemas/simpleNote'
 import { Commonstream } from '../schemas/commonstream'
 import { Profile } from '../model/wrapper'
 import { Socket } from './socket'
-import {ReplyMessage} from "../schemas/replyMessage";
-import {ReplyAssociation} from "../schemas/replyAssociation";
+import { ReplyMessage } from "../schemas/replyMessage";
+import { ReplyAssociation } from "../schemas/replyAssociation";
 import { CommputeCCID, KeyPair, LoadKey } from "../util/crypto";
 import { UserAck } from '../schemas/userAck'
 import { UserAckCollection } from '../schemas/userAckCollection'

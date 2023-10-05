@@ -1,5 +1,5 @@
 
-import { Entity, Message, Character, Association, Stream, SignedObject, CCID, StreamElement, Domain, StreamID, FQDN, Collection, CollectionID, CollectionItem } from '../model/core'
+import { Entity, Message, Character, Association, Stream, SignedObject, CCID, StreamItem, Domain, StreamID, FQDN, Collection, CollectionID, CollectionItem } from '../model/core'
 import { MessagePostRequest } from '../model/request'
 import { fetchWithTimeout } from '../util/misc'
 import { Sign, IssueJWT, checkJwtIsValid, parseJWT, JwtPayload } from '../util/crypto'
@@ -444,7 +444,7 @@ export class Api {
         return await this.streamCache[id]
     }
 
-    async readStreamRecent(streams: string[]): Promise<StreamElement[]> {
+    async readStreamRecent(streams: string[]): Promise<StreamItem[]> {
         const plan: Record<string, string[]> = {}
         for (const stream of streams) {
             const id = stream.split('@')[0]
@@ -457,7 +457,7 @@ export class Api {
             headers: {}
         }
 
-        let result: StreamElement[] = []
+        let result: StreamItem[] = []
         for (const host of Object.keys(plan)) {
             if (!host) {
                 console.warn('invalid query')
@@ -476,13 +476,14 @@ export class Api {
         }
         // sort result
         result.sort((a, b) => {
-            return parseFloat(b.timestamp.replace('-', '.')) - parseFloat(a.timestamp.replace('-', '.'))
+            return b.cdate.getTime() - a.cdate.getTime()
         })
+
         // remove duplication
         result = result.filter((e, i, self) => {
             return (
                 self.findIndex((s) => {
-                    return s.id === e.id
+                    return s.objectID === e.objectID
                 }) === i
             )
         })
@@ -491,7 +492,7 @@ export class Api {
         return result
     }
 
-    async readStreamRanged(streams: string[], until?: string, since?: string): Promise<StreamElement[]> {
+    async readStreamRanged(streams: string[], until?: string, since?: string): Promise<StreamItem[]> {
         const plan: Record<string, string[]> = {}
         for (const stream of streams) {
             const id = stream.split('@')[0]
@@ -507,7 +508,7 @@ export class Api {
         const sinceQuery = !since ? '' : `&since=${since}`
         const untilQuery = !until ? '' : `&until=${until}`
 
-        let result: StreamElement[] = []
+        let result: StreamItem[] = []
         for (const host of Object.keys(plan)) {
             if (!host) {
                 console.warn('invalid query')
@@ -526,13 +527,13 @@ export class Api {
         }
         // sort result
         result.sort((a, b) => {
-            return parseFloat(b.timestamp.replace('-', '.')) - parseFloat(a.timestamp.replace('-', '.'))
+            return b.cdate.getTime() - a.cdate.getTime()
         })
         // remove duplication
         result = result.filter((e, i, self) => {
             return (
                 self.findIndex((s) => {
-                    return s.id === e.id
+                    return s.objectID === e.objectID
                 }) === i
             )
         })

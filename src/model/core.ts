@@ -82,20 +82,21 @@ export interface Stream<T> {
     cdate: string
 }
 
-export interface ServerEvent {
-    stream: StreamID
+export interface StreamEvent {
     type: string
     action: string
-    body: StreamElement
+    stream: string
+    item: StreamItem
+    body: Message<any> | Association<any>
 }
 
-export interface StreamElement {
-    timestamp: string
-    id: string
+export interface StreamItem {
+    cdate: Date
+    objectID: string
+    streamID: string
     type: string
     author: string
     owner: string
-    domain: string
 }
 
 export interface Collection<T> {
