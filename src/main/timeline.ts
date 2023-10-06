@@ -1,5 +1,5 @@
 import { Socket } from './socket';
-import { StreamEvent, StreamItem } from '../model/core';
+import { Association, Message, StreamEvent, StreamItem } from '../model/core';
 import { Api } from './api';
 
 export class Timeline {
@@ -35,16 +35,19 @@ export class Timeline {
                     this.body.unshift(event.item);
                     this.onUpdate?.();
                     break;
-                case 'message.delete':
-                    this.body = this.body.filter(m => m.objectID !== event.item.objectID);
+                case 'message.delete': {
+                    const body = event.body as Message<any>
+                    this.body = this.body.filter(m => m.objectID !== body.id);
                     this.onUpdate?.();
                     break;
+                }
                 case 'association.create':
-                    // TODO
-                    this.onUpdate?.();
-                    break;
                 case 'association.delete':
-                    // TODO
+                    if (!event.body) return;
+                    const body = event.body as Association<any>
+                    const target = this.body.find(m => m.objectID === body.targetID);
+                    if (!target) return;
+                    target.lastUpdate = new Date();
                     this.onUpdate?.();
                     break;
                 default:

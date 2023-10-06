@@ -1,20 +1,22 @@
-import { StreamEvent, StreamID } from '../model/core';
+import { Api } from './api';
+import { Association, Message, StreamEvent, StreamID } from '../model/core';
 
 const WS = typeof window === 'undefined' ? require('ws') : window.WebSocket;
 
 export class Socket {
 
     ws: any;
-
+    api: Api;
     subscriptions: Map<string, Set<(event: StreamEvent) => void>> = new Map()
 
     onOpen?: (event: any) => void;
     onError?: (error: any) => void;
     onClose?: (event: any) => void;
 
-    constructor(domain: string) {
+    constructor(api: Api) {
 
-        this.ws = new WS('wss://' + domain + '/api/v1/socket');
+        this.api = api;
+        this.ws = new WS('wss://' + api.host + '/api/v1/socket');
 
         this.ws.onopen = () => {
             this.onOpen?.(null);
@@ -23,6 +25,31 @@ export class Socket {
         this.ws.onmessage = (rawevent: any) => {
             const event: StreamEvent = JSON.parse(rawevent.data);
             if (!event) return
+
+            switch (event.type + '.' + event.action) {
+                case 'message.create':
+                    if (!event.body) return
+                    api.cacheMessage(event.body as Message<any>)
+                    break
+                case 'message.delete':
+                    api.invalidateMessage(event.body.id)
+                    break
+                case 'association.create': {
+                    if (!event.body) return
+                    const body = event.body as Association<any>
+                    api.cacheAssociation(body)
+                    api.invalidateMessage(body.targetID)
+                    break
+                }
+                case 'association.delete': {
+                    if (!event.body) return
+                    const body = event.body as Association<any>
+                    api.invalidateAssociation(body.id)
+                    api.invalidateMessage(body.targetID)
+                    break
+                }
+            }
+
             const stream = event.stream
             this.distribute(stream, event)
         }

@@ -497,7 +497,7 @@ export class Client {
 
     async newSocket(): Promise<Socket> {
         if (!this.socket) {
-            this.socket = new Socket(this.host)
+            this.socket = new Socket(this.api)
             await this.socket.waitOpen()
         }
         return this.socket!

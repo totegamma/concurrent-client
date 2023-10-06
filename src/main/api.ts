@@ -175,6 +175,10 @@ export class Api {
             })
     }
 
+    cacheMessage(message: Message<any>): void {
+        this.messageCache[message.id] = Promise.resolve(message)
+    }
+
     invalidateMessage(target: string): void {
         delete this.messageCache[target]
     }
@@ -239,6 +243,14 @@ export class Api {
             .then((data: { status: string; content: Association<any> }) => {
                 return data
             })
+    }
+
+    cacheAssociation(association: Association<any>): void {
+        this.associationCache[association.id] = Promise.resolve(association)
+    }
+
+    invalidateAssociation(target: string): void {
+        delete this.associationCache[target]
     }
 
     async readAssociation(id: string, host: string = ''): Promise<Association<any> | null | undefined> {
