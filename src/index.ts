@@ -1,6 +1,7 @@
 export * from "./main/client"
 export * from "./main/socket"
 export * from "./main/timeline"
+export * from "./main/subscription"
 export * from "./main/api"
 export * from "./model/request"
 export * from "./model/wrapper"

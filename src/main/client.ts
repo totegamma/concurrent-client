@@ -20,6 +20,7 @@ import { UserAck } from '../schemas/userAck'
 import { UserAckCollection } from '../schemas/userAckCollection'
 import {ProfileOverride} from "../mock/model";
 import { Timeline } from './timeline'
+import { Subscription } from './subscription'
 
 export class Client {
     api: Api
@@ -505,5 +506,10 @@ export class Client {
     async newTimeline(): Promise<Timeline> {
         const socket = await this.newSocket()
         return new Timeline(this.api, socket)
+    }
+
+    async newSubscription(): Promise<Subscription> {
+        const socket = await this.newSocket()
+        return new Subscription(socket)
     }
 }
