@@ -1,5 +1,5 @@
 
-import { Entity, Message, Character, Association, Stream, SignedObject, CCID, StreamElement, Domain, StreamID, FQDN, Collection, CollectionID, CollectionItem } from '../model/core'
+import { Entity, Message, Character, Association, Stream, SignedObject, CCID, StreamItem, Domain, StreamID, FQDN, Collection, CollectionID, CollectionItem } from '../model/core'
 import { MessagePostRequest } from '../model/request'
 import { fetchWithTimeout } from '../util/misc'
 import { Sign, IssueJWT, checkJwtIsValid, parseJWT, JwtPayload } from '../util/crypto'
@@ -444,100 +444,65 @@ export class Api {
         return await this.streamCache[id]
     }
 
-    async readStreamRecent(streams: string[]): Promise<StreamElement[]> {
-        const plan: Record<string, string[]> = {}
-        for (const stream of streams) {
-            const id = stream.split('@')[0]
-            const host = stream.split('@')[1] ?? this.host
-            plan[host] = [...(plan[host] ? plan[host] : []), id]
-        }
+    async readStreamRecent(streams: string[]): Promise<StreamItem[]> {
 
         const requestOptions = {
             method: 'GET',
             headers: {}
         }
 
-        let result: StreamElement[] = []
-        for (const host of Object.keys(plan)) {
-            if (!host) {
-                console.warn('invalid query')
-                continue
-            }
-            try {
-                const response = await this.fetchWithOnlineCheck(
-                    host,
-                    `/streams/recent?streams=${plan[host].join(',')}`,
-                    requestOptions
-                ).then(async (res) => await res.json())
-                result = [...result, ...response]
-            } catch (e) {
-                console.warn(e)
-            }
+        let result: StreamItem[] = []
+
+        try {
+            const response = await this.fetchWithOnlineCheck(
+                this.host,
+                `/streams/recent?streams=${streams}`,
+                requestOptions
+            ).then(async (res) => {
+                const data = await res.json()
+                const formed = data.map((e: any) => {
+                    e.cdate = new Date(e.cdate)
+                    return e
+                })
+                return formed
+            })
+            result = [...result, ...response]
+        } catch (e) {
+            console.warn(e)
         }
-        // sort result
-        result.sort((a, b) => {
-            return parseFloat(b.timestamp.replace('-', '.')) - parseFloat(a.timestamp.replace('-', '.'))
-        })
-        // remove duplication
-        result = result.filter((e, i, self) => {
-            return (
-                self.findIndex((s) => {
-                    return s.id === e.id
-                }) === i
-            )
-        })
-        // clip max 16
-        result = result.slice(0, 16)
+
         return result
     }
 
-    async readStreamRanged(streams: string[], until?: string, since?: string): Promise<StreamElement[]> {
-        const plan: Record<string, string[]> = {}
-        for (const stream of streams) {
-            const id = stream.split('@')[0]
-            const host = stream.split('@')[1] ?? this.host
-            plan[host] = [...(plan[host] ? plan[host] : []), id]
-        }
+    async readStreamRanged(streams: string[], param: {until?: Date, since?: Date}): Promise<StreamItem[]> {
 
         const requestOptions = {
             method: 'GET',
             headers: {}
         }
 
-        const sinceQuery = !since ? '' : `&since=${since}`
-        const untilQuery = !until ? '' : `&until=${until}`
+        const sinceQuery = !param.since ? '' : `&since=${Math.floor(param.since.getTime()/1000)}`
+        const untilQuery = !param.until ? '' : `&until=${Math.ceil(param.until.getTime()/1000)}`
 
-        let result: StreamElement[] = []
-        for (const host of Object.keys(plan)) {
-            if (!host) {
-                console.warn('invalid query')
-                continue
-            }
-            try {
-                const response = await this.fetchWithOnlineCheck(
-                    host,
-                    `/streams/range?streams=${plan[host].join(',')}${sinceQuery}${untilQuery}`,
-                    requestOptions
-                ).then(async (res) => await res.json())
-                result = [...result, ...response]
-            } catch (e) {
-                console.warn(e)
-            }
+        let result: StreamItem[] = []
+        try {
+            const response = await this.fetchWithOnlineCheck(
+                this.host,
+                `/streams/range?streams=${streams.join(',')}${sinceQuery}${untilQuery}`,
+                requestOptions
+            ).then(async (res) => {
+                const data = await res.json()
+                const formed = data.map((e: any) => {
+                    e.cdate = new Date(e.cdate)
+                    return e
+                })
+                return formed
+            })
+            result = [...result, ...response]
+        } catch (e) {
+            console.warn(e)
         }
-        // sort result
-        result.sort((a, b) => {
-            return parseFloat(b.timestamp.replace('-', '.')) - parseFloat(a.timestamp.replace('-', '.'))
-        })
-        // remove duplication
-        result = result.filter((e, i, self) => {
-            return (
-                self.findIndex((s) => {
-                    return s.id === e.id
-                }) === i
-            )
-        })
-        // clip max 16
-        result = result.slice(0, 16)
+
         return result
     }
 

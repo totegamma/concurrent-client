@@ -1,4 +1,4 @@
-import type { Character, Message, Stream, StreamElement } from '../model/core'
+import type { Character, Message, Stream, StreamItem } from '../model/core'
 import { type Profile } from '../schemas/profile'
 
 import { type Commonstream } from '../schemas/commonstream'
@@ -78,13 +78,14 @@ export const CharacterProfileMock = (username: string): Character<Profile> => {
     }
 }
 
-export const StreamElementMock: StreamElement = {
-    timestamp: 'timestamp',
-    id: 'id',
+export const StreamItemMock: StreamItem = {
+    cdate: new Date(),
+    objectID: 'objectID',
+    streamID: 'streamID',
     type: 'type',
     author: 'author',
     owner: 'owner',
-    domain: 'domain',
+    lastUpdate: new Date()
 }
 
 export interface ProfileOverride {
