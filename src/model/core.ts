@@ -97,6 +97,7 @@ export interface StreamItem {
     type: string
     author: string
     owner: string
+    lastUpdate: Date
 }
 
 export interface Collection<T> {

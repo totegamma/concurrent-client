@@ -1,19 +1,35 @@
-// import { Api } from './api';
 import { Socket } from './socket';
 import { StreamEvent, StreamItem } from '../model/core';
+import { Api } from './api';
 
 export class Timeline {
 
     body: StreamItem[] = [];
     onUpdate?: () => void;
     socket: Socket;
+    api: Api;
+    streams: string[] = [];
 
-    constructor(socket: Socket) {
+    constructor(api: Api, socket: Socket) {
+        this.api = api;
         this.socket = socket;
     }
 
-    async listen(streams: string[]): Promise<void> {
-        return this.socket.listen(streams, (event: StreamEvent) => {
+    async listen(streams: string[]): Promise<boolean> {
+
+        this.streams = streams;
+
+        var hasMore = true;
+
+        await this.api.readStreamRecent(streams).then((items: StreamItem[]) => {
+            this.body = items;
+            if (items.length < 16) {
+                hasMore = false;
+            }
+            this.onUpdate?.();
+        })
+
+        this.socket.listen(streams, (event: StreamEvent) => {
             switch (event.type + '.' + event.action) {
                 case 'message.create':
                     this.body.unshift(event.item);
@@ -35,10 +51,18 @@ export class Timeline {
                     console.log('unknown event', event)
             }
         })
+
+        return hasMore
     }
 
-    async readMore(): Promise<void> {
+    async readMore(): Promise<boolean> {
+        const last = this.body[this.body.length - 1];
+        const items = await this.api.readStreamRanged(this.streams, {until: last.cdate});
+        const newdata = items.filter(item => !this.body.find(i => i.objectID === item.objectID));
+        if (newdata.length === 0) return false
+        this.body = this.body.concat(newdata);
+        this.onUpdate?.();
+        return true
     }
-
 }
 

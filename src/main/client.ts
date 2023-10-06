@@ -19,12 +19,14 @@ import { CommputeCCID, KeyPair, LoadKey } from "../util/crypto";
 import { UserAck } from '../schemas/userAck'
 import { UserAckCollection } from '../schemas/userAckCollection'
 import {ProfileOverride} from "../mock/model";
+import { Timeline } from './timeline'
 
 export class Client {
     api: Api
     ccid: CCID
     host: FQDN
     keyPair: KeyPair;
+    socket?: Socket
 
     user: User | null = null
 
@@ -492,7 +494,16 @@ export class Client {
         }, id)
     }
 
-    newSocket(): Socket {
-        return new Socket(this.api.host)
+    async newSocket(): Promise<Socket> {
+        if (!this.socket) {
+            this.socket = new Socket(this.host)
+            await this.socket.waitOpen()
+        }
+        return this.socket!
+    }
+
+    async newTimeline(): Promise<Timeline> {
+        const socket = await this.newSocket()
+        return new Timeline(this.api, socket)
     }
 }

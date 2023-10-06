@@ -85,6 +85,7 @@ export const StreamItemMock: StreamItem = {
     type: 'type',
     author: 'author',
     owner: 'owner',
+    lastUpdate: new Date()
 }
 
 export interface ProfileOverride {

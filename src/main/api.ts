@@ -445,12 +445,6 @@ export class Api {
     }
 
     async readStreamRecent(streams: string[]): Promise<StreamItem[]> {
-        const plan: Record<string, string[]> = {}
-        for (const stream of streams) {
-            const id = stream.split('@')[0]
-            const host = stream.split('@')[1] ?? this.host
-            plan[host] = [...(plan[host] ? plan[host] : []), id]
-        }
 
         const requestOptions = {
             method: 'GET',
@@ -458,87 +452,57 @@ export class Api {
         }
 
         let result: StreamItem[] = []
-        for (const host of Object.keys(plan)) {
-            if (!host) {
-                console.warn('invalid query')
-                continue
-            }
-            try {
-                const response = await this.fetchWithOnlineCheck(
-                    host,
-                    `/streams/recent?streams=${plan[host].join(',')}`,
-                    requestOptions
-                ).then(async (res) => await res.json())
-                result = [...result, ...response]
-            } catch (e) {
-                console.warn(e)
-            }
-        }
-        // sort result
-        result.sort((a, b) => {
-            return b.cdate.getTime() - a.cdate.getTime()
-        })
 
-        // remove duplication
-        result = result.filter((e, i, self) => {
-            return (
-                self.findIndex((s) => {
-                    return s.objectID === e.objectID
-                }) === i
-            )
-        })
-        // clip max 16
-        result = result.slice(0, 16)
+        try {
+            const response = await this.fetchWithOnlineCheck(
+                this.host,
+                `/streams/recent?streams=${streams}`,
+                requestOptions
+            ).then(async (res) => {
+                const data = await res.json()
+                const formed = data.map((e: any) => {
+                    e.cdate = new Date(e.cdate)
+                    return e
+                })
+                return formed
+            })
+            result = [...result, ...response]
+        } catch (e) {
+            console.warn(e)
+        }
+
         return result
     }
 
-    async readStreamRanged(streams: string[], until?: string, since?: string): Promise<StreamItem[]> {
-        const plan: Record<string, string[]> = {}
-        for (const stream of streams) {
-            const id = stream.split('@')[0]
-            const host = stream.split('@')[1] ?? this.host
-            plan[host] = [...(plan[host] ? plan[host] : []), id]
-        }
+    async readStreamRanged(streams: string[], param: {until?: Date, since?: Date}): Promise<StreamItem[]> {
 
         const requestOptions = {
             method: 'GET',
             headers: {}
         }
 
-        const sinceQuery = !since ? '' : `&since=${since}`
-        const untilQuery = !until ? '' : `&until=${until}`
+        const sinceQuery = !param.since ? '' : `&since=${Math.floor(param.since.getTime()/1000)}`
+        const untilQuery = !param.until ? '' : `&until=${Math.ceil(param.until.getTime()/1000)}`
 
         let result: StreamItem[] = []
-        for (const host of Object.keys(plan)) {
-            if (!host) {
-                console.warn('invalid query')
-                continue
-            }
-            try {
-                const response = await this.fetchWithOnlineCheck(
-                    host,
-                    `/streams/range?streams=${plan[host].join(',')}${sinceQuery}${untilQuery}`,
-                    requestOptions
-                ).then(async (res) => await res.json())
-                result = [...result, ...response]
-            } catch (e) {
-                console.warn(e)
-            }
+        try {
+            const response = await this.fetchWithOnlineCheck(
+                this.host,
+                `/streams/range?streams=${streams.join(',')}${sinceQuery}${untilQuery}`,
+                requestOptions
+            ).then(async (res) => {
+                const data = await res.json()
+                const formed = data.map((e: any) => {
+                    e.cdate = new Date(e.cdate)
+                    return e
+                })
+                return formed
+            })
+            result = [...result, ...response]
+        } catch (e) {
+            console.warn(e)
         }
-        // sort result
-        result.sort((a, b) => {
-            return b.cdate.getTime() - a.cdate.getTime()
-        })
-        // remove duplication
-        result = result.filter((e, i, self) => {
-            return (
-                self.findIndex((s) => {
-                    return s.objectID === e.objectID
-                }) === i
-            )
-        })
-        // clip max 16
-        result = result.slice(0, 16)
+
         return result
     }
 
