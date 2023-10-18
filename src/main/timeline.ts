@@ -21,6 +21,8 @@ export class Timeline {
 
         var hasMore = true;
 
+        console.log('listen!', streams)
+
         await this.api.readStreamRecent(streams).then((items: StreamItem[]) => {
             this.body = items;
             if (items.length < 16) {

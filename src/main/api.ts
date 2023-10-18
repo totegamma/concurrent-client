@@ -488,6 +488,8 @@ export class Api {
 
     async readStreamRanged(streams: string[], param: {until?: Date, since?: Date}): Promise<StreamItem[]> {
 
+        console.log('readStreamRanged', streams, param)
+
         const requestOptions = {
             method: 'GET',
             headers: {}

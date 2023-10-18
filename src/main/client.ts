@@ -198,12 +198,12 @@ export class Client {
         if (!author) return null
 
         const allAssociations: Association[] = deep ? (await Promise.all(
-            message.associations.map(async (e) => {
+            message.associations?.map(async (e) => {
                 return await this.getAssociation(e.id, authorID, false).catch((e) => {
                     console.log('CLIENT::getMessage::getAssociation::error', e)
                     return null
                 })
-            })
+            }) ?? []
         )).filter((e: Association | null | undefined) => e) as Association[] : []
 
         const favorites: A_Favorite[] =  allAssociations.filter((e) => e.schema === Schemas.like) as A_Favorite[]
