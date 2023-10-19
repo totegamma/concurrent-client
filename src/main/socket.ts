@@ -9,41 +9,51 @@ export class Socket {
     api: Api;
     subscriptions: Map<string, Set<(event: StreamEvent) => void>> = new Map()
 
-    onOpen?: (event: any) => void;
-    onError?: (error: any) => void;
-    onClose?: (event: any) => void;
+    pingstate = false
+    failcount = 0
 
     constructor(api: Api) {
-
         this.api = api;
-        this.ws = new WS('wss://' + api.host + '/api/v1/socket');
+        this.connect()
+        setInterval(() => {
+            this.checkConnection()
+        }, 5000)
+    }
+
+    connect() {
+        this.ws = new WS('wss://' + this.api.host + '/api/v1/socket');
 
         this.ws.onmessage = (rawevent: any) => {
             const event: StreamEvent = JSON.parse(rawevent.data);
             if (!event) return
+
+            if (event.type === 'pong') {
+                this.pingstate = true
+                return
+            }
 
             switch (event.type + '.' + event.action) {
                 case 'message.create':
                     if (!event.body) return
                     const message = event.body
                     message.payload = JSON.parse(message.payload as string)
-                    api.cacheMessage(message as Message<any>)
+                    this.api.cacheMessage(message as Message<any>)
                     break
                 case 'message.delete':
-                    api.invalidateMessage(event.body.id)
+                    this.api.invalidateMessage(event.body.id)
                     break
                 case 'association.create': {
                     if (!event.body) return
                     const body = event.body as Association<any>
-                    api.cacheAssociation(body)
-                    api.invalidateMessage(body.targetID)
+                    this.api.cacheAssociation(body)
+                    this.api.invalidateMessage(body.targetID)
                     break
                 }
                 case 'association.delete': {
                     if (!event.body) return
                     const body = event.body as Association<any>
-                    api.invalidateAssociation(body.id)
-                    api.invalidateMessage(body.targetID)
+                    this.api.invalidateAssociation(body.id)
+                    this.api.invalidateMessage(body.targetID)
                     break
                 }
             }
@@ -58,9 +68,29 @@ export class Socket {
 
         this.ws.onclose = (event: any) => {
             console.log('socket close', event)
-            setTimeout(() => {
-                this.ws.connect()
-            }, 1000)
+        }
+
+        this.ws.onopen = (event: any) => {
+            console.log('socket open', event)
+            this.ws.send(JSON.stringify({ type: 'listen', channels: Array.from(this.subscriptions.keys()) }))
+        }
+    }
+
+    checkConnection() {
+        this.ping()
+        if (this.pingstate) {
+            this.pingstate = false
+            this.failcount = 0
+            return
+        } else {
+            this.failcount++
+            console.log('ping fail', this.failcount)
+            if (this.failcount > 3) {
+                console.log('try to reconnect')
+                this.ws.close()
+                this.connect()
+                this.failcount = 0
+            }
         }
     }
 
