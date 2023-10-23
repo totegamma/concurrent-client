@@ -44,9 +44,11 @@ export class Socket {
                     break
                 case 'association.create': {
                     if (!event.body) return
-                    const body = event.body as Association<any>
-                    this.api.cacheAssociation(body)
-                    this.api.invalidateMessage(body.targetID)
+                    const dummy_association = event.body
+                    dummy_association.payload = JSON.parse(dummy_association.payload as string)
+                    const association = dummy_association as Association<any>
+                    this.api.cacheAssociation(association)
+                    this.api.invalidateMessage(association.targetID)
                     break
                 }
                 case 'association.delete': {
