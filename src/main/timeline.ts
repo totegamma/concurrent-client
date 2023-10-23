@@ -6,6 +6,7 @@ export class Timeline {
 
     body: StreamItem[] = [];
     onUpdate?: () => void;
+    onRealtimeEvent?: (event: StreamEvent) => void;
     socket: Socket;
     api: Api;
     streams: string[] = [];
@@ -55,6 +56,7 @@ export class Timeline {
                 default:
                     console.log('unknown event', event)
             }
+            this.onRealtimeEvent?.(event);
         })
 
         return hasMore
