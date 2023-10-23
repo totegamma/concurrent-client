@@ -33,6 +33,7 @@ export interface Association<T> {
     cdate: string
     id: AssociationID
     payload: T
+    rawpayload: string
     schema: Schema
     signature: string
     targetID: MessageID

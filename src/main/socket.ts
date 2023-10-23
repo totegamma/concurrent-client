@@ -36,6 +36,7 @@ export class Socket {
                 case 'message.create':
                     if (!event.body) return
                     const message = event.body
+                    message.rawpayload = message.payload
                     message.payload = JSON.parse(message.payload as string)
                     this.api.cacheMessage(message as Message<any>)
                     break
@@ -45,6 +46,7 @@ export class Socket {
                 case 'association.create': {
                     if (!event.body) return
                     const dummy_association = event.body
+                    dummy_association.rawpayload = dummy_association.payload
                     dummy_association.payload = JSON.parse(dummy_association.payload as string)
                     const association = dummy_association as Association<any>
                     this.api.cacheAssociation(association)
