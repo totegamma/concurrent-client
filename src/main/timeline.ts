@@ -59,7 +59,7 @@ export class Timeline {
             this.onUpdate?.();
         })
 
-        this.socket.listen(streams, this.processEvent);
+        this.socket.listen(streams, this.processEvent.bind(this));
     
         return hasMore
     }
