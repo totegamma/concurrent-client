@@ -19,6 +19,7 @@ export class Timeline {
     processEvent(event: StreamEvent) {
         switch (event.type + '.' + event.action) {
             case 'message.create':
+                if (this.body.find(m => m.objectID === event.item.objectID)) return;
                 this.body.unshift(event.item);
                 this.onUpdate?.();
                 break;
