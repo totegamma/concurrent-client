@@ -16,11 +16,38 @@ export class Timeline {
         this.socket = socket;
     }
 
+    processEvent(event: StreamEvent) {
+        switch (event.type + '.' + event.action) {
+            case 'message.create':
+                this.body.unshift(event.item);
+                this.onUpdate?.();
+                break;
+            case 'message.delete': {
+                const body = event.body as Message<any>
+                this.body = this.body.filter(m => m.objectID !== body.id);
+                this.onUpdate?.();
+                break;
+            }
+            case 'association.create':
+            case 'association.delete':
+                if (!event.body) return;
+                const body = event.body as Association<any>
+                const target = this.body.find(m => m.objectID === body.targetID);
+                if (!target) return;
+                target.lastUpdate = new Date();
+                this.onUpdate?.();
+                break;
+            default:
+                console.log('unknown event', event)
+        }
+        this.onRealtimeEvent?.(event);
+    }
+
     async listen(streams: string[]): Promise<boolean> {
 
         this.streams = streams;
 
-        var hasMore = true;
+        let hasMore = true;
 
         console.log('listen!', streams)
 
@@ -32,33 +59,8 @@ export class Timeline {
             this.onUpdate?.();
         })
 
-        this.socket.listen(streams, (event: StreamEvent) => {
-            switch (event.type + '.' + event.action) {
-                case 'message.create':
-                    this.body.unshift(event.item);
-                    this.onUpdate?.();
-                    break;
-                case 'message.delete': {
-                    const body = event.body as Message<any>
-                    this.body = this.body.filter(m => m.objectID !== body.id);
-                    this.onUpdate?.();
-                    break;
-                }
-                case 'association.create':
-                case 'association.delete':
-                    if (!event.body) return;
-                    const body = event.body as Association<any>
-                    const target = this.body.find(m => m.objectID === body.targetID);
-                    if (!target) return;
-                    target.lastUpdate = new Date();
-                    this.onUpdate?.();
-                    break;
-                default:
-                    console.log('unknown event', event)
-            }
-            this.onRealtimeEvent?.(event);
-        })
-
+        this.socket.listen(streams, this.processEvent);
+    
         return hasMore
     }
 
@@ -70,6 +72,23 @@ export class Timeline {
         this.body = this.body.concat(newdata);
         this.onUpdate?.();
         return true
+    }
+
+    async reload(): Promise<boolean> {
+        let hasMore = true;
+        const items = await this.api.readStreamRecent(this.streams);
+        this.body = items;
+        if (items.length < 16) {
+            hasMore = false;
+        }
+        this.onUpdate?.();
+        return hasMore
+    }
+
+    dispose() {
+        this.socket.unlisten(this.streams, this.processEvent);
+        this.onUpdate = undefined;
+        this.onRealtimeEvent = undefined;
     }
 }
 
