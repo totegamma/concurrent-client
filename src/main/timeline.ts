@@ -53,18 +53,15 @@ export class Timeline {
         console.log('listen!', streams)
 
         await this.api.readStreamRecent(streams).then((items: StreamItem[]) => {
-            console.log('init items', items)
             this.body = items;
             if (items.length < 16) {
                 hasMore = false;
             }
-            console.log('call onUpdate', this.onUpdate)
             this.onUpdate?.();
         })
 
         this.socket.listen(streams, this.processEvent.bind(this));
     
-        console.log('listen done')
         return hasMore
     }
 
