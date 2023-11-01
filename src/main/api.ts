@@ -146,11 +146,11 @@ export class Api {
             const message = data
             message.rawpayload = message.payload
             message.payload = JSON.parse(message.payload)
-            message.associations = message.associations.map((a: any) => {
+            message.associations = message.associations?.map((a: any) => {
                 a.rawpayload = a.payload
                 a.payload = JSON.parse(a.payload)
                 return a
-            })
+            }) ?? []
             return message
         })
         return await this.messageCache[id]
