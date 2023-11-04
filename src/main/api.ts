@@ -146,11 +146,6 @@ export class Api {
             const message = data
             message.rawpayload = message.payload
             message.payload = JSON.parse(message.payload)
-            message.associations = message.associations?.map((a: any) => {
-                a.rawpayload = a.payload
-                a.payload = JSON.parse(a.payload)
-                return a
-            }) ?? []
             return message
         })
         return await this.messageCache[id]
@@ -160,6 +155,43 @@ export class Api {
         const entity = await this.readEntity(author)
         if (!entity) throw new Error()
         return await this.readMessage(messageId, entity.domain)
+    }
+
+    async getMessageAssociationsByTarget(target: string, host: string = '', filter: {schema?: string, variant?: string} = {}): Promise<Association<any>[]> {
+        let requestPath = `/message/${target}/associations`
+        if (filter.schema) requestPath += `?schema=${encodeURIComponent(filter.schema)}`
+        if (filter.variant) requestPath += `&variant=${encodeURIComponent(filter.variant)}`
+
+        console.log(requestPath)
+
+        const messageHost = !host ? this.host : host
+        const resp = await this.fetchWithOnlineCheck(messageHost, requestPath, {
+            method: 'GET',
+            headers: {}
+        })
+
+        let data = (await resp.json()).content
+        data = data?.map((a: any) => {
+            a.rawpayload = a.payload
+            a.payload = JSON.parse(a.payload)
+            return a
+        }) ?? []
+
+        return data
+    }
+
+    async getMessageAssociationCountsByTarget(target: string, host: string = '', groupby: {schema?: string} = {}): Promise<Record<string, number>> {
+        let requestPath = `/message/${target}/associationcounts`
+        if (groupby.schema) requestPath += `?schema=${encodeURIComponent(groupby.schema)}`
+
+        const messageHost = !host ? this.host : host
+        const resp = await this.fetchWithOnlineCheck(messageHost, requestPath, {
+            method: 'GET',
+            headers: {}
+        })
+
+        let data = (await resp.json()).content
+        return data
     }
 
     async deleteMessage(target: string, host: string = ''): Promise<any> {
@@ -322,7 +354,7 @@ export class Api {
             })
     }
 
-    async readCharacter(author: string, schema: string): Promise<Character<any> | null | undefined> {
+    async readCharacter<T>(author: string, schema: string): Promise<Character<T> | null | undefined> {
         if (this.characterCache[author + schema]) {
             const value = await this.characterCache[author + schema]
             if (value !== undefined) return value

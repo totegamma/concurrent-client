@@ -1,26 +1,41 @@
 import { Api } from './api'
 
-import { Schemas } from '../schemas'
-import { Like } from '../schemas/like'
-import { EmojiAssociation } from '../schemas/emojiAssociation'
-import { RerouteMessage } from '../schemas/rerouteMessage'
-import { RerouteAssociation } from '../schemas/rerouteAssociation'
-import { Userstreams } from '../schemas/userstreams'
-import { AssociationID, CCID, Character, CollectionItemID, FQDN, MessageID, StreamID } from '../model/core'
-import { Message, Association, User, M_Current, M_Reroute, M_Reply, A_Favorite, A_Reply, A_Reroute, Stream, A_Reaction } from '../model/wrapper'
-import { Profile as RawProfile } from '../schemas/profile'
-import { SimpleNote } from '../schemas/simpleNote'
-import { Commonstream } from '../schemas/commonstream'
-import { Profile } from '../model/wrapper'
 import { Socket } from './socket'
-import { ReplyMessage } from "../schemas/replyMessage";
-import { ReplyAssociation } from "../schemas/replyAssociation";
-import { CommputeCCID, KeyPair, LoadKey } from "../util/crypto";
-import { UserAck } from '../schemas/userAck'
-import { UserAckCollection } from '../schemas/userAckCollection'
-import {ProfileOverride} from "../mock/model";
 import { Timeline } from './timeline'
 import { Subscription } from './subscription'
+
+import { 
+    Message as CoreMessage,
+    Association as CoreAssociation,
+    Entity as CoreEntity,
+    Stream as CoreStream,
+    Character as CoreCharacter,
+    CCID,
+    FQDN,
+    MessageID,
+    AssociationID,
+    CollectionItemID,
+    StreamID,
+    SignedObject,
+    Certificate,
+    ProfileOverride
+} from "../model/core";
+
+import { Schemas, Schema } from "../schemas";
+import { Like } from "../schemas/like";
+import { Userstreams } from "../schemas/userstreams";
+import { Profile } from "../schemas/profile";
+import { EmojiAssociation } from "../schemas/emojiAssociation";
+import { ReplyMessage } from "../schemas/replyMessage";
+import { ReplyAssociation } from "../schemas/replyAssociation";
+import { RerouteMessage } from "../schemas/rerouteMessage";
+import { RerouteAssociation } from "../schemas/rerouteAssociation";
+import { SimpleNote } from '../schemas/simpleNote'
+import { Commonstream } from '../schemas/commonstream'
+import { UserAck } from '../schemas/userAck'
+import { UserAckCollection } from '../schemas/userAckCollection'
+
+import { CommputeCCID, KeyPair, LoadKey } from "../util/crypto";
 
 export class Client {
     api: Api
@@ -43,239 +58,30 @@ export class Client {
             privatekey,
             client
         })
-
     }
 
     static async create(privatekey: string, host: FQDN, client?: string): Promise<Client> {
         const c = new Client(privatekey, host, client)
-        await c.load()
+        const user = await c.getUser(c.ccid)
+        if (!user) throw new Error('user not found')
+        c.user = user
         return c
     }
 
-    async load(): Promise<void> {
-        const user = await this.getUser(this.ccid)
-        if (!user) throw new Error('user not found')
-        this.user = user
+    async getUser(id: CCID): Promise<User | null> {
+        return await User.load(this, id)
     }
 
-    async getUser(id: CCID, deep: boolean = true): Promise<User | null | undefined> {
-        const entity = await this.api.readEntity(id)
-        if (!entity) return null
-        const rawProfile: Character<RawProfile> | null | undefined = await this.api.readCharacter(id, Schemas.profile)
-        const rawUserstreams: Character<Userstreams> | null | undefined = await this.api.readCharacter(id, Schemas.userstreams)
-
-        const ackedby: User[] = deep ? (await Promise.all(rawProfile?.associations?.filter((e) => e.schema === Schemas.userAck).map((e) => {
-            return this.getUser(e.author, false)
-        }) || [])).filter((e) => e !== null) as User[] : []
-
-        let profile = undefined
-        if (rawProfile) {
-            profile = {
-                id: rawProfile.id,
-                schema: rawProfile.schema,
-                cdate: new Date(rawProfile.cdate),
-                ackedby,
-                ...rawProfile.payload.body
-            }
-        }
-
-        let userstreams = undefined
-        if (rawUserstreams) {
-            userstreams = {
-                id: rawUserstreams.id,
-                schema: rawUserstreams.schema,
-                cdate: new Date(rawUserstreams.cdate),
-                ...rawUserstreams.payload.body
-            }
-        }
-
-        return {
-            ...entity,
-            profile,
-            userstreams
-        }
+    async getStream<T>(id: StreamID): Promise<Stream<T> | null> {
+        return await Stream.load(this, id)
     }
 
-    async getStream(id: StreamID): Promise<Stream | null | undefined> {
-        const stream = await this.api.readStream(id)
-        if (!stream) return null
-        return {
-            id,
-            schema: stream.schema,
-            author: stream.author,
-            maintainer: stream.maintainer,
-            writer: stream.writer,
-            reader: stream.reader,
-            cdate: new Date(stream.cdate),
-            ...stream.payload,
-            ...stream.payload.body // TODO: remove this
-        }
+    async getAssociation<T>(id: AssociationID, owner: CCID): Promise<Association<T> | null | undefined> {
+        return await Association.load(this, id, owner)
     }
 
-    async getAssociation(id: AssociationID, owner: CCID, deep: boolean = true): Promise<A_Favorite | A_Reaction | A_Reroute | A_Reply | null | undefined > {
-        const association = await this.api.readAssociationWithOwner(id, owner).catch((e) => {
-            console.log('CLIENT::getAssociation::readAssociationWithOwner::error', e)
-            return null
-        })
-        if (!association) return null
-
-        const author = await this.getUser(association.author).catch((e) => {
-            console.log('CLIENT::getAssociation::getUser::error', e)
-            return null
-        })
-        if (!author) return null
-
-        const target = deep ? (await this.getMessage(association.targetID, owner, false).catch(() => null)) : null
-
-        switch (association.schema) {
-            case Schemas.like:
-                return {
-                    id: association.id,
-                    schema: association.schema,
-                    author,
-                    cdate: new Date(association.cdate),
-                    target,
-                    ...association.payload.body
-                } as A_Favorite
-            case Schemas.emojiAssociation:
-                return {
-                    id: association.id,
-                    schema: association.schema,
-                    author,
-                    cdate: new Date(association.cdate),
-                    target,
-                    ...association.payload.body
-                } as A_Reaction
-            case Schemas.replyAssociation:
-                const replyBody = deep
-                    ? (await this.getMessage(
-                        association.payload.body.messageId,
-                        association.payload.body.messageAuthor,
-                        false).catch(() => null))
-                    : null
-                return {
-                    id: association.id,
-                    schema: association.schema,
-                    author,
-                    cdate: new Date(association.cdate),
-                    target,
-                    replyBody,
-                    ...association.payload.body
-                } as A_Reply
-            case Schemas.rerouteAssociation:
-                const rerouteBody = deep
-                    ? (await this.getMessage(
-                        association.payload.body.messageId,
-                        association.payload.body.messageAuthor,
-                        false).catch(() => null))
-                    : null
-                return {
-                    id: association.id,
-                    schema: association.schema,
-                    author,
-                    cdate: new Date(association.cdate),
-                    target,
-                    rerouteBody,
-                    ...association.payload.body
-                } as A_Reroute
-            default:
-                console.error('CLIENT::getAssociation::unknown schema', association.schema)
-                return null
-        }
-    }
-
-    async getMessage(id: MessageID, authorID: CCID, deep: boolean = true): Promise<M_Current | M_Reroute | M_Reply | null | undefined> {
-        const message = await this.api.readMessageWithAuthor(id, authorID).catch((e) => {
-            console.log('CLIENT::getMessage::readMessageWithAuthor::error', e)
-            return null
-        })
-        if (!message) return null
-
-        const author = await this.getUser(authorID).catch((e) => {
-            console.log('CLIENT::getMessage::getUser::error', e)
-            return null
-        })
-        if (!author) return null
-
-        const allAssociations: Association[] = deep ? (await Promise.all(
-            message.associations?.map(async (e) => {
-                return await this.getAssociation(e.id, authorID, false).catch((e) => {
-                    console.log('CLIENT::getMessage::getAssociation::error', e)
-                    return null
-                })
-            }) ?? []
-        )).filter((e: Association | null | undefined) => e) as Association[] : []
-
-        const favorites: A_Favorite[] =  allAssociations.filter((e) => e.schema === Schemas.like) as A_Favorite[]
-        const reactions: A_Reaction[] = allAssociations.filter((e) => e.schema === Schemas.emojiAssociation) as A_Reaction[]
-        const replies: A_Reply[] = allAssociations.filter((e) => e.schema === Schemas.replyAssociation) as A_Reply[]
-        const reroutes: A_Reroute[] = allAssociations.filter((e) => e.schema === Schemas.rerouteAssociation) as A_Reroute[]
-
-        const allstreams = (await Promise.all(
-            message.streams.map(async (e) => await this.getStream(e).catch(() => null))
-        )).filter((e: Stream | null | undefined) => e) as Stream[]
-
-        const streams: Commonstream[] = allstreams.filter((e: Stream) => e.schema === Schemas.commonstream)
-
-        switch (message.schema) {
-            case Schemas.simpleNote:
-                return {
-                    id: message.id,
-                    ...message.payload.body,
-                    schema: message.schema,
-                    cdate: message.cdate,
-                    author,
-                    favorites,
-                    reactions,
-                    replies,
-                    reroutes,
-                    streams
-                } as M_Current
-
-            case Schemas.replyMessage:
-
-                const replyTarget = await this.getMessage(
-                    message.payload.body.replyToMessageId,
-                    message.payload.body.replyToMessageAuthor
-                ).catch(() => null)
-
-                 return {
-                    id: message.id,
-                    ...message.payload.body,
-                    schema: message.schema,
-                    cdate: message.cdate,
-                    author,
-                    favorites,
-                    reactions,
-                    replies,
-                    reroutes,
-                    streams,
-                    replyTarget
-                } as M_Reply
-
-            case Schemas.rerouteMessage:
-
-                const rerouteTarget = await this.getMessage(
-                    message.payload.body.rerouteMessageId,
-                    message.payload.body.rerouteMessageAuthor
-                ).catch(() => null)
-
-                return {
-                    id: message.id,
-                    ...message.payload.body,
-                    schema: message.schema,
-                    cdate: message.cdate,
-                    author,
-                    favorites,
-                    reactions,
-                    replies,
-                    reroutes,
-                    streams,
-                    rerouteTarget
-                } as M_Reroute
-            default:
-                return null
-        }
+    async getMessage<T>(id: MessageID, authorID: CCID): Promise<Message<T> | null | undefined> {
+        return await Message.load(this, id, authorID)
     }
 
     async createCurrent(body: string, streams: StreamID[], emojis: Record<string, {imageURL?: string, animURL?: string}> = {}, profileOverride: ProfileOverride = {}): Promise<Error | null> {
@@ -283,7 +89,7 @@ export class Client {
     }
 
     async setupUserstreams(): Promise<void> {
-        const userstreams: Character<Userstreams> | null | undefined = await this.api.readCharacter(this.ccid, Schemas.userstreams)
+        const userstreams: CoreCharacter<Userstreams> | null | undefined = await this.api.readCharacter(this.ccid, Schemas.userstreams)
         const id = userstreams?.id
         let homeStream = userstreams?.payload.body.homeStream
         if (!homeStream) {
@@ -327,25 +133,12 @@ export class Client {
         })
     }
 
-    async favorite(target: Message): Promise<void> {
-        const targetStream = [target.author.userstreams?.notificationStream, this.user?.userstreams?.associationStream].filter((e) => e) as string[]
-        await this.api.createAssociation<Like>(Schemas.like, {}, target.id, target.author.ccid, 'messages', targetStream)
-        this.api.invalidateMessage(target.id)
-    }
-
-    async unFavorite(target: Message): Promise<void> {
-        const associationID = target.favorites.find((e) => e.author.ccid === this.ccid)?.id
-        if (!associationID) return
-        const { content } = await this.api.deleteAssociation(associationID, target.author.ccid)
-        this.api.invalidateMessage(content.targetID)
-    }
-
     async ackUser(user: User): Promise<void> {
         if (!user.profile || !user.userstreams) return
-        const collectionID = this.user?.userstreams?.ackCollection
+        const collectionID = this.user?.userstreams?.payload.body.ackCollection
         if (!collectionID) return
 
-        const targetStream = [user.userstreams?.notificationStream, this.user?.userstreams?.associationStream].filter((e) => e) as string[]
+        const targetStream = [user.userstreams?.payload.body.notificationStream, this.user?.userstreams?.payload.body.associationStream].filter((e) => e) as string[]
         const association = await this.api.createAssociation<UserAck>(Schemas.userAck, {}, user.profile.id, user.ccid, 'characters', targetStream)
         console.log('createdAssociation', association)
         console.log('id', association.content.id)
@@ -357,7 +150,7 @@ export class Client {
     }
 
     async unAckUser(itemID: CollectionItemID): Promise<void> {
-        const collectionID = this.user?.userstreams?.ackCollection
+        const collectionID = this.user?.userstreams?.payload.body.ackCollection
         if (!collectionID) return
 
         const deleted = await this.api.deleteCollectionItem<UserAckCollection>(collectionID, itemID)
@@ -369,92 +162,7 @@ export class Client {
         this.api.invalidateCharacter(content.targetID)
     }
 
-    async addReaction(target: Message, shortcode: string, imageUrl: string): Promise<void> {
-        const userStreams = await this.api.readCharacter(this.ccid, Schemas.userstreams)
-        const authorInbox = target.author.userstreams?.notificationStream
-        const targetStream = [authorInbox, userStreams?.payload.body.associationStream].filter((e) => e) as string[]
-        await this.api.createAssociation<EmojiAssociation>(
-            Schemas.emojiAssociation,
-            {
-                shortcode,
-                imageUrl
-            },
-            target.id,
-            target.author.ccid,
-            'messages',
-            targetStream
-        )
-        this.api.invalidateMessage(target.id)
-    }
-
-    async removeAssociation(target: Message, associationID: AssociationID): Promise<void> {
-        const { content } = await this.api.deleteAssociation(associationID, target.author.ccid)
-        this.api.invalidateMessage(content.targetID)
-    }
-
-    async reroute(id: MessageID, author: CCID, streams: StreamID[], body?: string, emojis?: Record<string, {imageURL?: string, animURL?: string}>): Promise<void> {
-        const { content } = await this.api.createMessage<RerouteMessage>(
-            Schemas.rerouteMessage,
-            {
-                body,
-                emojis,
-                rerouteMessageId: id,
-                rerouteMessageAuthor: author
-            },
-            streams
-        )
-        const createdMessageId = content.id
-
-        const userStreams = await this.api.readCharacter(this.ccid, Schemas.userstreams)
-        const authorInbox = (await this.api.readCharacter(author, Schemas.userstreams))?.payload.body.notificationStream
-        const targetStream = [authorInbox, userStreams?.payload.body.associationStream].filter((e) => e) as string[]
-
-        await this.api.createAssociation<RerouteAssociation>(
-            Schemas.rerouteAssociation,
-            { messageId: createdMessageId, messageAuthor: this.ccid },
-            id,
-            author,
-            'messages',
-            targetStream
-        )
-    }
-
-    async reply(id: MessageID, author: CCID, streams: StreamID[], body: string, emojis?: Record<string, {imageURL?: string, animURL?: string}>): Promise<void> {
-        const data = await this.api.createMessage<ReplyMessage>(
-          Schemas.replyMessage,
-          {
-              replyToMessageId: id,
-              replyToMessageAuthor: author,
-              body,
-              emojis
-          },
-          streams
-        )
-
-        const userStreams = await this.api.readCharacter(this.ccid, Schemas.userstreams)
-        const authorInbox = (await this.api.readCharacter(author, Schemas.userstreams))?.payload.body
-          .notificationStream
-
-        const targetStream = [authorInbox, userStreams?.payload.body.associationStream].filter(
-          (e) => e
-        ) as string[]
-
-        await this.api.createAssociation<ReplyAssociation>(
-          Schemas.replyAssociation,
-          { messageId: data.content.id, messageAuthor: this.ccid },
-          id,
-          author,
-          'messages',
-          targetStream || []
-        )
-    }
-
-    async deleteMessage(target: Message): Promise<void> {
-        return this.api.deleteMessage(target.id)
-    }
-
-
-    async getCommonStreams(remote: FQDN): Promise<Stream[]> {
+    async getCommonStreams(remote: FQDN): Promise<Stream<Commonstream>[]> {
         const streams = await this.api.getStreamListBySchema(Schemas.commonstream, remote)
         return streams.map((e) => { return {
             id: e.id,
@@ -465,7 +173,6 @@ export class Client {
             reader: e.reader,
             cdate: new Date(e.cdate),
             ...e.payload,
-            ...e.payload.body // TODO: remove this
         }})
     }
 
@@ -478,7 +185,7 @@ export class Client {
     }
 
     async createProfile(username: string, description: string, avatar: string, banner: string): Promise<Profile> {
-        return await this.api.upsertCharacter<RawProfile>(Schemas.profile, {
+        return await this.api.upsertCharacter<Profile>(Schemas.profile, {
             username,
             description,
             avatar,
@@ -487,7 +194,7 @@ export class Client {
     }
 
     async updateProfile(id: string, username: string, description: string, avatar: string, banner: string): Promise<Profile> {
-        return await this.api.upsertCharacter<RawProfile>(Schemas.profile, {
+        return await this.api.upsertCharacter<Profile>(Schemas.profile, {
             username,
             description,
             avatar,
@@ -513,3 +220,341 @@ export class Client {
         return new Subscription(socket)
     }
 }
+
+export class User implements CoreEntity {
+
+    api: Api
+    client: Client
+
+    ccid: CCID
+    tag: string
+    domain: FQDN 
+    cdate: string
+    score: number
+    certs: Certificate[]
+
+    profile?: CoreCharacter<Profile>
+    userstreams?: CoreCharacter<Userstreams>
+
+    constructor(client: Client,
+                data: CoreEntity,
+                profile?: CoreCharacter<Profile>,
+                userstreams?: CoreCharacter<Userstreams>) {
+        this.api = client.api
+        this.client = client
+        this.ccid = data.ccid
+        this.tag = data.tag
+        this.domain = data.domain
+        this.cdate = data.cdate
+        this.score = data.score
+        this.certs = data.certs
+        this.profile = profile
+        this.userstreams = userstreams
+    }
+
+    static async load(client: Client, id: CCID): Promise<User | null> {
+        const entity = await client.api.readEntity(id).catch((e) => {
+            console.log('CLIENT::getUser::readEntity::error', e)
+            return null
+        })
+        if (!entity) return null
+
+        const profile: CoreCharacter<Profile> | undefined = await client.api.readCharacter<Profile>(id, Schemas.profile) ?? undefined
+        const userstreams: CoreCharacter<Userstreams> | undefined = await client.api.readCharacter<Userstreams>(id, Schemas.userstreams) ?? undefined
+
+        return new User(client, entity, profile, userstreams)
+    }
+}
+
+export class Association<T> implements CoreAssociation<T> {
+    api: Api
+    client: Client
+
+    author: CCID
+    cdate: string
+    id: AssociationID
+    payload: SignedObject<T>
+    rawpayload: string
+    schema: Schema
+    signature: string
+    targetID: MessageID
+    targetType: 'message' | 'character'
+
+    authorUser?: User
+
+    constructor(client: Client, data: CoreAssociation<T>) {
+        this.api = client.api
+        this.client = client
+        this.author = data.author
+        this.cdate = data.cdate
+        this.id = data.id
+        this.payload = data.payload
+        this.rawpayload = data.rawpayload
+        this.schema = data.schema
+        this.signature = data.signature
+        this.targetID = data.targetID
+        this.targetType = data.targetType
+    }
+
+    static async load<T>(client: Client, id: AssociationID, owner: CCID): Promise<Association<T> | null> {
+        const coreAss = await client.api.readAssociationWithOwner(id, owner).catch((e) => {
+            console.log('CLIENT::getAssociation::readAssociationWithOwner::error', e)
+            return null
+        })
+        if (!coreAss) return null
+
+        const association = new Association<T>(client, coreAss)
+        association.authorUser = await client.getUser(association.author) ?? undefined
+
+        return association
+    }
+
+    static async loadByBody<T>(client: Client, body: CoreAssociation<T>): Promise<Association<T> | null> {
+        const association = new Association<T>(client, body)
+        association.authorUser = await client.getUser(association.author) ?? undefined
+
+        return association
+    }
+
+    async getAuthor(): Promise<User> {
+        const author = await this.client.getUser(this.author)
+        if (!author) throw new Error('author not found')
+        return author
+    }
+
+    async delete(): Promise<void> {
+        const { content } = await this.api.deleteAssociation(this.id, this.author)
+        this.api.invalidateMessage(content.targetID)
+    }
+}
+
+export class Stream<T> implements CoreStream<T> {
+
+    api: Api
+    client: Client
+
+    id: StreamID
+    visible: boolean
+    author: CCID
+    maintainer: CCID[]
+    writer: CCID[]
+    reader: CCID[]
+    schema: CCID
+    payload: T
+    cdate: string
+
+    constructor(client: Client, data: CoreStream<T>) {
+        this.api = client.api
+        this.client = client
+
+        this.id = data.id
+        this.visible = data.visible
+        this.author = data.author
+        this.maintainer = data.maintainer
+        this.writer = data.writer
+        this.reader = data.reader
+        this.schema = data.schema
+        this.payload = data.payload
+        this.cdate = data.cdate
+    }
+
+    static async load<T>(client: Client, id: StreamID): Promise<Stream<T> | null> {
+        const stream = await client.api.readStream(id).catch((e) => {
+            console.log('CLIENT::getStream::readStream::error', e)
+            return null
+        })
+        if (!stream) return null
+
+        return new Stream<T>(client, stream)
+    }
+
+}
+
+export class Message<T> implements CoreMessage<T> {
+
+    api: Api
+    user: User
+    client: Client
+    associations: Array<CoreAssociation<any>>
+    author: CCID
+    cdate: string
+    id: MessageID
+    payload: SignedObject<T>
+    rawpayload: string
+    schema: Schema
+    signature: string
+    streams: StreamID[]
+
+    associationCounts?: Record<string, number>
+    reactionCounts?: Record<string, number>
+    postedStreams?: Stream<Commonstream>[]
+
+    authorUser?: User
+
+    constructor(client: Client, data: CoreMessage<T>) {
+        this.api = client.api
+        this.user = client.user!
+        this.client = client
+        this.associations = data.associations
+        this.author = data.author
+        this.cdate = data.cdate
+        this.id = data.id
+        this.payload = data.payload
+        this.rawpayload = data.rawpayload
+        this.schema = data.schema
+        this.signature = data.signature
+        this.streams = data.streams
+    }
+
+    static async load<T>(client: Client, id: MessageID, authorID: CCID): Promise<Message<T> | null> {
+        const coreMsg = await client.api.readMessageWithAuthor(id, authorID).catch((e) => {
+            console.log('CLIENT::getMessage::readMessageWithAuthor::error', e)
+            return null
+        })
+        if (!coreMsg) return null
+
+        const message = new Message(client, coreMsg)
+
+        message.associationCounts = await client.api.getMessageAssociationCountsByTarget(id)
+        message.reactionCounts = await client.api.getMessageAssociationCountsByTarget(id, '', {schema: Schemas.emojiAssociation})
+        message.authorUser = await client.getUser(authorID) ?? undefined
+
+        const streams = await Promise.all(
+            message.streams.map((e) => client.getStream(e))
+        )
+        message.postedStreams = streams.filter((e) => e) as Stream<Commonstream>[]
+
+        return message
+    }
+
+    async getAuthor(): Promise<User> {
+        const author = await this.client.getUser(this.author)
+        if (!author) {
+            throw new Error('Author not found')
+        }
+        return author
+    }
+
+    async getStreams<T>() : Promise<Stream<T>[]> {
+        const streams = await Promise.all(this.streams.map((e) => this.client.getStream(e)))
+        return streams.filter((e) => e) as Stream<T>[]
+    }
+
+    async getReplies(): Promise<Association<ReplyAssociation>[]> {
+        const coreass = await this.client.api.getMessageAssociationsByTarget(this.id, '', {schema: Schemas.replyAssociation})
+        return coreass.map((e) => new Association<ReplyAssociation>(this.client, e))
+    }
+
+    async getReroutes(): Promise<Association<RerouteAssociation>[]> {
+        const coreass = await this.client.api.getMessageAssociationsByTarget(this.id, '', {schema: Schemas.rerouteAssociation})
+        return coreass.map((e) => new Association<RerouteAssociation>(this.client, e))
+    }
+
+    async getFavorites(): Promise<Association<Like>[]> {
+        const coreass = await this.client.api.getMessageAssociationsByTarget(this.id, '', {schema: Schemas.like})
+        return coreass.map((e) => new Association<Like>(this.client, e))
+    }
+
+    async getReactions(imgUrl: string): Promise<Association<EmojiAssociation>[]> {
+        const coreass = await this.client.api.getMessageAssociationsByTarget(this.id, '', {schema: Schemas.emojiAssociation, variant: imgUrl})
+        const ass: Array<Association<EmojiAssociation> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<EmojiAssociation>(this.client, e)))
+
+        return ass.filter(e => e) as Array<Association<EmojiAssociation>>
+    }
+
+    async getReplyTo(): Promise<Message<ReplyMessage> | null> {
+        if (this.schema != Schemas.replyMessage) {
+            throw new Error('This message is not a reply')
+        }
+        const replyPayload = this.payload.body as ReplyMessage
+        return await Message.load<ReplyMessage>(this.client, replyPayload.replyToMessageId, replyPayload.replyToMessageAuthor)
+    }
+
+    async GetRerouteTo(): Promise<Message<RerouteMessage> | null> {
+        if (this.schema != Schemas.rerouteMessage) {
+            throw new Error('This message is not a reroute')
+        }
+        const reroutePayload = this.payload.body as RerouteMessage
+        return await Message.load<RerouteMessage>(this.client, reroutePayload.rerouteMessageId, reroutePayload.rerouteMessageAuthor)
+    }
+
+    async favorite() {
+        const author = await this.getAuthor()
+        const targetStream = [author.userstreams?.payload.body.notificationStream, this.client.user?.userstreams?.payload.body.associationStream].filter((e) => e) as string[]
+        await this.api.createAssociation<Like>(Schemas.like, {}, this.id, author.ccid, 'messages', targetStream)
+        this.api.invalidateMessage(this.id)
+    }
+
+    async reaction(shortcode: string, imageUrl: string) {
+        const author = await this.getAuthor()
+        const targetStream = [author.userstreams?.payload.body.notificationStream, this.client.user?.userstreams?.payload.body.associationStream].filter((e) => e) as string[]
+        await this.client.api.createAssociation<EmojiAssociation>(
+            Schemas.emojiAssociation,
+            {
+                shortcode,
+                imageUrl
+            },
+            this.id,
+            author.ccid,
+            'messages',
+            targetStream
+        )
+        this.api.invalidateMessage(this.id)
+    }
+
+    async reply(streams: string[], body: string, emojis?: Record<string, {imageURL?: string, animURL?: string}>) {
+        const data = await this.api.createMessage<ReplyMessage>(
+          Schemas.replyMessage,
+          {
+              replyToMessageId: this.id,
+              replyToMessageAuthor: this.author,
+              body,
+              emojis
+          },
+          streams
+        )
+
+        const author = await this.getAuthor()
+        const targetStream = [author.userstreams?.payload.body.notificationStream, this.user.userstreams?.payload.body.associationStream].filter((e) => e) as string[]
+
+        await this.api.createAssociation<ReplyAssociation>(
+          Schemas.replyAssociation,
+          { messageId: data.content.id, messageAuthor: this.user.ccid },
+          this.id,
+          this.author,
+          'messages',
+          targetStream || []
+        )
+    }
+
+    async reroute(streams: string[], body?: string, emojis?: Record<string, {imageURL?: string, animURL?: string}>) {
+        const { content } = await this.api.createMessage<RerouteMessage>(
+            Schemas.rerouteMessage,
+            {
+                body,
+                emojis,
+                rerouteMessageId: this.id,
+                rerouteMessageAuthor: this.author
+            },
+            streams
+        )
+        const created = content
+
+        const author = await this.getAuthor()
+        const targetStream = [author.userstreams?.payload.body.notificationStream, this.user.userstreams?.payload.body.associationStream].filter((e) => e) as string[]
+
+        await this.api.createAssociation<RerouteAssociation>(
+            Schemas.rerouteAssociation,
+            { messageId: created.id, messageAuthor: created.author },
+            this.id,
+            this.author,
+            'messages',
+            targetStream
+        )
+    }
+
+    async delete() {
+        return this.api.deleteMessage(this.id)
+    }
+}
+

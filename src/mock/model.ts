@@ -88,9 +88,4 @@ export const StreamItemMock: StreamItem = {
     lastUpdate: new Date()
 }
 
-export interface ProfileOverride {
-    username?: string;
-    avatar?: string;
-    description?: string;
-    link?: string;
-}
+

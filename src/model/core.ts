@@ -32,7 +32,7 @@ export interface Association<T> {
     author: CCID
     cdate: string
     id: AssociationID
-    payload: T
+    payload: SignedObject<T>
     rawpayload: string
     schema: Schema
     signature: string
@@ -123,5 +123,12 @@ export interface CollectionItem<T> {
 export interface Certificate {
     icon: string
     description: string
+}
+
+export interface ProfileOverride {
+    username?: string;
+    avatar?: string;
+    description?: string;
+    link?: string;
 }
 

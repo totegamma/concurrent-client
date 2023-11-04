@@ -35,19 +35,19 @@ export class Socket {
             switch (event.type + '.' + event.action) {
                 case 'message.create':
                     if (!event.body) return
-                    const message = event.body
-                    message.rawpayload = message.payload
-                    message.payload = JSON.parse(message.payload as string)
-                    this.api.cacheMessage(message as Message<any>)
+                    const dummy_message: any = event.body
+                    dummy_message.rawpayload = dummy_message.payload
+                    dummy_message.payload = JSON.parse(dummy_message.payload)
+                    this.api.cacheMessage(dummy_message as Message<any>)
                     break
                 case 'message.delete':
                     this.api.invalidateMessage(event.body.id)
                     break
                 case 'association.create': {
                     if (!event.body) return
-                    const dummy_association = event.body
+                    const dummy_association: any = event.body
                     dummy_association.rawpayload = dummy_association.payload
-                    dummy_association.payload = JSON.parse(dummy_association.payload as string)
+                    dummy_association.payload = JSON.parse(dummy_association.payload)
                     const association = dummy_association as Association<any>
                     this.api.cacheAssociation(association)
                     this.api.invalidateMessage(association.targetID)
