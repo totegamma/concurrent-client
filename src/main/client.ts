@@ -133,35 +133,6 @@ export class Client {
         })
     }
 
-    async ackUser(user: User): Promise<void> {
-        if (!user.profile || !user.userstreams) return
-        const collectionID = this.user?.userstreams?.payload.body.ackCollection
-        if (!collectionID) return
-
-        const targetStream = [user.userstreams?.payload.body.notificationStream, this.user?.userstreams?.payload.body.associationStream].filter((e) => e) as string[]
-        const association = await this.api.createAssociation<UserAck>(Schemas.userAck, {}, user.profile.id, user.ccid, 'characters', targetStream)
-        console.log('createdAssociation', association)
-        console.log('id', association.content.id)
-
-        await this.api.addCollectionItem<UserAckCollection>(collectionID, {
-            ccid: user.ccid,
-            association: association.content.id
-        })
-    }
-
-    async unAckUser(itemID: CollectionItemID): Promise<void> {
-        const collectionID = this.user?.userstreams?.payload.body.ackCollection
-        if (!collectionID) return
-
-        const deleted = await this.api.deleteCollectionItem<UserAckCollection>(collectionID, itemID)
-        console.log('deleted', deleted)
-        if (!deleted || !deleted.payload.association || !deleted.payload.ccid) return
-        console.log('deletedAssociation', deleted.payload.association)
-        const { content } = await this.api.deleteAssociation(deleted.payload.association, deleted.payload.ccid)
-        console.log('deletedAssociationContent', content)
-        this.api.invalidateCharacter(content.targetID)
-    }
-
     async getStreamsBySchema<T>(remote: FQDN, schema: string): Promise<Stream<T>[]> {
         const streams = await this.api.getStreamListBySchema<T>(schema, remote)
         return streams.map((e) => new Stream<T>(this, e))
