@@ -461,7 +461,7 @@ export class Api {
         ).then(async (res) => await res.json())
     }
 
-    async getStreamListBySchema(schema: string, remote?: FQDN): Promise<Array<Stream<any>>> {
+    async getStreamListBySchema<T>(schema: string, remote?: FQDN): Promise<Array<Stream<T>>> {
         return await fetchWithTimeout(remote ?? this.host, `${apiPath}/streams?schema=${schema}`, {}).then(
             async (data) => {
                 return await data.json().then((arr) => {

@@ -162,18 +162,9 @@ export class Client {
         this.api.invalidateCharacter(content.targetID)
     }
 
-    async getCommonStreams(remote: FQDN): Promise<Stream<Commonstream>[]> {
-        const streams = await this.api.getStreamListBySchema(Schemas.commonstream, remote)
-        return streams.map((e) => { return {
-            id: e.id,
-            schema: e.schema,
-            author: e.author,
-            maintainer: e.maintainer,
-            writer: e.writer,
-            reader: e.reader,
-            cdate: new Date(e.cdate),
-            ...e.payload,
-        }})
+    async getStreamsBySchema<T>(remote: FQDN, schema: string): Promise<Stream<T>[]> {
+        const streams = await this.api.getStreamListBySchema<T>(schema, remote)
+        return streams.map((e) => new Stream<T>(this, e))
     }
 
     async createCommonStream(name: string, description: string): Promise<void> {
