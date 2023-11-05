@@ -264,6 +264,28 @@ export class User implements CoreEntity {
 
         return new User(client, entity, profile, userstreams)
     }
+
+    async getAcking(): Promise<User[]> {
+        const acks = await this.api.getAcking(this.ccid)
+        const users = await Promise.all(acks.map((e) => User.load(this.client, e.to)))
+        return users.filter((e) => e !== null) as User[]
+    }
+
+    async getAcker(): Promise<User[]> {
+        const acks = await this.api.getAcker(this.ccid)
+        const users = await Promise.all(acks.map((e) => User.load(this.client, e.from)))
+        return users.filter((e) => e !== null) as User[]
+    }
+
+    async Ack(): Promise<void> {
+        await this.api.ack(this.ccid)
+    }
+
+    async UnAck(): Promise<void> {
+        await this.api.unack(this.ccid)
+    }
+
+
 }
 
 export class Association<T> implements CoreAssociation<T> {
@@ -278,7 +300,9 @@ export class Association<T> implements CoreAssociation<T> {
     schema: Schema
     signature: string
     targetID: MessageID
-    targetType: 'message' | 'character'
+    targetType: 'messages' | 'characters'
+
+    owner?: CCID
 
     authorUser?: User
 
@@ -306,6 +330,8 @@ export class Association<T> implements CoreAssociation<T> {
         const association = new Association<T>(client, coreAss)
         association.authorUser = await client.getUser(association.author) ?? undefined
 
+        association.owner = owner
+
         return association
     }
 
@@ -320,6 +346,14 @@ export class Association<T> implements CoreAssociation<T> {
         const author = await this.client.getUser(this.author)
         if (!author) throw new Error('author not found')
         return author
+    }
+
+    async getTargetMessage(): Promise<Message<any>> {
+        if (this.targetType !== 'messages') throw new Error(`target is not message (actual: ${this.targetType})`)
+        if (!this.owner) throw new Error('owner is not set')
+        const message = await this.client.getMessage(this.targetID, this.owner)
+        if (!message) throw new Error('target message not found')
+        return message
     }
 
     async delete(): Promise<void> {
@@ -376,6 +410,7 @@ export class Message<T> implements CoreMessage<T> {
     user: User
     client: Client
     associations: Array<CoreAssociation<any>>
+    ownAssociations: Array<CoreAssociation<any>>
     author: CCID
     cdate: string
     id: MessageID
@@ -387,7 +422,7 @@ export class Message<T> implements CoreMessage<T> {
 
     associationCounts?: Record<string, number>
     reactionCounts?: Record<string, number>
-    postedStreams?: Stream<Commonstream>[]
+    postedStreams?: Stream<any>[]
 
     authorUser?: User
 
@@ -395,7 +430,8 @@ export class Message<T> implements CoreMessage<T> {
         this.api = client.api
         this.user = client.user!
         this.client = client
-        this.associations = data.associations
+        this.associations = data.associations ?? []
+        this.ownAssociations = data.ownAssociations ?? []
         this.author = data.author
         this.cdate = data.cdate
         this.id = data.id
@@ -415,14 +451,18 @@ export class Message<T> implements CoreMessage<T> {
 
         const message = new Message(client, coreMsg)
 
-        message.associationCounts = await client.api.getMessageAssociationCountsByTarget(id)
-        message.reactionCounts = await client.api.getMessageAssociationCountsByTarget(id, '', {schema: Schemas.emojiAssociation})
         message.authorUser = await client.getUser(authorID) ?? undefined
+        try {
+            message.associationCounts = await client.api.getMessageAssociationCountsByTarget(id, authorID)
+            message.reactionCounts = await client.api.getMessageAssociationCountsByTarget(id, authorID, {schema: Schemas.emojiAssociation})
+        } catch (e) {
+            console.log('CLIENT::getMessage::error', e)
+        }
 
         const streams = await Promise.all(
             message.streams.map((e) => client.getStream(e))
         )
-        message.postedStreams = streams.filter((e) => e) as Stream<Commonstream>[]
+        message.postedStreams = streams.filter((e) => e) as Stream<any>[]
 
         return message
     }
@@ -441,22 +481,22 @@ export class Message<T> implements CoreMessage<T> {
     }
 
     async getReplies(): Promise<Association<ReplyAssociation>[]> {
-        const coreass = await this.client.api.getMessageAssociationsByTarget(this.id, '', {schema: Schemas.replyAssociation})
+        const coreass = await this.client.api.getMessageAssociationsByTarget(this.id, this.author, {schema: Schemas.replyAssociation})
         return coreass.map((e) => new Association<ReplyAssociation>(this.client, e))
     }
 
     async getReroutes(): Promise<Association<RerouteAssociation>[]> {
-        const coreass = await this.client.api.getMessageAssociationsByTarget(this.id, '', {schema: Schemas.rerouteAssociation})
+        const coreass = await this.client.api.getMessageAssociationsByTarget(this.id, this.author, {schema: Schemas.rerouteAssociation})
         return coreass.map((e) => new Association<RerouteAssociation>(this.client, e))
     }
 
     async getFavorites(): Promise<Association<Like>[]> {
-        const coreass = await this.client.api.getMessageAssociationsByTarget(this.id, '', {schema: Schemas.like})
+        const coreass = await this.client.api.getMessageAssociationsByTarget(this.id, this.author, {schema: Schemas.like})
         return coreass.map((e) => new Association<Like>(this.client, e))
     }
 
     async getReactions(imgUrl: string): Promise<Association<EmojiAssociation>[]> {
-        const coreass = await this.client.api.getMessageAssociationsByTarget(this.id, '', {schema: Schemas.emojiAssociation, variant: imgUrl})
+        const coreass = await this.client.api.getMessageAssociationsByTarget(this.id, this.author, {schema: Schemas.emojiAssociation, variant: imgUrl})
         const ass: Array<Association<EmojiAssociation> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<EmojiAssociation>(this.client, e)))
 
         return ass.filter(e => e) as Array<Association<EmojiAssociation>>
@@ -497,9 +537,15 @@ export class Message<T> implements CoreMessage<T> {
             this.id,
             author.ccid,
             'messages',
-            targetStream
+            targetStream,
+            imageUrl
         )
         this.api.invalidateMessage(this.id)
+    }
+
+    async deleteAssociation(associationID: string) {
+        const { content } = await this.api.deleteAssociation(associationID, this.author)
+        this.api.invalidateMessage(content.targetID)
     }
 
     async reply(streams: string[], body: string, emojis?: Record<string, {imageURL?: string, animURL?: string}>) {

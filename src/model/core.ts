@@ -17,6 +17,7 @@ export interface SignedObject<T> {
     meta: any
     signedAt: string
     target?: string
+    variant?: string
 }
 
 export interface Entity {
@@ -37,11 +38,12 @@ export interface Association<T> {
     schema: Schema
     signature: string
     targetID: MessageID
-    targetType: 'message' | 'character'
+    targetType: 'messages' | 'characters'
 }
 
 export interface Message<T> {
     associations: Array<Association<any>>
+    ownAssociations: Array<Association<any>>
     author: CCID
     cdate: string
     id: MessageID
@@ -130,5 +132,24 @@ export interface ProfileOverride {
     avatar?: string;
     description?: string;
     link?: string;
+}
+
+export interface Ack {
+    from: string
+    to: string
+    payload: string
+    signature: string
+}
+
+export interface AckObject {
+    type: string
+    from: string
+    to: string
+    signedAt: string
+}
+
+export interface AckRequest {
+    signedObject: string
+    signature: string
 }
 

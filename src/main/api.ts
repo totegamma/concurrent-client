@@ -1,5 +1,5 @@
 
-import { Entity, Message, Character, Association, Stream, SignedObject, CCID, StreamItem, Domain, StreamID, FQDN, Collection, CollectionID, CollectionItem } from '../model/core'
+import { Entity, Message, Character, Association, Stream, SignedObject, CCID, StreamItem, Domain, StreamID, FQDN, Collection, CollectionID, CollectionItem, Ack, AckObject, AckRequest } from '../model/core'
 import { MessagePostRequest } from '../model/request'
 import { fetchWithTimeout } from '../util/misc'
 import { Sign, IssueJWT, checkJwtIsValid, parseJWT, JwtPayload } from '../util/crypto'
@@ -130,8 +130,8 @@ export class Api {
             const value = await this.messageCache[id]
             if (value !== undefined) return value
         }
-        const messageHost = !host ? this.host : host
-        this.messageCache[id] = this.fetchWithOnlineCheck(messageHost, `/message/${id}`, {
+        const messageHost = host || this.host
+        this.messageCache[id] = this.fetchWithCredential(messageHost, `${apiPath}/message/${id}`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
@@ -146,6 +146,13 @@ export class Api {
             const message = data
             message.rawpayload = message.payload
             message.payload = JSON.parse(message.payload)
+
+            message.ownAssociations = message.ownAssociations?.map((a: any) => {
+                a.rawpayload = a.payload
+                a.payload = JSON.parse(a.payload)
+                return a
+            }) ?? []
+
             return message
         })
         return await this.messageCache[id]
@@ -154,18 +161,18 @@ export class Api {
     async readMessageWithAuthor(messageId: string, author: string): Promise<Message<any> | null | undefined> {
         const entity = await this.readEntity(author)
         if (!entity) throw new Error()
-        return await this.readMessage(messageId, entity.domain)
+        return await this.readMessage(messageId, entity.domain || this.host)
     }
 
-    async getMessageAssociationsByTarget(target: string, host: string = '', filter: {schema?: string, variant?: string} = {}): Promise<Association<any>[]> {
+    async getMessageAssociationsByTarget(target: string, targetAuthor: string, filter: {schema?: string, variant?: string} = {}): Promise<Association<any>[]> {
         let requestPath = `/message/${target}/associations`
         if (filter.schema) requestPath += `?schema=${encodeURIComponent(filter.schema)}`
         if (filter.variant) requestPath += `&variant=${encodeURIComponent(filter.variant)}`
 
-        console.log(requestPath)
+        const entity = await this.readEntity(targetAuthor)
+        if (!entity) throw new Error()
 
-        const messageHost = !host ? this.host : host
-        const resp = await this.fetchWithOnlineCheck(messageHost, requestPath, {
+        const resp = await this.fetchWithOnlineCheck(entity.domain || this.host, requestPath, {
             method: 'GET',
             headers: {}
         })
@@ -180,12 +187,16 @@ export class Api {
         return data
     }
 
-    async getMessageAssociationCountsByTarget(target: string, host: string = '', groupby: {schema?: string} = {}): Promise<Record<string, number>> {
+    async getMessageAssociationCountsByTarget(target: string, targetAuthor: string, groupby: {schema?: string} = {}): Promise<Record<string, number>> {
         let requestPath = `/message/${target}/associationcounts`
         if (groupby.schema) requestPath += `?schema=${encodeURIComponent(groupby.schema)}`
 
-        const messageHost = !host ? this.host : host
-        const resp = await this.fetchWithOnlineCheck(messageHost, requestPath, {
+        const entity = await this.readEntity(targetAuthor)
+        if (!entity) {
+            throw new Error(`Entity ${targetAuthor} not found`)
+        }
+
+        const resp = await this.fetchWithOnlineCheck(entity.domain || this.host, requestPath, {
             method: 'GET',
             headers: {}
         })
@@ -222,7 +233,8 @@ export class Api {
         target: string,
         targetAuthor: CCID,
         targetType: string,
-        streams: StreamID[]
+        streams: StreamID[],
+        variant: string = ''
     ): Promise<any> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
         const entity = await this.readEntity(targetAuthor)
@@ -236,7 +248,8 @@ export class Api {
                 client: this.client
             },
             signedAt: new Date().toISOString(),
-            target
+            target,
+            variant
         }
 
         const signedObject = JSON.stringify(signObject)
@@ -554,8 +567,8 @@ export class Api {
 
     // Domain
     async readDomain(remote?: string): Promise<Domain | null | undefined> {
-        const fqdn = remote ?? this.host
-        if (!fqdn) throw new Error()
+        const fqdn = remote || this.host
+        if (!fqdn) throw new Error(`invalid remote: ${fqdn}`)
         if (this.domainCache[fqdn]) {
             const value = await this.domainCache[fqdn]
             if (value !== undefined) return value
@@ -623,6 +636,86 @@ export class Api {
             return entity
         })
         return await this.entityCache[ccid]
+    }
+
+    async getAcking(ccid: string): Promise<Ack[]> {
+        const entity = await this.readEntity(ccid)
+        if (!entity) throw new Error()
+        const host = entity.domain || this.host
+        let requestPath = `/entity/${ccid}/acking`
+        const resp = await this.fetchWithOnlineCheck(host, requestPath, {
+            method: 'GET',
+            headers: {}
+        })
+
+        return (await resp.json()).content
+    }
+
+    async getAcker(ccid: string): Promise<Ack[]> {
+        const entity = await this.readEntity(ccid)
+        if (!entity) throw new Error()
+        const host = entity.domain || this.host
+        let requestPath = `/entity/${ccid}/acker`
+        const resp = await this.fetchWithOnlineCheck(host, requestPath, {
+            method: 'GET',
+            headers: {}
+        })
+
+        return (await resp.json()).content
+    }
+
+    async ack(target: string): Promise<any> {
+        if (!this.ccid || !this.privatekey) throw new Error()
+        const signObject: AckObject = {
+            type: 'ack',
+            from: this.ccid,
+            to: target,
+            signedAt: new Date().toISOString()
+        }
+
+        const signedObject = JSON.stringify(signObject)
+        const signature = Sign(this.privatekey, signedObject)
+
+        const request: AckRequest = {
+            signedObject,
+            signature
+        }
+
+        const requestOptions = {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(request)
+        }
+
+        const res = await this.fetchWithCredential(this.host, `${apiPath}/entities/ack`, requestOptions)
+        return await res.json()
+    }
+
+    async unack(target: string): Promise<any> {
+        if (!this.ccid || !this.privatekey) throw new Error()
+        const signObject: AckObject = {
+            type: 'unack',
+            from: this.ccid,
+            to: target,
+            signedAt: new Date().toISOString()
+        }
+
+        const signedObject = JSON.stringify(signObject)
+        const signature = Sign(this.privatekey, signedObject)
+
+        const request: AckRequest = {
+            signedObject,
+            signature
+        }
+
+        const requestOptions = {
+            method: 'DELETE',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(request)
+        }
+
+        const res = await this.fetchWithCredential(this.host, `${apiPath}/entities/ack`, requestOptions)
+        return await res.json()
     }
 
     async register(ccid: string, meta: any = {}, token?: string, captcha?: string): Promise<Response> {

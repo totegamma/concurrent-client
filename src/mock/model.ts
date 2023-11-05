@@ -32,6 +32,7 @@ export const MessageMock = (
 ): Message<SimpleNote> => {
     return {
         associations: [],
+        ownAssociations: [],
         author,
         cdate,
         id: '2fb3df10-b8a6-4723-8f74-428b00b58314',
