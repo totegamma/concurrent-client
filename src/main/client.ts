@@ -14,7 +14,6 @@ import {
     FQDN,
     MessageID,
     AssociationID,
-    CollectionItemID,
     StreamID,
     SignedObject,
     Certificate,
@@ -32,10 +31,15 @@ import { RerouteMessage } from "../schemas/rerouteMessage";
 import { RerouteAssociation } from "../schemas/rerouteAssociation";
 import { SimpleNote } from '../schemas/simpleNote'
 import { Commonstream } from '../schemas/commonstream'
-import { UserAck } from '../schemas/userAck'
-import { UserAckCollection } from '../schemas/userAckCollection'
 
 import { CommputeCCID, KeyPair, LoadKey } from "../util/crypto";
+
+const cacheLifetime = 5 * 60 * 1000
+
+interface Cache<T> {
+    data: T
+    expire: number
+}
 
 export class Client {
     api: Api
@@ -45,6 +49,8 @@ export class Client {
     socket?: Socket
 
     user: User | null = null
+
+    messageCache: Record<string, Cache<Promise<Message<any>>>> = {}
 
     constructor(privatekey: string, host: FQDN, client?: string) {
         const keyPair = LoadKey(privatekey)
@@ -81,7 +87,21 @@ export class Client {
     }
 
     async getMessage<T>(id: MessageID, authorID: CCID): Promise<Message<T> | null | undefined> {
-        return await Message.load(this, id, authorID)
+        const key = `${id}:${authorID}`
+        const cached = this.messageCache[key]
+
+        if (cached && cached.expire > Date.now()) {
+            return cached.data
+        }
+
+        const message = Message.load(this, id, authorID)
+
+        this.messageCache[key] = {
+            data: message as Promise<Message<any>>,
+            expire: Date.now() + cacheLifetime
+        }
+
+        return this.messageCache[key].data
     }
 
     async createCurrent(body: string, streams: StreamID[], emojis: Record<string, {imageURL?: string, animURL?: string}> = {}, profileOverride: ProfileOverride = {}): Promise<Error | null> {
