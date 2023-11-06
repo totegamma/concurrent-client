@@ -1,5 +1,6 @@
 import { Api } from './api';
 import { Association, Message, StreamEvent, StreamID } from '../model/core';
+import { Client } from './client';
 
 const WS = typeof window === 'undefined' ? require('ws') : window.WebSocket;
 
@@ -7,13 +8,15 @@ export class Socket {
 
     ws: any;
     api: Api;
+    client?: Client;
     subscriptions: Map<string, Set<(event: StreamEvent) => void>> = new Map()
 
     pingstate = false
     failcount = 0
 
-    constructor(api: Api) {
+    constructor(api: Api, client?: Client) {
         this.api = api;
+        this.client = client;
         this.connect()
         setInterval(() => {
             this.checkConnection()
@@ -42,6 +45,7 @@ export class Socket {
                     break
                 case 'message.delete':
                     this.api.invalidateMessage(event.body.id)
+                    this.client?.invalidateMessage(event.body.id)
                     break
                 case 'association.create': {
                     if (!event.body) return
@@ -51,6 +55,7 @@ export class Socket {
                     const association = dummy_association as Association<any>
                     this.api.cacheAssociation(association)
                     this.api.invalidateMessage(association.targetID)
+                    this.client?.invalidateMessage(association.targetID)
                     break
                 }
                 case 'association.delete': {
@@ -58,6 +63,7 @@ export class Socket {
                     const body = event.body as Association<any>
                     this.api.invalidateAssociation(body.id)
                     this.api.invalidateMessage(body.targetID)
+                    this.client?.invalidateMessage(body.targetID)
                     break
                 }
             }

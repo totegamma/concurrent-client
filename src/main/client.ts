@@ -87,8 +87,7 @@ export class Client {
     }
 
     async getMessage<T>(id: MessageID, authorID: CCID): Promise<Message<T> | null | undefined> {
-        const key = `${id}:${authorID}`
-        const cached = this.messageCache[key]
+        const cached = this.messageCache[id]
 
         if (cached && cached.expire > Date.now()) {
             return cached.data
@@ -96,12 +95,16 @@ export class Client {
 
         const message = Message.load(this, id, authorID)
 
-        this.messageCache[key] = {
+        this.messageCache[id] = {
             data: message as Promise<Message<any>>,
             expire: Date.now() + cacheLifetime
         }
 
-        return this.messageCache[key].data
+        return this.messageCache[id].data
+    }
+
+    invalidateMessage(id: MessageID): void {
+        delete this.messageCache[id]
     }
 
     async createCurrent(body: string, streams: StreamID[], emojis: Record<string, {imageURL?: string, animURL?: string}> = {}, profileOverride: ProfileOverride = {}): Promise<Error | null> {
@@ -186,7 +189,7 @@ export class Client {
 
     async newSocket(): Promise<Socket> {
         if (!this.socket) {
-            this.socket = new Socket(this.api)
+            this.socket = new Socket(this.api, this)
             await this.socket.waitOpen()
         }
         return this.socket!
