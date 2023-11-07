@@ -467,23 +467,25 @@ export class Message<T> implements CoreMessage<T> {
 
     async getReplies(): Promise<Association<ReplyAssociation>[]> {
         const coreass = await this.client.api.getMessageAssociationsByTarget(this.id, this.author, {schema: Schemas.replyAssociation})
-        return coreass.map((e) => new Association<ReplyAssociation>(this.client, e))
+        const ass: Array<Association<ReplyAssociation> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<ReplyAssociation>(this.client, e)))
+        return ass.filter(e => e) as Array<Association<ReplyAssociation>>
     }
 
     async getReroutes(): Promise<Association<RerouteAssociation>[]> {
         const coreass = await this.client.api.getMessageAssociationsByTarget(this.id, this.author, {schema: Schemas.rerouteAssociation})
-        return coreass.map((e) => new Association<RerouteAssociation>(this.client, e))
+        const ass: Array<Association<Like> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<RerouteAssociation>(this.client, e)))
+        return ass.filter(e => e) as Array<Association<RerouteAssociation>>
     }
 
     async getFavorites(): Promise<Association<Like>[]> {
         const coreass = await this.client.api.getMessageAssociationsByTarget(this.id, this.author, {schema: Schemas.like})
-        return coreass.map((e) => new Association<Like>(this.client, e))
+        const ass: Array<Association<Like> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<EmojiAssociation>(this.client, e)))
+        return ass.filter(e => e) as Array<Association<Like>>
     }
 
     async getReactions(imgUrl: string): Promise<Association<EmojiAssociation>[]> {
         const coreass = await this.client.api.getMessageAssociationsByTarget(this.id, this.author, {schema: Schemas.emojiAssociation, variant: imgUrl})
         const ass: Array<Association<EmojiAssociation> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<EmojiAssociation>(this.client, e)))
-
         return ass.filter(e => e) as Array<Association<EmojiAssociation>>
     }
 
