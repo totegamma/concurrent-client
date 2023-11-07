@@ -164,7 +164,7 @@ export class Api {
         return await this.readMessage(messageId, entity.domain || this.host)
     }
 
-    async getMessageAssociationsByTarget(target: string, targetAuthor: string, filter: {schema?: string, variant?: string} = {}): Promise<Association<any>[]> {
+    async getMessageAssociationsByTarget<T>(target: string, targetAuthor: string, filter: {schema?: string, variant?: string} = {}): Promise<Association<T>[]> {
         let requestPath = `/message/${target}/associations`
         if (filter.schema) requestPath += `?schema=${encodeURIComponent(filter.schema)}`
         if (filter.variant) requestPath += `&variant=${encodeURIComponent(filter.variant)}`

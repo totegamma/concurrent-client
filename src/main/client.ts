@@ -465,26 +465,40 @@ export class Message<T> implements CoreMessage<T> {
         return streams.filter((e) => e) as Stream<T>[]
     }
 
-    async getReplies(): Promise<Association<ReplyAssociation>[]> {
-        const coreass = await this.client.api.getMessageAssociationsByTarget(this.id, this.author, {schema: Schemas.replyAssociation})
+    async getReplyAssociations(): Promise<Association<ReplyAssociation>[]> {
+        const coreass = await this.client.api.getMessageAssociationsByTarget<ReplyAssociation>(this.id, this.author, {schema: Schemas.replyAssociation})
         const ass: Array<Association<ReplyAssociation> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<ReplyAssociation>(this.client, e)))
         return ass.filter(e => e) as Array<Association<ReplyAssociation>>
     }
 
-    async getReroutes(): Promise<Association<RerouteAssociation>[]> {
-        const coreass = await this.client.api.getMessageAssociationsByTarget(this.id, this.author, {schema: Schemas.rerouteAssociation})
+    async getRerouteAssociations(): Promise<Association<RerouteAssociation>[]> {
+        const coreass = await this.client.api.getMessageAssociationsByTarget<RerouteAssociation>(this.id, this.author, {schema: Schemas.rerouteAssociation})
         const ass: Array<Association<Like> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<RerouteAssociation>(this.client, e)))
         return ass.filter(e => e) as Array<Association<RerouteAssociation>>
     }
 
+    async getReplyMessages(): Promise<Message<ReplyMessage>[]> {
+        const associations = await this.client.api.getMessageAssociationsByTarget<ReplyAssociation>(this.id, this.author, {schema: Schemas.replyAssociation})
+        console.log('associations:', associations)
+        const messages = await Promise.all(associations.map((e) => this.client.getMessage<ReplyMessage>(e.payload.body.messageId, e.payload.body.messageAuthor)))
+        return messages.filter((e) => e) as Message<ReplyMessage>[]
+    }
+
+    async getRerouteMessages(): Promise<Message<RerouteMessage>[]> {
+        const associations = await this.client.api.getMessageAssociationsByTarget<RerouteAssociation>(this.id, this.author, {schema: Schemas.rerouteAssociation})
+        const messages = await Promise.all(associations.map((e) => this.client.getMessage<RerouteMessage>(e.payload.body.messageId, e.payload.body.messageAuthor)))
+        return messages.filter((e) => e) as Message<RerouteMessage>[]
+    }
+
+
     async getFavorites(): Promise<Association<Like>[]> {
-        const coreass = await this.client.api.getMessageAssociationsByTarget(this.id, this.author, {schema: Schemas.like})
-        const ass: Array<Association<Like> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<EmojiAssociation>(this.client, e)))
+        const coreass = await this.client.api.getMessageAssociationsByTarget<Like>(this.id, this.author, {schema: Schemas.like})
+        const ass: Array<Association<Like> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<Like>(this.client, e)))
         return ass.filter(e => e) as Array<Association<Like>>
     }
 
     async getReactions(imgUrl: string): Promise<Association<EmojiAssociation>[]> {
-        const coreass = await this.client.api.getMessageAssociationsByTarget(this.id, this.author, {schema: Schemas.emojiAssociation, variant: imgUrl})
+        const coreass = await this.client.api.getMessageAssociationsByTarget<EmojiAssociation>(this.id, this.author, {schema: Schemas.emojiAssociation, variant: imgUrl})
         const ass: Array<Association<EmojiAssociation> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<EmojiAssociation>(this.client, e)))
         return ass.filter(e => e) as Array<Association<EmojiAssociation>>
     }
