@@ -320,8 +320,9 @@ export class Association<T> implements CoreAssociation<T> {
         return association
     }
 
-    static async loadByBody<T>(client: Client, body: CoreAssociation<T>): Promise<Association<T> | null> {
+    static async loadByBody<T>(client: Client, body: CoreAssociation<T>, owner?: string): Promise<Association<T> | null> {
         const association = new Association<T>(client, body)
+        association.owner = owner
         association.authorUser = await client.getUser(association.author) ?? undefined
 
         return association
@@ -467,13 +468,13 @@ export class Message<T> implements CoreMessage<T> {
 
     async getReplyAssociations(): Promise<Association<ReplyAssociation>[]> {
         const coreass = await this.client.api.getMessageAssociationsByTarget<ReplyAssociation>(this.id, this.author, {schema: Schemas.replyAssociation})
-        const ass: Array<Association<ReplyAssociation> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<ReplyAssociation>(this.client, e)))
+        const ass: Array<Association<ReplyAssociation> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<ReplyAssociation>(this.client, e, this.author)))
         return ass.filter(e => e) as Array<Association<ReplyAssociation>>
     }
 
     async getRerouteAssociations(): Promise<Association<RerouteAssociation>[]> {
         const coreass = await this.client.api.getMessageAssociationsByTarget<RerouteAssociation>(this.id, this.author, {schema: Schemas.rerouteAssociation})
-        const ass: Array<Association<Like> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<RerouteAssociation>(this.client, e)))
+        const ass: Array<Association<Like> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<RerouteAssociation>(this.client, e, this.author)))
         return ass.filter(e => e) as Array<Association<RerouteAssociation>>
     }
 
@@ -493,7 +494,7 @@ export class Message<T> implements CoreMessage<T> {
 
     async getFavorites(): Promise<Association<Like>[]> {
         const coreass = await this.client.api.getMessageAssociationsByTarget<Like>(this.id, this.author, {schema: Schemas.like})
-        const ass: Array<Association<Like> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<Like>(this.client, e)))
+        const ass: Array<Association<Like> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<Like>(this.client, e, this.author)))
         return ass.filter(e => e) as Array<Association<Like>>
     }
 
@@ -503,7 +504,7 @@ export class Message<T> implements CoreMessage<T> {
             query = {schema: Schemas.emojiAssociation, variant: imgUrl}
         }
         const coreass = await this.client.api.getMessageAssociationsByTarget<EmojiAssociation>(this.id, this.author, query)
-        const ass: Array<Association<EmojiAssociation> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<EmojiAssociation>(this.client, e)))
+        const ass: Array<Association<EmojiAssociation> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<EmojiAssociation>(this.client, e, this.author)))
         return ass.filter(e => e) as Array<Association<EmojiAssociation>>
     }
 
