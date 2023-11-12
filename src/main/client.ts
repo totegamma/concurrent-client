@@ -497,8 +497,12 @@ export class Message<T> implements CoreMessage<T> {
         return ass.filter(e => e) as Array<Association<Like>>
     }
 
-    async getReactions(imgUrl: string): Promise<Association<EmojiAssociation>[]> {
-        const coreass = await this.client.api.getMessageAssociationsByTarget<EmojiAssociation>(this.id, this.author, {schema: Schemas.emojiAssociation, variant: imgUrl})
+    async getReactions(imgUrl?: string): Promise<Association<EmojiAssociation>[]> {
+        let query: any = {schema: Schemas.emojiAssociation}
+        if (imgUrl) {
+            query = {schema: Schemas.emojiAssociation, variant: imgUrl}
+        }
+        const coreass = await this.client.api.getMessageAssociationsByTarget<EmojiAssociation>(this.id, this.author, query)
         const ass: Array<Association<EmojiAssociation> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<EmojiAssociation>(this.client, e)))
         return ass.filter(e => e) as Array<Association<EmojiAssociation>>
     }
