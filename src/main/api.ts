@@ -126,35 +126,65 @@ export class Api {
     }
 
     async readMessage(id: string, host: string = ''): Promise<Message<any> | null | undefined> {
+
         if (this.messageCache[id]) {
             const value = await this.messageCache[id]
             if (value !== undefined) return value
         }
-        const messageHost = host || this.host
-        this.messageCache[id] = this.fetchWithCredential(messageHost, `${apiPath}/message/${id}`, {
+
+        const requestOptions = {
             method: 'GET',
             headers: {}
-        }).then(async (res) => {
-            if (!res.ok) {
-                if (res.status === 404) return null 
-                return await Promise.reject(new Error(`fetch failed: ${res.status} ${await res.text()}`))
-            }
-            const data = await res.json()
-            if (!data.payload) {
-                return undefined
-            }
-            const message = data
-            message.rawpayload = message.payload
-            message.payload = JSON.parse(message.payload)
+        }
 
-            message.ownAssociations = message.ownAssociations?.map((a: any) => {
-                a.rawpayload = a.payload
-                a.payload = JSON.parse(a.payload)
-                return a
-            }) ?? []
+        const messageHost = host || this.host
+        if ((this.token || this.privatekey) && this.privatekey !== "8c215bedacf0888470fd2567d03a813f4ae926be4a2cd587979809b629d70592") { // Well-known Guest key
+            this.messageCache[id] = this.fetchWithCredential(messageHost, `${apiPath}/message/${id}`, requestOptions).then(async (res) => {
 
-            return message
-        })
+                if (!res.ok) {
+                    if (res.status === 404) return null 
+                    return await Promise.reject(new Error(`fetch failed: ${res.status} ${await res.text()}`))
+                }
+                const data = await res.json()
+                if (!data.payload) {
+                    return undefined
+                }
+                const message = data
+                message.rawpayload = message.payload
+                message.payload = JSON.parse(message.payload)
+
+                message.ownAssociations = message.ownAssociations?.map((a: any) => {
+                    a.rawpayload = a.payload
+                    a.payload = JSON.parse(a.payload)
+                    return a
+                }) ?? []
+
+                return message
+            })
+        } else {
+            this.messageCache[id] = this.fetchWithOnlineCheck(messageHost, `/message/${id}`, requestOptions).then(async (res) => {
+
+                if (!res.ok) {
+                    if (res.status === 404) return null 
+                    return await Promise.reject(new Error(`fetch failed: ${res.status} ${await res.text()}`))
+                }
+                const data = await res.json()
+                if (!data.payload) {
+                    return undefined
+                }
+                const message = data
+                message.rawpayload = message.payload
+                message.payload = JSON.parse(message.payload)
+
+                message.ownAssociations = message.ownAssociations?.map((a: any) => {
+                    a.rawpayload = a.payload
+                    a.payload = JSON.parse(a.payload)
+                    return a
+                }) ?? []
+
+                return message
+            })
+        }
         return await this.messageCache[id]
     }
 
