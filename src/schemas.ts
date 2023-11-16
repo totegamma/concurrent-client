@@ -4,6 +4,7 @@ export const Schemas = {
     rerouteMessage:     'https://raw.githubusercontent.com/totegamma/concurrent-schemas/master/messages/reroute/0.0.1.json',
 
     like:               'https://raw.githubusercontent.com/totegamma/concurrent-schemas/master/associations/like/0.0.1.json',
+    mention:               'https://raw.githubusercontent.com/totegamma/concurrent-schemas/master/associations/mention/0.0.1.json',
     replyAssociation:   'https://raw.githubusercontent.com/totegamma/concurrent-schemas/master/associations/reply/0.0.1.json',
     rerouteAssociation: 'https://raw.githubusercontent.com/totegamma/concurrent-schemas/master/associations/reroute/0.0.1.json',
     emojiAssociation:   'https://raw.githubusercontent.com/totegamma/concurrent-schemas/master/associations/emoji/0.0.1.json',

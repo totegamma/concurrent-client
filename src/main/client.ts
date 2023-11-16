@@ -33,6 +33,7 @@ import { SimpleNote } from '../schemas/simpleNote'
 import { Commonstream } from '../schemas/commonstream'
 
 import { CommputeCCID, KeyPair, LoadKey } from "../util/crypto";
+import {CreateCurrentOptions} from "../model/others";
 
 const cacheLifetime = 5 * 60 * 1000
 
@@ -107,8 +108,19 @@ export class Client {
         delete this.messageCache[id]
     }
 
-    async createCurrent(body: string, streams: StreamID[], emojis: Record<string, {imageURL?: string, animURL?: string}> = {}, profileOverride: ProfileOverride = {}): Promise<Error | null> {
-        return await this.api.createMessage<SimpleNote>(Schemas.simpleNote, {body, emojis, profileOverride}, streams)
+    async createCurrent(body: string, streams: StreamID[], options: CreateCurrentOptions): Promise<Error | null> {
+        const newMessage = await this.api.createMessage<SimpleNote>(Schemas.simpleNote, {body, ...options}, streams)
+        if(options.mentions) {
+            const associationStream = []
+            for(const mention of options.mentions) {
+                const user = await this.getUser(mention)
+                if(user?.userstreams?.payload.body.associationStream) {
+                    associationStream.push(user.userstreams.payload.body.associationStream)
+                }
+            }
+            await this.api.createAssociation(Schemas.mention, {}, newMessage.id, this.ccid, 'messages', associationStream)
+        }
+        return newMessage
     }
 
     async setupUserstreams(): Promise<void> {
