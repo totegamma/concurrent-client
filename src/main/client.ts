@@ -114,11 +114,11 @@ export class Client {
             const associationStream = []
             for(const mention of options.mentions) {
                 const user = await this.getUser(mention)
-                if(user?.userstreams?.payload.body.associationStream) {
-                    associationStream.push(user.userstreams.payload.body.associationStream)
+                if(user?.userstreams?.payload.body.notificationStream) {
+                    associationStream.push(user.userstreams.payload.body.notificationStream)
                 }
             }
-            await this.api.createAssociation(Schemas.mention, {}, newMessage.id, this.ccid, 'messages', associationStream)
+            await this.api.createAssociation(Schemas.mention, {}, newMessage.content.id, this.ccid, 'messages', associationStream)
         }
         return newMessage
     }
