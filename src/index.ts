@@ -4,8 +4,10 @@ export * from "./main/timeline"
 export * from "./main/subscription"
 export * from "./main/api"
 export * from "./model/request"
+export * from "./model/others"
 export * from "./util/crypto"
 export * from "./util/misc"
+export * from "./mock/model"
 
 export * from "./schemas"
 export { Commonstream as CommonstreamSchema } from "./schemas/commonstream"
@@ -22,8 +24,6 @@ export { Userstreams as UserstreamsSchema } from "./schemas/userstreams"
 export { Utilitystream as UtilityStreamSchema } from "./schemas/utilitystream"
 export { UserAckCollection as UserAckCollectionSchema } from "./schemas/userAckCollection"
 export { UserAck as UserAckSchema } from "./schemas/userAck"
-
-export * from "./mock/model"
 
 export {
     CCID,
