@@ -108,17 +108,17 @@ export class Client {
         delete this.messageCache[id]
     }
 
-    async createCurrent(body: string, streams: StreamID[], options: CreateCurrentOptions): Promise<Error | null> {
+    async createCurrent(body: string, streams: StreamID[], options?: CreateCurrentOptions): Promise<Error | null> {
         const newMessage = await this.api.createMessage<SimpleNote>(Schemas.simpleNote, {body, ...options}, streams)
-        if(options.mentions) {
+        if(options?.mentions) {
             const associationStream = []
             for(const mention of options.mentions) {
                 const user = await this.getUser(mention)
-                if(user?.userstreams?.payload.body.associationStream) {
-                    associationStream.push(user.userstreams.payload.body.associationStream)
+                if(user?.userstreams?.payload.body.notificationStream) {
+                    associationStream.push(user.userstreams.payload.body.notificationStream)
                 }
             }
-            await this.api.createAssociation(Schemas.mention, {}, newMessage.id, this.ccid, 'messages', associationStream)
+            await this.api.createAssociation(Schemas.mention, {}, newMessage.content.id, this.ccid, 'messages', associationStream)
         }
         return newMessage
     }
