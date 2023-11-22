@@ -17,7 +17,6 @@ import {
     StreamID,
     SignedObject,
     Certificate,
-    ProfileOverride
 } from "../model/core";
 
 import { Schemas, Schema } from "../schemas";
@@ -34,6 +33,7 @@ import { Commonstream } from '../schemas/commonstream'
 
 import { CommputeCCID, KeyPair, LoadKey } from "../util/crypto";
 import {CreateCurrentOptions} from "../model/others";
+import { fetchWithTimeout } from '..';
 
 const cacheLifetime = 5 * 60 * 1000
 
@@ -42,12 +42,17 @@ interface Cache<T> {
     expire: number
 }
 
+interface Service {
+    path: string
+}
+
 export class Client {
     api: Api
     ccid: CCID
     host: FQDN
     keyPair: KeyPair;
     socket?: Socket
+    domainServices: Record<string, Service> = {}
 
     user: User | null = null
 
@@ -71,6 +76,10 @@ export class Client {
         const c = new Client(privatekey, host, client)
         const user = await c.getUser(c.ccid)
         if (!user) throw new Error('user not found')
+        c.domainServices = await fetchWithTimeout(host, '/services', {}).then((res) => res.json()).catch((e) => {
+            console.log('CLIENT::create::fetch::error', e)
+            return {}
+        })
         c.user = user
         return c
     }
