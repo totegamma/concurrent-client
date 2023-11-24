@@ -75,7 +75,6 @@ export class Client {
     static async create(privatekey: string, host: FQDN, client?: string): Promise<Client> {
         const c = new Client(privatekey, host, client)
         const user = await c.getUser(c.ccid)
-        if (!user) throw new Error('user not found')
         c.domainServices = await fetchWithTimeout(host, '/services', {}).then((res) => res.json()).catch((e) => {
             console.log('CLIENT::create::fetch::error', e)
             return {}
