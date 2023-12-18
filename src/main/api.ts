@@ -31,6 +31,7 @@ export class Api {
     ccid?: string
     privatekey?: string
     token?: string
+    passports: Record<string, string> = {}
 
     client: string
 
@@ -50,23 +51,33 @@ export class Api {
         console.log('oOoOoOoOoO API SERVICE CREATED OoOoOoOoOo')
     }
 
-    async getJWT(): Promise<string> {
+    async getPassport(remote: string): Promise<string> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
-        const requestJwt = IssueJWT(this.privatekey, {
-            sub: 'CONCURRENT_APICLAIM',
-            iss: this.ccid,
-            aud: this.host
-        })
-        const requestOptions = {
+        return await this.fetchWithCredential(this.host, `${apiPath}/auth/claim/${remote}`, {
             method: 'GET',
-            headers: { authorization: requestJwt }
-        }
-        return await fetchWithTimeout(this.host, `${apiPath}/auth/claim`, requestOptions)
+            headers: {}
+        })
             .then(async (res) => await res.json())
             .then((data) => {
-                this.token = data.jwt
-                return data.jwt
+                this.passports[remote] = data.content
+                return data.content
             })
+    }
+
+    generateApiToken(): string {
+
+        if (!this.ccid || !this.privatekey) throw new InvalidKeyError()
+
+        const token = IssueJWT(this.privatekey, {
+            aud: this.host,
+            iss: this.ccid,
+            sub: 'CC_API',
+            scp: '*;*;*'
+        })
+
+        this.token = token
+
+        return token
     }
 
     async fetchWithOnlineCheck(domain: string, path: string, init: RequestInit, timeoutMs?: number): Promise<Response> {
@@ -76,16 +87,27 @@ export class Api {
     }
 
     async fetchWithCredential(domain: string, path: string, init: RequestInit, timeoutMs?: number): Promise<Response> {
-        let jwt = this.token
-        if (!jwt || !checkJwtIsValid(jwt)) {
-            if (!this.privatekey) return Promise.reject(new JWTExpiredError())
-            jwt = await this.getJWT()
+
+        let credential = ''
+
+        if (domain === this.host) {
+            credential = this.token || ''
+            if (!credential || !checkJwtIsValid(credential)) {
+                if (!this.privatekey) return Promise.reject(new JWTExpiredError())
+                credential = this.generateApiToken()
+            }
+        } else {
+            credential = this.passports[domain]
+            if (!credential || !checkJwtIsValid(credential)) {
+                if (!this.privatekey) return Promise.reject(new JWTExpiredError())
+                credential = await this.getPassport(domain)
+            }
         }
         const requestInit = {
             ...init,
             headers: {
                 ...init.headers,
-                authorization: 'Bearer ' + this.token
+                authorization: 'Bearer ' + credential
             }
         }
         return await fetchWithTimeout(domain, path, requestInit, timeoutMs)

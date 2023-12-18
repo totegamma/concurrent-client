@@ -144,6 +144,8 @@ export interface JwtPayload {
     iat?: string // 発行時刻
     jti?: string // JWT ID
     tag?: string // comma separated list of tags
+    scp?: string // semicomma separated list of scopes
+    prn?: string // principal
 }
 
 export const IsValid256k1PrivateKey = (key: string): boolean => {
