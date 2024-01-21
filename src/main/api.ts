@@ -770,8 +770,8 @@ export class Api {
         return await res.json()
     }
 
-    async register(ccid: string, meta: any = {}, registration: string, signature: string, captcha?: string): Promise<Response> {
-        return await this.fetchWithCredential(this.host, `${apiPath}/entity`, {
+    async register(ccid: string, meta: any = {}, registration: string, signature: string, invitation?: string, captcha?: string): Promise<Response> {
+        return await fetchWithTimeout(this.host, `${apiPath}/entity`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -779,6 +779,7 @@ export class Api {
             body: JSON.stringify({
                 ccid: ccid,
                 meta: JSON.stringify(meta),
+                invitation,
                 registration,
                 signature,
                 captcha
