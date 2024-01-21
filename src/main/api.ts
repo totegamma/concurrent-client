@@ -35,6 +35,7 @@ export class Api {
 
     client: string
 
+    addressCache: Record<string, Promise<string> | null | undefined> = {}
     entityCache: Record<string, Promise<Entity> | null | undefined> = {}
     messageCache: Record<string, Promise<Message<any>> | null | undefined> = {}
     characterCache: Record<string, Promise<Character<any>> | null | undefined> = {}
@@ -111,6 +112,24 @@ export class Api {
             }
         }
         return await fetchWithTimeout(domain, path, requestInit, timeoutMs)
+    }
+
+    async resolveAddress(ccid: string): Promise<string | null | undefined> {
+        if (this.addressCache[ccid]) {
+            const value = await this.addressCache[ccid]
+            if (value !== undefined) return value
+        }
+        this.addressCache[ccid] = this.fetchWithOnlineCheck(this.host, `/address/${ccid}`, {
+            method: 'GET',
+            headers: {}
+        }).then(async (res) => {
+            const data = await res.json()
+            if (!data.content) {
+                return undefined
+            }
+            return data.content
+        })
+        return await this.addressCache[ccid]
     }
 
     // Message
@@ -211,9 +230,9 @@ export class Api {
     }
 
     async readMessageWithAuthor(messageId: string, author: string): Promise<Message<any> | null | undefined> {
-        const entity = await this.readEntity(author)
-        if (!entity) throw new Error()
-        return await this.readMessage(messageId, entity.domain || this.host)
+        const domain = await this.resolveAddress(author)
+        if (!domain) throw new Error('domain not found')
+        return await this.readMessage(messageId, domain || this.host)
     }
 
     async getMessageAssociationsByTarget<T>(target: string, targetAuthor: string, filter: {schema?: string, variant?: string} = {}): Promise<Association<T>[]> {
@@ -221,10 +240,10 @@ export class Api {
         if (filter.schema) requestPath += `?schema=${encodeURIComponent(filter.schema)}`
         if (filter.variant) requestPath += `&variant=${encodeURIComponent(filter.variant)}`
 
-        const entity = await this.readEntity(targetAuthor)
-        if (!entity) throw new Error()
+        const domain = await this.resolveAddress(targetAuthor)
+        if (!domain) throw new Error('domain not found')
 
-        const resp = await this.fetchWithOnlineCheck(entity.domain || this.host, requestPath, {
+        const resp = await this.fetchWithOnlineCheck(domain || this.host, requestPath, {
             method: 'GET',
             headers: {}
         })
@@ -243,12 +262,10 @@ export class Api {
         let requestPath = `/message/${target}/associationcounts`
         if (groupby.schema) requestPath += `?schema=${encodeURIComponent(groupby.schema)}`
 
-        const entity = await this.readEntity(targetAuthor)
-        if (!entity) {
-            throw new Error(`Entity ${targetAuthor} not found`)
-        }
+        const domain = await this.resolveAddress(targetAuthor)
+        if (!domain) throw new Error('domain not found')
 
-        const resp = await this.fetchWithOnlineCheck(entity.domain || this.host, requestPath, {
+        const resp = await this.fetchWithOnlineCheck(domain, requestPath, {
             method: 'GET',
             headers: {}
         })
@@ -289,8 +306,8 @@ export class Api {
         variant: string = ''
     ): Promise<any> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
-        const entity = await this.readEntity(targetAuthor)
-        const targetHost = entity?.domain || this.host
+        const targetHost = await this.resolveAddress(targetAuthor)
+        if (!targetHost) throw new Error('domain not found')
         const signObject: SignedObject<T> = {
             signer: this.ccid,
             type: 'Association',
@@ -329,8 +346,8 @@ export class Api {
         target: string,
         targetAuthor: CCID
     ): Promise<{ status: string; content: Association<any> }> {
-        const entity = await this.readEntity(targetAuthor)
-        const targetHost = entity?.domain || this.host
+        const targetHost = await this.resolveAddress(targetAuthor)
+        if (!targetHost) throw new Error('domain not found')
         const requestOptions = {
             method: 'DELETE',
         }
@@ -378,9 +395,9 @@ export class Api {
     }
 
     async readAssociationWithOwner(associationId: string, owner: string): Promise<Association<any> | null | undefined> {
-        const entity = await this.readEntity(owner)
-        if (!entity) throw new Error()
-        return await this.readAssociation(associationId, entity.domain)
+        const targetHost = await this.resolveAddress(owner)
+        if (!targetHost) throw new Error('domain not found')
+        return await this.readAssociation(associationId, targetHost)
     }
 
     // Character
@@ -424,11 +441,10 @@ export class Api {
             const value = await this.characterCache[author + schema]
             if (value !== undefined) return value
         }
-        const entity = await this.readEntity(author)
-        let characterHost = entity?.domain ?? this.host
-        if (!characterHost || characterHost === '') characterHost = this.host
+        const targetHost = await this.resolveAddress(author)
+        if (!targetHost) throw new Error('domain not found')
         this.characterCache[author + schema] = this.fetchWithOnlineCheck(
-            characterHost,
+            targetHost,
             `/characters?author=${author}&schema=${encodeURIComponent(schema)}`,
             {
                 method: 'GET',
@@ -676,7 +692,11 @@ export class Api {
             const value = await this.entityCache[ccid]
             if (value !== undefined) return value
         }
-        this.entityCache[ccid] = fetchWithTimeout(this.host, `${apiPath}/entity/${ccid}`, {
+
+        const targetHost = await this.resolveAddress(ccid)
+        if (!targetHost) throw new Error('domain not found')
+
+        this.entityCache[ccid] = fetchWithTimeout(targetHost, `${apiPath}/entity/${ccid}`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
@@ -690,9 +710,9 @@ export class Api {
     }
 
     async getAcking(ccid: string): Promise<Ack[]> {
-        const entity = await this.readEntity(ccid)
-        if (!entity) throw new Error()
-        const host = entity.domain || this.host
+        const host = await this.resolveAddress(ccid)
+        if (!host) throw new Error('domain not found')
+
         let requestPath = `/entity/${ccid}/acking`
         const resp = await this.fetchWithOnlineCheck(host, requestPath, {
             method: 'GET',
@@ -703,9 +723,9 @@ export class Api {
     }
 
     async getAcker(ccid: string): Promise<Ack[]> {
-        const entity = await this.readEntity(ccid)
-        if (!entity) throw new Error()
-        const host = entity.domain || this.host
+        const host = await this.resolveAddress(ccid)
+        if (!host) throw new Error('domain not found')
+
         let requestPath = `/entity/${ccid}/acker`
         const resp = await this.fetchWithOnlineCheck(host, requestPath, {
             method: 'GET',
