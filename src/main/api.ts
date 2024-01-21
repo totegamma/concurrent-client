@@ -53,7 +53,7 @@ export class Api {
 
     async getPassport(remote: string): Promise<string> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
-        return await this.fetchWithCredential(this.host, `${apiPath}/auth/claim/${remote}`, {
+        return await this.fetchWithCredential(this.host, `${apiPath}/auth/passport/${remote}`, {
             method: 'GET',
             headers: {}
         })
@@ -770,7 +770,7 @@ export class Api {
         return await res.json()
     }
 
-    async register(ccid: string, meta: any = {}, token?: string, captcha?: string): Promise<Response> {
+    async register(ccid: string, meta: any = {}, registration: string, signature: string, captcha?: string): Promise<Response> {
         return await this.fetchWithCredential(this.host, `${apiPath}/entity`, {
             method: 'POST',
             headers: {
@@ -779,7 +779,8 @@ export class Api {
             body: JSON.stringify({
                 ccid: ccid,
                 meta: JSON.stringify(meta),
-                token,
+                registration,
+                signature,
                 captcha
             })
         })
