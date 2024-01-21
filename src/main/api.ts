@@ -684,7 +684,6 @@ export class Api {
             if (!entity || entity.ccid === '') {
                 return undefined
             }
-            entity.certs = JSON.parse(entity.certs)
             return entity
         })
         return await this.entityCache[ccid]
@@ -802,7 +801,6 @@ export class Api {
 
     async updateEntity(entity: Entity): Promise<Response> {
         const body: any = entity
-        body.certs = JSON.stringify(entity.certs)
         return await this.fetchWithCredential(this.host, `${apiPath}/entity/${entity.ccid}`, {
             method: 'PUT',
             headers: {
@@ -963,8 +961,9 @@ export class Api {
     }
 
     // Admin
-    async sayHello (remote: string): Promise<string> {
-        return await this.fetchWithCredential(this.host, `${apiPath}/admin/sayhello/${remote}`, {
+    async addDomain(remote: string): Promise<string> {
+        return await this.fetchWithCredential(this.host, `${apiPath}/domain/${remote}`, {
+            method: 'PUT',
         }).then(async (data) => {
             return await data.json()
         })
