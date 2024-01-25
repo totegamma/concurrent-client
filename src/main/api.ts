@@ -82,7 +82,7 @@ export class Api {
     }
 
     async fetchWithOnlineCheck(domain: string, path: string, init: RequestInit, timeoutMs?: number): Promise<Response> {
-        const host = await this.readDomain(domain)
+        const host = await this.getDomain(domain)
         if (!host) return Promise.reject(new DomainOfflineError(domain))
         return await fetchWithTimeout(domain, `${apiPath}${path}`, init, timeoutMs)
     }
@@ -166,7 +166,7 @@ export class Api {
         return await res.json()
     }
 
-    async readMessage(id: string, host: string = ''): Promise<Message<any> | null | undefined> {
+    async getMessage(id: string, host: string = ''): Promise<Message<any> | null | undefined> {
 
         if (this.messageCache[id]) {
             const value = await this.messageCache[id]
@@ -187,10 +187,10 @@ export class Api {
                     return await Promise.reject(new Error(`fetch failed: ${res.status} ${await res.text()}`))
                 }
                 const data = await res.json()
-                if (!data.payload) {
+                if (data.status != 'ok') {
                     return undefined
                 }
-                const message = data
+                const message = data.content
                 message.rawpayload = message.payload
                 message.payload = JSON.parse(message.payload)
 
@@ -210,10 +210,10 @@ export class Api {
                     return await Promise.reject(new Error(`fetch failed: ${res.status} ${await res.text()}`))
                 }
                 const data = await res.json()
-                if (!data.payload) {
+                if (data.status != 'ok') {
                     return undefined
                 }
-                const message = data
+                const message = data.content
                 message.rawpayload = message.payload
                 message.payload = JSON.parse(message.payload)
 
@@ -229,10 +229,10 @@ export class Api {
         return await this.messageCache[id]
     }
 
-    async readMessageWithAuthor(messageId: string, author: string): Promise<Message<any> | null | undefined> {
+    async getMessageWithAuthor(messageId: string, author: string): Promise<Message<any> | null | undefined> {
         const domain = await this.resolveAddress(author)
         if (!domain) throw new Error('domain not found')
-        return await this.readMessage(messageId, domain || this.host)
+        return await this.getMessage(messageId, domain || this.host)
     }
 
     async getMessageAssociationsByTarget<T>(target: string, targetAuthor: string, filter: {schema?: string, variant?: string} = {}): Promise<Association<T>[]> {
@@ -367,7 +367,7 @@ export class Api {
         delete this.associationCache[target]
     }
 
-    async readAssociation(id: string, host: string = ''): Promise<Association<any> | null | undefined> {
+    async getAssociation(id: string, host: string = ''): Promise<Association<any> | null | undefined> {
         if (this.associationCache[id]) {
             const value = await this.associationCache[id]
             if (value !== undefined) return value
@@ -382,10 +382,10 @@ export class Api {
                 return await Promise.reject(new Error(`fetch failed: ${res.status} ${await res.text()}`))
             }
             const data = await res.json()
-            if (!data.association) {
+            if (!data.content) {
                 return undefined
             }
-            const association = data.association
+            const association = data.content
             association.rawpayload = association.payload
             association.payload = JSON.parse(association.payload)
             this.associationCache[id] = association
@@ -394,10 +394,10 @@ export class Api {
         return await this.associationCache[id]
     }
 
-    async readAssociationWithOwner(associationId: string, owner: string): Promise<Association<any> | null | undefined> {
+    async getAssociationWithOwner(associationId: string, owner: string): Promise<Association<any> | null | undefined> {
         const targetHost = await this.resolveAddress(owner)
         if (!targetHost) throw new Error('domain not found')
-        return await this.readAssociation(associationId, targetHost)
+        return await this.getAssociation(associationId, targetHost)
     }
 
     // Character
@@ -436,7 +436,7 @@ export class Api {
             })
     }
 
-    async readCharacter<T>(author: string, schema: string): Promise<Character<T> | null | undefined> {
+    async getCharacter<T>(author: string, schema: string): Promise<Character<T> | null | undefined> {
         if (this.characterCache[author + schema]) {
             const value = await this.characterCache[author + schema]
             if (value !== undefined) return value
@@ -452,10 +452,10 @@ export class Api {
             }
         ).then(async (res) => {
             const data = await res.json()
-            if (data.characters.length === 0) {
+            if (data.content.length === 0) {
                 return null
             }
-            const character = data.characters[0]
+            const character = data.content[0]
             character.payload = JSON.parse(character.payload)
             this.characterCache[author + schema] = character
             return character
@@ -498,6 +498,7 @@ export class Api {
     }
 
     async updateStream(stream: Stream<any>): Promise<Stream<any>> {
+        stream.payload = JSON.stringify(stream.payload)
         return await this.fetchWithCredential(this.host, `${apiPath}/stream/${stream.id}`, {
             method: 'PUT',
             headers: { 'content-type': 'application/json' },
@@ -532,8 +533,8 @@ export class Api {
     async getStreamListBySchema<T>(schema: string, remote?: FQDN): Promise<Array<Stream<T>>> {
         return await fetchWithTimeout(remote ?? this.host, `${apiPath}/streams?schema=${schema}`, {}).then(
             async (data) => {
-                return await data.json().then((arr) => {
-                    return arr.map((e: any) => {
+                return await data.json().then((data) => {
+                    return data.content.map((e: any) => {
                         return { ...e, payload: JSON.parse(e.payload) }
                     })
                 })
@@ -541,7 +542,7 @@ export class Api {
         )
     }
 
-    async readStream(id: string): Promise<Stream<any> | null | undefined> {
+    async getStream(id: string): Promise<Stream<any> | null | undefined> {
         if (this.streamCache[id]) {
             const value = await this.streamCache[id]
             if (value !== undefined) return value
@@ -556,7 +557,7 @@ export class Api {
                 if (res.status === 404) return null
                 return await Promise.reject(new Error(`fetch failed: ${res.status} ${await res.text()}`))
             }
-            const data = await res.json()
+            const data = (await res.json()).content
             if (!data.payload) {
                 return undefined
             }
@@ -569,7 +570,7 @@ export class Api {
         return await this.streamCache[id]
     }
 
-    async readStreamRecent(streams: string[]): Promise<StreamItem[]> {
+    async getStreamRecent(streams: string[]): Promise<StreamItem[]> {
 
         const requestOptions = {
             method: 'GET',
@@ -585,7 +586,7 @@ export class Api {
                 requestOptions
             ).then(async (res) => {
                 const data = await res.json()
-                const formed = data.map((e: any) => {
+                const formed = data.content.map((e: any) => {
                     e.cdate = new Date(e.cdate)
                     return e
                 })
@@ -599,7 +600,7 @@ export class Api {
         return result
     }
 
-    async readStreamRanged(streams: string[], param: {until?: Date, since?: Date}): Promise<StreamItem[]> {
+    async getStreamRanged(streams: string[], param: {until?: Date, since?: Date}): Promise<StreamItem[]> {
 
         console.log('readStreamRanged', streams, param)
 
@@ -619,7 +620,7 @@ export class Api {
                 requestOptions
             ).then(async (res) => {
                 const data = await res.json()
-                const formed = data.map((e: any) => {
+                const formed = data.content.map((e: any) => {
                     e.cdate = new Date(e.cdate)
                     return e
                 })
@@ -634,7 +635,7 @@ export class Api {
     }
 
     // Domain
-    async readDomain(remote?: string): Promise<Domain | null | undefined> {
+    async getDomain(remote?: string): Promise<Domain | null | undefined> {
         const fqdn = remote || this.host
         if (!fqdn) throw new Error(`invalid remote: ${fqdn}`)
         if (this.domainCache[fqdn]) {
@@ -649,7 +650,7 @@ export class Api {
             if (!res.ok) {
                 return null
             }
-            const data = await res.json()
+            const data = (await res.json()).content
             if (!data.ccid) {
                 return null
             }
@@ -672,12 +673,12 @@ export class Api {
 
     async getDomains(remote?: string): Promise<Domain[]> {
         return await fetchWithTimeout(remote ?? this.host, `${apiPath}/domains`, {}).then(async (data) => {
-            return await data.json()
+            return (await data.json()).content
         })
     }
 
     async updateDomain(domain: Domain): Promise<Response> {
-        return await this.fetchWithCredential(this.host, `${apiPath}/domain`, {
+        return await this.fetchWithCredential(this.host, `${apiPath}/domain/{domain.fqdn}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
@@ -687,7 +688,7 @@ export class Api {
     }
 
     // Entity
-    async readEntity(ccid: CCID): Promise<Entity | null | undefined> {
+    async getEntity(ccid: CCID): Promise<Entity | null | undefined> {
         if (this.entityCache[ccid]) {
             const value = await this.entityCache[ccid]
             if (value !== undefined) return value
@@ -700,7 +701,7 @@ export class Api {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
-            const entity = await res.json()
+            const entity = (await res.json()).content
             if (!entity || entity.ccid === '') {
                 return undefined
             }
@@ -780,7 +781,7 @@ export class Api {
         }
 
         const requestOptions = {
-            method: 'DELETE',
+            method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify(request)
         }
@@ -839,7 +840,7 @@ export class Api {
 
     async getEntities(): Promise<Entity[]> {
         return await fetchWithTimeout(this.host, `${apiPath}/entities`, {}).then(async (data) => {
-            return await data.json()
+            return (await data.json()).content
         })
     }
 
@@ -848,7 +849,7 @@ export class Api {
     }
 
     // Collection
-    async readCollection<T>(id: CollectionID): Promise<Collection<T> | null | undefined> {
+    async getCollection<T>(id: CollectionID): Promise<Collection<T> | null | undefined> {
         const key = id.split('@')[0]
         const domain = id.split('@')[1] ?? this.host
         return await this.fetchWithCredential(domain, `${apiPath}/collection/${key}`, {
@@ -959,7 +960,7 @@ export class Api {
     }
 
     // KV
-    async readKV(key: string): Promise<string | null | undefined> {
+    async getKV(key: string): Promise<string | null | undefined> {
         return await this.fetchWithCredential(this.host, `${apiPath}/kv/${key}`, {
             method: 'GET',
             headers: {}
@@ -983,7 +984,7 @@ export class Api {
     // Admin
     async addDomain(remote: string): Promise<string> {
         return await this.fetchWithCredential(this.host, `${apiPath}/domain/${remote}`, {
-            method: 'PUT',
+            method: 'POST',
         }).then(async (data) => {
             return await data.json()
         })

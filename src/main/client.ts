@@ -132,7 +132,7 @@ export class Client {
     }
 
     async setupUserstreams(): Promise<void> {
-        const userstreams: CoreCharacter<Userstreams> | null | undefined = await this.api.readCharacter(this.ccid, Schemas.userstreams)
+        const userstreams: CoreCharacter<Userstreams> | null | undefined = await this.api.getCharacter(this.ccid, Schemas.userstreams)
         const id = userstreams?.id
         let homeStream = userstreams?.payload.body.homeStream
         if (!homeStream) {
@@ -258,14 +258,14 @@ export class User implements CoreEntity {
     }
 
     static async load(client: Client, id: CCID): Promise<User | null> {
-        const entity = await client.api.readEntity(id).catch((e) => {
+        const entity = await client.api.getEntity(id).catch((e) => {
             console.log('CLIENT::getUser::readEntity::error', e)
             return null
         })
         if (!entity) return null
 
-        const profile: CoreCharacter<Profile> | undefined = await client.api.readCharacter<Profile>(id, Schemas.profile) ?? undefined
-        const userstreams: CoreCharacter<Userstreams> | undefined = await client.api.readCharacter<Userstreams>(id, Schemas.userstreams) ?? undefined
+        const profile: CoreCharacter<Profile> | undefined = await client.api.getCharacter<Profile>(id, Schemas.profile) ?? undefined
+        const userstreams: CoreCharacter<Userstreams> | undefined = await client.api.getCharacter<Userstreams>(id, Schemas.userstreams) ?? undefined
 
         return new User(client, entity, profile, userstreams)
     }
@@ -326,7 +326,7 @@ export class Association<T> implements CoreAssociation<T> {
     }
 
     static async load<T>(client: Client, id: AssociationID, owner: CCID): Promise<Association<T> | null> {
-        const coreAss = await client.api.readAssociationWithOwner(id, owner).catch((e) => {
+        const coreAss = await client.api.getAssociationWithOwner(id, owner).catch((e) => {
             console.log('CLIENT::getAssociation::readAssociationWithOwner::error', e)
             return null
         })
@@ -399,7 +399,7 @@ export class Stream<T> implements CoreStream<T> {
     }
 
     static async load<T>(client: Client, id: StreamID): Promise<Stream<T> | null> {
-        const stream = await client.api.readStream(id).catch((e) => {
+        const stream = await client.api.getStream(id).catch((e) => {
             console.log('CLIENT::getStream::readStream::error', e)
             return null
         })
@@ -449,7 +449,7 @@ export class Message<T> implements CoreMessage<T> {
     }
 
     static async load<T>(client: Client, id: MessageID, authorID: CCID): Promise<Message<T> | null> {
-        const coreMsg = await client.api.readMessageWithAuthor(id, authorID).catch((e) => {
+        const coreMsg = await client.api.getMessageWithAuthor(id, authorID).catch((e) => {
             console.log('CLIENT::getMessage::readMessageWithAuthor::error', e)
             return null
         })

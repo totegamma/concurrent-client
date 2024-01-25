@@ -30,28 +30,28 @@ export interface Entity {
 }
 
 export interface Association<T> {
-    author: CCID
-    cdate: string
     id: AssociationID
+    author: CCID
+    schema: Schema
     payload: SignedObject<T>
     rawpayload: string
-    schema: Schema
     signature: string
     targetID: MessageID
     targetType: 'messages' | 'characters'
+    cdate: string
 }
 
 export interface Message<T> {
-    associations: Array<Association<any>>
-    ownAssociations: Array<Association<any>>
-    author: CCID
-    cdate: string
     id: MessageID
+    author: CCID
+    schema: Schema
     payload: SignedObject<T>
     rawpayload: string
-    schema: Schema
     signature: string
     streams: StreamID[]
+    associations: Array<Association<any>>
+    ownAssociations: Array<Association<any>>
+    cdate: string
 }
 
 export interface Character<T> {

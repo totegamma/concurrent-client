@@ -52,7 +52,7 @@ export class Timeline {
 
         console.log('listen!', streams)
 
-        await this.api.readStreamRecent(streams).then((items: StreamItem[]) => {
+        await this.api.getStreamRecent(streams).then((items: StreamItem[]) => {
             this.body = items;
             if (items.length < 16) {
                 hasMore = false;
@@ -67,7 +67,7 @@ export class Timeline {
 
     async readMore(): Promise<boolean> {
         const last = this.body[this.body.length - 1];
-        const items = await this.api.readStreamRanged(this.streams, {until: last.cdate});
+        const items = await this.api.getStreamRanged(this.streams, {until: last.cdate});
         const newdata = items.filter(item => !this.body.find(i => i.objectID === item.objectID));
         if (newdata.length === 0) return false
         this.body = this.body.concat(newdata);
@@ -77,7 +77,7 @@ export class Timeline {
 
     async reload(): Promise<boolean> {
         let hasMore = true;
-        const items = await this.api.readStreamRecent(this.streams);
+        const items = await this.api.getStreamRecent(this.streams);
         this.body = items;
         if (items.length < 16) {
             hasMore = false;
