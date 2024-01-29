@@ -27,6 +27,8 @@ export interface Entity {
     cdate: string
     score: number
     certs: Certificate[]
+    payload: string
+    signature: string
 }
 
 export interface Association<T> {

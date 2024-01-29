@@ -807,6 +807,20 @@ export class Api {
         })
     }
 
+    async updateRegistration(ccid: string, registration: string, signature: string): Promise<Response> {
+        return await this.fetchWithCredential(this.host, `${apiPath}/tmp/entity/${ccid}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                ccid: ccid,
+                registration,
+                signature
+            })
+        })
+    }
+
     async createEntity(ccid: string, meta: any = {}): Promise<Response> {
         return await this.fetchWithCredential(this.host, `${apiPath}/admin/entity`, {
             method: 'POST',

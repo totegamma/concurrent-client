@@ -31,7 +31,7 @@ import { RerouteAssociation } from "../schemas/rerouteAssociation";
 import { SimpleNote } from '../schemas/simpleNote'
 import { Commonstream } from '../schemas/commonstream'
 
-import { CommputeCCID, KeyPair, LoadKey } from "../util/crypto";
+import { CommputeCCID, KeyPair, LoadKey, Sign } from "../util/crypto";
 import {CreateCurrentOptions} from "../model/others";
 import { fetchWithTimeout } from '..';
 
@@ -74,7 +74,46 @@ export class Client {
 
     static async create(privatekey: string, host: FQDN, client?: string): Promise<Client> {
         const c = new Client(privatekey, host, client)
-        const user = await c.getUser(c.ccid)
+        const user = await c.getUser(c.ccid).catch((e) => {
+            console.log('CLIENT::create::getUser::error', e)
+            return null
+        })
+
+        let sigPayload = null
+
+        try {
+            sigPayload = JSON.parse(user?.payload ?? 'null')
+        } catch (e) {
+            console.log('CLIENT::create::getUser::error', e)
+        }
+
+        console.log('payload', user?.payload)
+        console.log('signature', user?.signature)
+
+
+        if (!sigPayload || !user?.signature) {
+            console.log('CLIENT::create::getUser::needsUpdateRegistration')
+            const signObject = {
+                signer: c.ccid,
+                type: 'Entity',
+                body: {
+                    domain:host 
+                },
+                signedAt: new Date().toISOString()
+            }
+
+            const signedObject = JSON.stringify(signObject)
+            const signature = Sign(privatekey, signedObject)
+
+            await c.api.updateRegistration(c.ccid, signedObject, signature).catch((e) => {
+                console.log('CLIENT::create::updateRegistration::error', e)
+                return null
+            })
+            console.log('CLIENT::create::updateRegistration::success')
+        } else {
+            console.log('CLIENT::create::AccountStatusOK')
+        }
+
         c.domainServices = await fetchWithTimeout(host, '/services', {}).then((res) => res.json()).catch((e) => {
             console.log('CLIENT::create::fetch::error', e)
             return {}
@@ -237,11 +276,14 @@ export class User implements CoreEntity {
     cdate: string
     score: number
     certs: Certificate[]
+    payload: string
+    signature: string
 
     profile?: CoreCharacter<Profile>
     userstreams?: CoreCharacter<Userstreams>
 
     constructor(client: Client,
+                domain: FQDN,
                 data: CoreEntity,
                 profile?: CoreCharacter<Profile>,
                 userstreams?: CoreCharacter<Userstreams>) {
@@ -249,15 +291,22 @@ export class User implements CoreEntity {
         this.client = client
         this.ccid = data.ccid
         this.tag = data.tag
-        this.domain = data.domain
+        this.domain = domain
         this.cdate = data.cdate
         this.score = data.score
         this.certs = data.certs
         this.profile = profile
+        this.payload= data.payload
+        this.signature = data.signature
         this.userstreams = userstreams
     }
 
     static async load(client: Client, id: CCID): Promise<User | null> {
+        const domain = await client.api.resolveAddress(id).catch((e) => {
+            console.log('CLIENT::getUser::resolveAddress::error', e)
+            return null
+        })
+        if (!domain) return null
         const entity = await client.api.getEntity(id).catch((e) => {
             console.log('CLIENT::getUser::readEntity::error', e)
             return null
@@ -267,7 +316,7 @@ export class User implements CoreEntity {
         const profile: CoreCharacter<Profile> | undefined = await client.api.getCharacter<Profile>(id, Schemas.profile) ?? undefined
         const userstreams: CoreCharacter<Userstreams> | undefined = await client.api.getCharacter<Userstreams>(id, Schemas.userstreams) ?? undefined
 
-        return new User(client, entity, profile, userstreams)
+        return new User(client, domain, entity, profile, userstreams)
     }
 
     async getAcking(): Promise<User[]> {
