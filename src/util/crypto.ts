@@ -1,6 +1,34 @@
 import { ec as Ec } from 'elliptic'
 import { v4 as uuidv4 } from 'uuid'
 import { computeAddress, keccak256, recoverAddress } from 'ethers'
+import { Mnemonic, randomBytes, HDNodeWallet } from 'ethers'
+import { LangJa } from './lang-ja'
+
+export interface Identity {
+    mnemonic_ja: string
+    mnemonic_en: string
+    privateKey: string
+    publicKey: string
+    CCID: string
+}
+
+export const generateIdentity = (): Identity => {
+    const entrophy = randomBytes(16)
+    const mnemonicJa = Mnemonic.fromEntropy(entrophy, null, LangJa.wordlist())
+    const mnemonicEn = Mnemonic.fromEntropy(entrophy, null)
+    const wallet = HDNodeWallet.fromPhrase(mnemonicEn.phrase)
+    const CCID = 'CC' + wallet.address.slice(2)
+    const privateKey = wallet.privateKey.slice(2)
+    const publicKey = wallet.publicKey.slice(2)
+
+    return {
+        mnemonic_ja: mnemonicJa.phrase.normalize().replaceAll('　', ' '),
+        mnemonic_en: mnemonicEn.phrase,
+        privateKey,
+        publicKey,
+        CCID
+    }
+}
 
 export interface KeyPair {
     privatekey: string
