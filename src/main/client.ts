@@ -90,8 +90,10 @@ export class Client {
         console.log('payload', user?.payload)
         console.log('signature', user?.signature)
 
+        let isPayloadOK = sigPayload !== null && sigPayload.hasKey('signedAt')
+        let isSignatureOK = user?.signature && user?.signature.length > 0 && user?.signature[0] !== ' '
 
-        if (!sigPayload || !user?.signature) {
+        if (!isPayloadOK || !isSignatureOK) {
             console.log('CLIENT::create::getUser::needsUpdateRegistration')
             const signObject = {
                 signer: c.ccid,
