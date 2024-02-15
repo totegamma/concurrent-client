@@ -90,7 +90,7 @@ export class Client {
         console.log('payload', user?.payload)
         console.log('signature', user?.signature)
 
-        let isPayloadOK = sigPayload !== null && sigPayload.hasKey('signedAt')
+        let isPayloadOK = sigPayload !== null && 'signedAt' in sigPayload
         let isSignatureOK = user?.signature && user?.signature.length > 0 && user?.signature[0] !== ' '
 
         if (!isPayloadOK || !isSignatureOK) {
