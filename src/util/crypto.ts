@@ -57,11 +57,52 @@ export const LoadKey = (privateKey: string): KeyPair | null => {
     }
 }
 
-export const CommputeCCID = (publickey: string): string => {
+export interface SubKey {
+    keypair: KeyPair
+    domain: string
+    ccid: string
+    ckid: string
+}
+
+export const LoadSubKey = (secret: string): SubKey | null => {
+    try  {
+        // format: concurrent-subkey <privatekey> <ccid>@<domain>
+        const reg = /concurrent-subkey\s+([0-9a-f]{64})\s+([^@]+)@([^\s]+)/
+        const match = secret.match(reg)
+        if (!match) return null
+        const privatekey = match[1]
+        const ccid = match[2]
+        const domain = match[3]
+
+        const keypair = LoadKey(privatekey)
+        if (!keypair) return null
+
+        const ckid = ComputeCKID(keypair.publickey)
+
+        return {
+            keypair,
+            domain,
+            ccid,
+            ckid
+        }
+
+    } catch (error) {
+        return null
+    }
+}
+
+export const ComputeCCID = (publickey: string): string => {
     const ethAddress = computeAddress('0x' + publickey)
     const ccid = 'CC' + ethAddress.slice(2)
     return ccid
 }
+
+export const ComputeCKID = (publickey: string): string => {
+    const ethAddress = computeAddress('0x' + publickey)
+    const ccid = 'CK' + ethAddress.slice(2)
+    return ccid
+}
+
 
 export const Sign = (privatekey: string, payload: string): string => {
     const ellipsis = new Ec('secp256k1')

@@ -12,12 +12,34 @@ export type CollectionItemID = string
 export interface SignedObject<T> {
     signer: CCID
     type: string
-    schema: Schema
+    schema?: Schema
     body: T
-    meta: any
+    meta?: any
     signedAt: string
     target?: string
     variant?: string
+    keyID?: string
+}
+
+export interface keyEnact {
+    CKID: string
+    root: string
+    parent: string
+}
+
+export interface keyRevoke {
+    CKID: string
+}
+
+export interface Key {
+    id: string
+    root: string
+    parent: string
+    enactPayload: string
+    enactSignature: string
+    revokePayload?: string
+    revokeSignature?: string
+    cdate: string
 }
 
 export interface Entity {

@@ -31,7 +31,7 @@ import { RerouteAssociation } from "../schemas/rerouteAssociation";
 import { SimpleNote } from '../schemas/simpleNote'
 import { Commonstream } from '../schemas/commonstream'
 
-import { CommputeCCID, KeyPair, LoadKey, Sign } from "../util/crypto";
+import { ComputeCCID, KeyPair, LoadKey, LoadSubKey, Sign } from "../util/crypto";
 import {CreateCurrentOptions} from "../model/others";
 import { fetchWithTimeout } from '..';
 
@@ -49,6 +49,7 @@ interface Service {
 export class Client {
     api: Api
     ccid: CCID
+    ckid?: string
     host: FQDN
     keyPair: KeyPair;
     socket?: Socket
@@ -58,37 +59,59 @@ export class Client {
 
     messageCache: Record<string, Cache<Promise<Message<any>>>> = {}
 
-    constructor(privatekey: string, host: FQDN, client?: string) {
-        const keyPair = LoadKey(privatekey)
-        if (!keyPair) throw new Error('invalid private key')
+    constructor(keyPair: KeyPair, ccid: string, host: FQDN, options?: {ckid?: string, client?: string}) {
         this.keyPair = keyPair
-        this.ccid = CommputeCCID(keyPair.publickey)
+        this.ccid = ccid
         this.host = host
+        this.ckid = options?.ckid
         this.api = new Api({
             host,
             ccid: this.ccid,
-            privatekey,
-            client
+            privatekey: this.keyPair.privatekey,
+            client: options?.client,
+            ckid: options?.ckid
         })
     }
 
+    static async createFromSubkey(subkey: string, client?: string): Promise<Client> {
+        const key = LoadSubKey(subkey)
+        if (!key) throw new Error('invalid subkey')
+        const c = new Client(key.keypair, key.ccid, key.domain, {ckid: key.ckid, client})
+        c.user = await c.getUser(c.ccid).catch((e) => {
+            console.log('CLIENT::create::getUser::error', e)
+            return null
+        })
+        c.domainServices = await fetchWithTimeout(key.domain, '/services', {}).then((res) => res.json()).catch((e) => {
+            console.log('CLIENT::create::fetch::error', e)
+            return {}
+        })
+
+        return c
+    }
+
     static async create(privatekey: string, host: FQDN, client?: string): Promise<Client> {
-        const c = new Client(privatekey, host, client)
+        const keyPair = LoadKey(privatekey)
+        if (!keyPair) throw new Error('invalid private key')
+        const ccid = ComputeCCID(keyPair.publickey)
+        const c = new Client(keyPair, ccid, host, {client})
         const user = await c.getUser(c.ccid).catch((e) => {
             console.log('CLIENT::create::getUser::error', e)
             return null
         })
+        c.user = user
 
+        c.domainServices = await fetchWithTimeout(host, '/services', {}).then((res) => res.json()).catch((e) => {
+            console.log('CLIENT::create::fetch::error', e)
+            return {}
+        })
+
+        // fix registration
         let sigPayload = null
-
         try {
             sigPayload = JSON.parse(user?.payload ?? 'null')
         } catch (e) {
             console.log('CLIENT::create::getUser::error', e)
         }
-
-        console.log('payload', user?.payload)
-        console.log('signature', user?.signature)
 
         let isPayloadOK = sigPayload !== null && 'signedAt' in sigPayload
         let isSignatureOK = user?.signature && user?.signature.length > 0 && user?.signature[0] !== ' '
@@ -112,15 +135,9 @@ export class Client {
                 return null
             })
             console.log('CLIENT::create::updateRegistration::success')
-        } else {
-            console.log('CLIENT::create::AccountStatusOK')
         }
+        // -------
 
-        c.domainServices = await fetchWithTimeout(host, '/services', {}).then((res) => res.json()).catch((e) => {
-            console.log('CLIENT::create::fetch::error', e)
-            return {}
-        })
-        c.user = user
         return c
     }
 

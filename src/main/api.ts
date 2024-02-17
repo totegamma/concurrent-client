@@ -1,5 +1,5 @@
 
-import { Entity, Message, Character, Association, Stream, SignedObject, CCID, StreamItem, Domain, StreamID, FQDN, Collection, CollectionID, CollectionItem, Ack, AckObject, AckRequest } from '../model/core'
+import { Entity, Message, Character, Association, Stream, SignedObject, CCID, StreamItem, Domain, StreamID, FQDN, Collection, CollectionID, CollectionItem, Ack, AckObject, AckRequest, Key } from '../model/core'
 import { MessagePostRequest } from '../model/request'
 import { fetchWithTimeout } from '../util/misc'
 import { Sign, IssueJWT, checkJwtIsValid, parseJWT, JwtPayload } from '../util/crypto'
@@ -29,6 +29,7 @@ export class Api {
     host: string
 
     ccid?: string
+    ckid?: string
     privatekey?: string
     token?: string
     passports: Record<string, string> = {}
@@ -43,9 +44,10 @@ export class Api {
     streamCache: Record<string, Promise<Stream<any>> | null | undefined> = {}
     domainCache: Record<string, Promise<Domain> | null | undefined> = {}
 
-    constructor(conf: {host: string, ccid?: string, privatekey?: string, client?: string, token?: string}) {
+    constructor(conf: {host: string, ccid?: string, privatekey?: string, client?: string, token?: string, ckid?: string}) {
         this.host = conf.host
         this.ccid = conf.ccid
+        this.ckid = conf.ckid
         this.privatekey = conf.privatekey
         this.client = conf.client || 'N/A'
         this.token = conf.token
@@ -71,7 +73,7 @@ export class Api {
 
         const token = IssueJWT(this.privatekey, {
             aud: this.host,
-            iss: this.ccid,
+            iss: this.ckid || this.ccid,
             sub: 'CC_API',
             scp: '*;*;*'
         })
@@ -144,6 +146,10 @@ export class Api {
                 client: this.client
             },
             signedAt: new Date().toISOString()
+        }
+
+        if (this.ckid) {
+            signObject.keyID = this.ckid
         }
 
         const signedObject = JSON.stringify(signObject)
@@ -995,17 +1001,101 @@ export class Api {
         })
     }
 
-    // Admin
-    async addDomain(remote: string): Promise<string> {
-        return await this.fetchWithCredential(this.host, `${apiPath}/domain/${remote}`, {
+    // Auth
+    // enactSubkey
+    async enactSubkey(subkey: string): Promise<void> {
+        if (!this.ccid || !this.privatekey) throw new InvalidKeyError()
+        const signObject: SignedObject<any> = {
+            signer: this.ccid,
+            type: 'enact',
+            body: {
+                CKID: subkey,
+                Root: this.ccid,
+                Parent: this.ccid
+            },
+            signedAt: new Date().toISOString()
+        }
+
+        const signedObject = JSON.stringify(signObject)
+        const signature = Sign(this.privatekey, signedObject)
+
+        const request = {
+            signedObject,
+            signature
+        }
+
+        const requestOptions = {
             method: 'POST',
-        }).then(async (data) => {
-            return await data.json()
-        })
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(request)
+        }
+
+        await this.fetchWithCredential(this.host, `${apiPath}/auth/key`, requestOptions)
     }
 
-    getTokenClaims(): JwtPayload {
-        if (!this.token) return {}
-        return parseJWT(this.token)
-    }
+
+    // revokeSubkey
+   async revokeSubkey(subkey: string): Promise<void> {
+        if (!this.ccid || !this.privatekey) throw new InvalidKeyError()
+        const signObject: SignedObject<any> = {
+            signer: this.ccid,
+            type: 'revoke',
+            body: {
+                CKID: subkey
+            },
+            signedAt: new Date().toISOString()
+        }
+
+        const signedObject = JSON.stringify(signObject)
+        const signature = Sign(this.privatekey, signedObject)
+
+        const request = {
+            signedObject,
+            signature
+        }
+
+        const requestOptions = {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(request)
+        }
+
+        await this.fetchWithCredential(this.host, `${apiPath}/auth/key`, requestOptions)
+   }
+
+   // getKeyList
+   async getKeyList(): Promise<Key[]> {
+       return await this.fetchWithCredential(this.host, `${apiPath}/auth/keys/mine`, {
+           method: 'GET',
+           headers: {}
+       }).then(async (res) => {
+           const data = await res.json()
+           return data.content
+       })
+   }
+
+   // getKeychain
+   async getKeychain(ckid: string): Promise<Key[]> {
+       return await this.fetchWithCredential(this.host, `${apiPath}/auth/key/${ckid}`, {
+           method: 'GET',
+           headers: {}
+       }).then(async (res) => {
+           const data = await res.json()
+           return data.content
+       })
+   }
+
+   // Admin
+   async addDomain(remote: string): Promise<string> {
+       return await this.fetchWithCredential(this.host, `${apiPath}/domain/${remote}`, {
+           method: 'POST',
+       }).then(async (data) => {
+           return await data.json()
+       })
+   }
+
+   getTokenClaims(): JwtPayload {
+       if (!this.token) return {}
+       return parseJWT(this.token)
+   }
 }
