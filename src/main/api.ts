@@ -327,6 +327,10 @@ export class Api {
             variant
         }
 
+        if (this.ckid) {
+            signObject.keyID = this.ckid
+        }
+
         const signedObject = JSON.stringify(signObject)
         const signature = Sign(this.privatekey, signedObject)
 
@@ -418,6 +422,10 @@ export class Api {
                 client: this.client
             },
             signedAt: new Date().toISOString()
+        }
+
+        if (this.ckid) {
+            signObject.keyID = this.ckid
         }
 
         const signedObject = JSON.stringify(signObject)
@@ -744,11 +752,19 @@ export class Api {
 
     async ack(target: string): Promise<any> {
         if (!this.ccid || !this.privatekey) throw new Error()
-        const signObject: AckObject = {
-            type: 'ack',
-            from: this.ccid,
-            to: target,
-            signedAt: new Date().toISOString()
+
+       const signObject: SignedObject<AckObject> = {
+           type: 'ack',
+           signer: this.ccid,
+           body: {
+               from: this.ccid,
+               to: target,
+           },
+           signedAt: new Date().toISOString()
+       }
+
+        if (this.ckid) {
+            signObject.keyID = this.ckid
         }
 
         const signedObject = JSON.stringify(signObject)
@@ -771,11 +787,19 @@ export class Api {
 
     async unack(target: string): Promise<any> {
         if (!this.ccid || !this.privatekey) throw new Error()
-        const signObject: AckObject = {
-            type: 'unack',
-            from: this.ccid,
-            to: target,
-            signedAt: new Date().toISOString()
+
+       const signObject: SignedObject<AckObject> = {
+           type: 'unack',
+           signer: this.ccid,
+           body: {
+               from: this.ccid,
+               to: target
+           },
+           signedAt: new Date().toISOString()
+       }
+
+        if (this.ckid) {
+            signObject.keyID = this.ckid
         }
 
         const signedObject = JSON.stringify(signObject)
@@ -1016,6 +1040,10 @@ export class Api {
             signedAt: new Date().toISOString()
         }
 
+        if (this.ckid) {
+            signObject.keyID = this.ckid
+        }
+
         const signedObject = JSON.stringify(signObject)
         const signature = Sign(this.privatekey, signedObject)
 
@@ -1030,7 +1058,7 @@ export class Api {
             body: JSON.stringify(request)
         }
 
-        await this.fetchWithCredential(this.host, `${apiPath}/auth/key`, requestOptions)
+        await this.fetchWithCredential(this.host, `${apiPath}/key`, requestOptions)
     }
 
 
@@ -1046,6 +1074,10 @@ export class Api {
             signedAt: new Date().toISOString()
         }
 
+        if (this.ckid) {
+            signObject.keyID = this.ckid
+        }
+
         const signedObject = JSON.stringify(signObject)
         const signature = Sign(this.privatekey, signedObject)
 
@@ -1060,12 +1092,12 @@ export class Api {
             body: JSON.stringify(request)
         }
 
-        await this.fetchWithCredential(this.host, `${apiPath}/auth/key`, requestOptions)
+        await this.fetchWithCredential(this.host, `${apiPath}/key`, requestOptions)
    }
 
    // getKeyList
    async getKeyList(): Promise<Key[]> {
-       return await this.fetchWithCredential(this.host, `${apiPath}/auth/keys/mine`, {
+       return await this.fetchWithCredential(this.host, `${apiPath}/keys/mine`, {
            method: 'GET',
            headers: {}
        }).then(async (res) => {
@@ -1076,7 +1108,7 @@ export class Api {
 
    // getKeychain
    async getKeychain(ckid: string): Promise<Key[]> {
-       return await this.fetchWithCredential(this.host, `${apiPath}/auth/key/${ckid}`, {
+       return await this.fetchWithCredential(this.host, `${apiPath}/key/${ckid}`, {
            method: 'GET',
            headers: {}
        }).then(async (res) => {

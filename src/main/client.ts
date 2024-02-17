@@ -48,10 +48,10 @@ interface Service {
 
 export class Client {
     api: Api
-    ccid: CCID
+    ccid?: CCID
     ckid?: string
     host: FQDN
-    keyPair: KeyPair;
+    keyPair?: KeyPair;
     socket?: Socket
     domainServices: Record<string, Service> = {}
 
@@ -59,7 +59,7 @@ export class Client {
 
     messageCache: Record<string, Cache<Promise<Message<any>>>> = {}
 
-    constructor(keyPair: KeyPair, ccid: string, host: FQDN, options?: {ckid?: string, client?: string}) {
+    constructor(host: FQDN, keyPair?: KeyPair, ccid?: string, options?: {ckid?: string, client?: string}) {
         this.keyPair = keyPair
         this.ccid = ccid
         this.host = host
@@ -67,7 +67,7 @@ export class Client {
         this.api = new Api({
             host,
             ccid: this.ccid,
-            privatekey: this.keyPair.privatekey,
+            privatekey: this.keyPair?.privatekey,
             client: options?.client,
             ckid: options?.ckid
         })
@@ -76,7 +76,8 @@ export class Client {
     static async createFromSubkey(subkey: string, client?: string): Promise<Client> {
         const key = LoadSubKey(subkey)
         if (!key) throw new Error('invalid subkey')
-        const c = new Client(key.keypair, key.ccid, key.domain, {ckid: key.ckid, client})
+        const c = new Client(key.domain, key.keypair, key.ccid, {ckid: key.ckid, client})
+        if (!c.ccid) throw new Error('invalid ccid')
         c.user = await c.getUser(c.ccid).catch((e) => {
             console.log('CLIENT::create::getUser::error', e)
             return null
@@ -93,7 +94,8 @@ export class Client {
         const keyPair = LoadKey(privatekey)
         if (!keyPair) throw new Error('invalid private key')
         const ccid = ComputeCCID(keyPair.publickey)
-        const c = new Client(keyPair, ccid, host, {client})
+        const c = new Client(host, keyPair, ccid, {client})
+        if (!c.ccid) throw new Error('invalid ccid')
         const user = await c.getUser(c.ccid).catch((e) => {
             console.log('CLIENT::create::getUser::error', e)
             return null
@@ -175,6 +177,7 @@ export class Client {
     }
 
     async createCurrent(body: string, streams: StreamID[], options?: CreateCurrentOptions): Promise<Error | null> {
+        if (!this.ccid) return new Error('ccid is not set')
         const newMessage = await this.api.createMessage<SimpleNote>(Schemas.simpleNote, {body, ...options}, streams)
         if(options?.mentions && options.mentions.length > 0) {
             const associationStream = []
@@ -190,6 +193,7 @@ export class Client {
     }
 
     async setupUserstreams(): Promise<void> {
+        if (!this.ccid) throw new Error('ccid is not set')
         const userstreams: CoreCharacter<Userstreams> | null | undefined = await this.api.getCharacter(this.ccid, Schemas.userstreams)
         const id = userstreams?.id
         let homeStream = userstreams?.payload.body.homeStream

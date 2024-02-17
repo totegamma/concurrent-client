@@ -166,10 +166,8 @@ export interface Ack {
 }
 
 export interface AckObject {
-    type: string
     from: string
     to: string
-    signedAt: string
 }
 
 export interface AckRequest {
