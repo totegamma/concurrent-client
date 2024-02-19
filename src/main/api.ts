@@ -116,12 +116,16 @@ export class Api {
         return await fetchWithTimeout(domain, path, requestInit, timeoutMs)
     }
 
-    async resolveAddress(ccid: string): Promise<string | null | undefined> {
+    async resolveAddress(ccid: string, hint?: string): Promise<string | null | undefined> {
         if (this.addressCache[ccid]) {
             const value = await this.addressCache[ccid]
             if (value !== undefined) return value
         }
-        this.addressCache[ccid] = this.fetchWithOnlineCheck(this.host, `/address/${ccid}`, {
+        let query = `/address/${ccid}`
+        if (hint) {
+            query += `?hint=${hint}`
+        }
+        this.addressCache[ccid] = this.fetchWithOnlineCheck(this.host, query, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
@@ -235,8 +239,8 @@ export class Api {
         return await this.messageCache[id]
     }
 
-    async getMessageWithAuthor(messageId: string, author: string): Promise<Message<any> | null | undefined> {
-        const domain = await this.resolveAddress(author)
+    async getMessageWithAuthor(messageId: string, author: string, hint?: string): Promise<Message<any> | null | undefined> {
+        const domain = await this.resolveAddress(author, hint)
         if (!domain) throw new Error('domain not found')
         return await this.getMessage(messageId, domain || this.host)
     }

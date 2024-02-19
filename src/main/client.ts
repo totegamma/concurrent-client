@@ -155,14 +155,14 @@ export class Client {
         return await Association.load(this, id, owner)
     }
 
-    async getMessage<T>(id: MessageID, authorID: CCID): Promise<Message<T> | null | undefined> {
+    async getMessage<T>(id: MessageID, authorID: CCID, hint?: string): Promise<Message<T> | null | undefined> {
         const cached = this.messageCache[id]
 
         if (cached && cached.expire > Date.now()) {
             return cached.data
         }
 
-        const message = Message.load(this, id, authorID)
+        const message = Message.load(this, id, authorID, hint)
 
         this.messageCache[id] = {
             data: message as Promise<Message<any>>,
@@ -520,8 +520,8 @@ export class Message<T> implements CoreMessage<T> {
         this.streams = data.streams
     }
 
-    static async load<T>(client: Client, id: MessageID, authorID: CCID): Promise<Message<T> | null> {
-        const coreMsg = await client.api.getMessageWithAuthor(id, authorID).catch((e) => {
+    static async load<T>(client: Client, id: MessageID, authorID: CCID, hint?: string): Promise<Message<T> | null> {
+        const coreMsg = await client.api.getMessageWithAuthor(id, authorID, hint).catch((e) => {
             console.log('CLIENT::getMessage::readMessageWithAuthor::error', e)
             return null
         })
