@@ -1039,7 +1039,7 @@ export class Api {
             body: {
                 CKID: subkey,
                 Root: this.ccid,
-                Parent: this.ccid
+                Parent: this.ckid ?? this.ccid
             },
             signedAt: new Date().toISOString()
         }
