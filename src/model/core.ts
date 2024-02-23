@@ -39,7 +39,8 @@ export interface Key {
     enactSignature: string
     revokePayload?: string
     revokeSignature?: string
-    cdate: string
+    validSince: string
+    validUntil: string
 }
 
 export interface Entity {

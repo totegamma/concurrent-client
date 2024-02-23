@@ -36,5 +36,6 @@ export {
     Stream as CoreStream,
     StreamItem as CoreStreamItem,
     StreamEvent as CoreStreamEvent,
+    Key as CoreKey,
 } from "./model/core"
 
