@@ -67,7 +67,7 @@ export class Client {
         this.api = new Api({
             host,
             ccid: this.ccid,
-            privatekey: this.keyPair?.privatekey,
+            privatekey: keyPair?.privatekey,
             client: options?.client,
             ckid: options?.ckid
         })

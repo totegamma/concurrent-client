@@ -46,8 +46,12 @@ export const LoadKey = (privateKey: string): KeyPair | null => {
         const ellipsis = new Ec('secp256k1')
         const keyPair = ellipsis.keyFromPrivate(privateKey)
         if (!keyPair.getPrivate()) return null
-        const privatekey = keyPair.getPrivate().toString('hex')
-        const publickey = keyPair.getPublic().encode('hex', false)
+        let privatekey = keyPair.getPrivate().toString('hex')
+        let publickey = keyPair.getPublic().encode('hex', false)
+
+        privatekey = '0'.repeat(64 - privatekey.length) + privatekey
+        console.log('priv', privatekey)
+
         return {
             privatekey,
             publickey,
