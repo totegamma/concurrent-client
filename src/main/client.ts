@@ -143,6 +143,14 @@ export class Client {
         return c
     }
 
+    async reloadUser(): Promise<void> {
+        if (!this.ccid) return
+        this.user = await this.getUser(this.ccid).catch((e) => {
+            console.log('CLIENT::create::getUser::error', e)
+            return null
+        })
+    }
+
     async getUser(id: CCID): Promise<User | null> {
         return await User.load(this, id)
     }
@@ -251,22 +259,32 @@ export class Client {
         })
     }
 
-    async createProfile(username: string, description: string, avatar: string, banner: string): Promise<Profile> {
-        return await this.api.upsertCharacter<Profile>(Schemas.profile, {
+    async createProfile(username: string, description: string, avatar: string, banner: string): Promise<CoreCharacter<Profile>> {
+        const profile = await this.api.upsertCharacter<Profile>(Schemas.profile, {
             username,
             description,
             avatar,
             banner
         })
+
+        await this.reloadUser()
+
+        return profile
     }
 
-    async updateProfile(id: string, username: string, description: string, avatar: string, banner: string): Promise<Profile> {
-        return await this.api.upsertCharacter<Profile>(Schemas.profile, {
+    async updateProfile(id: string, username: string, description: string, avatar: string, banner: string): Promise<CoreCharacter<Profile>> {
+        const profile = await this.api.upsertCharacter<Profile>(Schemas.profile, {
             username,
             description,
             avatar,
             banner
         }, id)
+
+        this.api.invalidateCharacterByID(id)
+
+        await this.reloadUser()
+
+        return profile
     }
 
     async newSocket(): Promise<Socket> {

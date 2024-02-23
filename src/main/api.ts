@@ -450,7 +450,10 @@ export class Api {
         return await this.fetchWithCredential(this.host, `${apiPath}/character`, requestOptions)
             .then(async (res) => await res.json())
             .then((data) => {
-                return data
+                const character = data.content
+                character.rawpayload = character.payload
+                character.payload = JSON.parse(character.payload)
+                return character
             })
     }
 
@@ -481,10 +484,13 @@ export class Api {
         return await this.characterCache[author + schema]
     }
 
-    invalidateCharacter(target: string): void {
-        delete this.characterCache[target]
+    invalidateCharacterByID(id: string): void {
+        Object.keys(this.characterCache).forEach(async (key) => {
+            if ((await this.characterCache[key])?.id === id) {
+                delete this.characterCache[key]
+            }
+        })
     }
-
 
     // Stream
     async createStream<T>(
