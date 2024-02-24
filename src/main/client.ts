@@ -71,6 +71,10 @@ export class Client {
             client: options?.client,
             ckid: options?.ckid
         })
+
+        if (ccid) {
+            this.reloadUser()
+        }
     }
 
     static async createFromSubkey(subkey: string, client?: string): Promise<Client> {
