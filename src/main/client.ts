@@ -453,7 +453,7 @@ export class Association<T> implements CoreAssociation<T> {
     }
 
     async delete(): Promise<void> {
-        const { content } = await this.api.deleteAssociation(this.id, this.author)
+        const { content } = await this.api.deleteAssociation(this.id, this.owner ?? this.author)
         this.api.invalidateMessage(content.targetID)
     }
 }
@@ -588,19 +588,35 @@ export class Message<T> implements CoreMessage<T> {
         return ass.filter(e => e) as Array<Association<RerouteAssociation>>
     }
 
-    async getReplyMessages(): Promise<Message<ReplyMessage>[]> {
+    async getReplyMessages(): Promise<{association?: Association<ReplyAssociation>, message?: Message<ReplyMessage>}[]> {
         const associations = await this.client.api.getMessageAssociationsByTarget<ReplyAssociation>(this.id, this.author, {schema: Schemas.replyAssociation})
-        console.log('associations:', associations)
-        const messages = await Promise.all(associations.map((e) => this.client.getMessage<ReplyMessage>(e.payload.body.messageId, e.payload.body.messageAuthor)))
-        return messages.filter((e) => e) as Message<ReplyMessage>[]
+        const results = await Promise.all(
+            associations.map(
+                async (e) => {
+                    return {
+                        association: await Association.loadByBody<ReplyAssociation>(this.client, e, this.author) ?? undefined,
+                        message: await this.client.getMessage<ReplyMessage>(e.payload.body.messageId, e.payload.body.messageAuthor) ?? undefined
+                    }
+                }
+            )
+        )
+        return results
     }
 
-    async getRerouteMessages(): Promise<Message<RerouteMessage>[]> {
+    async getRerouteMessages(): Promise<{association?: Association<RerouteAssociation>, message?: Message<RerouteMessage>}[]> {
         const associations = await this.client.api.getMessageAssociationsByTarget<RerouteAssociation>(this.id, this.author, {schema: Schemas.rerouteAssociation})
-        const messages = await Promise.all(associations.map((e) => this.client.getMessage<RerouteMessage>(e.payload.body.messageId, e.payload.body.messageAuthor)))
-        return messages.filter((e) => e) as Message<RerouteMessage>[]
+        const results = await Promise.all(
+            associations.map(
+                async (e) => {
+                    return {
+                        association: await Association.loadByBody<RerouteAssociation>(this.client, e, this.author) ?? undefined,
+                        message: await this.client.getMessage<RerouteMessage>(e.payload.body.messageId, e.payload.body.messageAuthor) ?? undefined
+                    }
+                }
+            )
+        )
+        return results
     }
-
 
     async getFavorites(): Promise<Association<Like>[]> {
         const coreass = await this.client.api.getMessageAssociationsByTarget<Like>(this.id, this.author, {schema: Schemas.like})
