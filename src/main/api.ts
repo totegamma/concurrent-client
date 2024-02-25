@@ -39,7 +39,7 @@ export class Api {
     addressCache: Record<string, Promise<string> | null | undefined> = {}
     entityCache: Record<string, Promise<Entity> | null | undefined> = {}
     messageCache: Record<string, Promise<Message<any>> | null | undefined> = {}
-    characterCache: Record<string, Promise<Character<any>> | null | undefined> = {}
+    characterCache: Record<string, Promise<Character<any>[]> | null | undefined> = {}
     associationCache: Record<string, Promise<Association<any>> | null | undefined> = {}
     streamCache: Record<string, Promise<Stream<any>> | null | undefined> = {}
     domainCache: Record<string, Promise<Domain> | null | undefined> = {}
@@ -457,7 +457,8 @@ export class Api {
             })
     }
 
-    async getCharacter<T>(author: string, schema: string): Promise<Character<T> | null | undefined> {
+    async getCharacter<T>(author: string = "", schema: string = ""): Promise<Character<T>[] | null | undefined> {
+        if (!author && !schema) return Promise.reject(new Error('author or schema is required'))
         if (this.characterCache[author + schema]) {
             const value = await this.characterCache[author + schema]
             if (value !== undefined) return value
@@ -476,18 +477,34 @@ export class Api {
             if (data.content.length === 0) {
                 return null
             }
-            const character = data.content[0]
-            character.payload = JSON.parse(character.payload)
-            this.characterCache[author + schema] = character
-            return character
+            const characters = data.content
+            characters.forEach((character: any) => {
+                character.rawpayload = character.payload
+                character.payload = JSON.parse(character.payload)
+            })
+            return characters
         })
         return await this.characterCache[author + schema]
     }
 
+    async deleteCharacter(id: string): Promise<any> {
+        const requestOptions = {
+            method: 'DELETE'
+        }
+
+        return await this.fetchWithCredential(this.host, `${apiPath}/character/${id}`, requestOptions)
+            .then(async (res) => await res.json())
+            .then((data) => {
+                return data
+            })
+    }
+
     invalidateCharacterByID(id: string): void {
         Object.keys(this.characterCache).forEach(async (key) => {
-            if ((await this.characterCache[key])?.id === id) {
-                delete this.characterCache[key]
+            for (const character of (await this.characterCache[key]) ?? []) {
+                if (character.id === id) {
+                    delete this.characterCache[key]
+                }
             }
         })
     }

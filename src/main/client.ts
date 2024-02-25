@@ -202,7 +202,7 @@ export class Client {
 
     async setupUserstreams(): Promise<void> {
         if (!this.ccid) throw new Error('ccid is not set')
-        const userstreams: CoreCharacter<Userstreams> | null | undefined = await this.api.getCharacter(this.ccid, Schemas.userstreams)
+        const userstreams: CoreCharacter<Userstreams> | null | undefined = (await this.api.getCharacter<Userstreams>(this.ccid, Schemas.userstreams) ?? [undefined])[0]
         const id = userstreams?.id
         let homeStream = userstreams?.payload.body.homeStream
         if (!homeStream) {
@@ -354,8 +354,8 @@ export class User implements CoreEntity {
         })
         if (!entity) return null
 
-        const profile: CoreCharacter<Profile> | undefined = await client.api.getCharacter<Profile>(id, Schemas.profile) ?? undefined
-        const userstreams: CoreCharacter<Userstreams> | undefined = await client.api.getCharacter<Userstreams>(id, Schemas.userstreams) ?? undefined
+        const profile: CoreCharacter<Profile> | undefined = (await client.api.getCharacter<Profile>(id, Schemas.profile) ?? [undefined])[0]
+        const userstreams: CoreCharacter<Userstreams> | undefined = (await client.api.getCharacter<Userstreams>(id, Schemas.userstreams) ?? [undefined])[0]
 
         return new User(client, domain, entity, profile, userstreams)
     }
