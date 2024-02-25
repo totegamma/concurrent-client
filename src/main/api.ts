@@ -1117,8 +1117,11 @@ export class Api {
    }
 
    // getKeychain
-   async getKeychain(ckid: string): Promise<Key[]> {
-       return await this.fetchWithCredential(this.host, `${apiPath}/key/${ckid}`, {
+   async getKeyResolution(ckid: string, owner: string): Promise<Key[]> {
+        const host = await this.resolveAddress(owner)
+        if (!host) throw new Error('domain not found')
+
+       return await this.fetchWithCredential(host, `${apiPath}/key/${ckid}`, {
            method: 'GET',
            headers: {}
        }).then(async (res) => {
