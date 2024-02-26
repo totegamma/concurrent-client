@@ -20,5 +20,6 @@ export interface RerouteMessage {
     avatar?: string;
     description?: string;
     link?: string;
+    characterID?: string;
   };
 }

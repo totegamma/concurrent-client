@@ -11,5 +11,6 @@ export interface Mention {
     avatar?: string;
     description?: string;
     link?: string;
+    characterID?: string;
   };
 }

@@ -18,5 +18,6 @@ export interface SimpleNote {
     avatar?: string;
     description?: string;
     link?: string;
+    characterID?: string;
   };
 }

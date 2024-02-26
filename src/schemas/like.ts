@@ -11,5 +11,6 @@ export interface Like {
     avatar?: string;
     description?: string;
     link?: string;
+    characterID?: string;
   };
 }

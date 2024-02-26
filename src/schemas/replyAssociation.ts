@@ -13,5 +13,6 @@ export interface ReplyAssociation {
     avatar?: string;
     description?: string;
     link?: string;
+    characterID?: string;
   };
 }

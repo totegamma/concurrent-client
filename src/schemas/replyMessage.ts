@@ -20,5 +20,6 @@ export interface ReplyMessage {
     avatar?: string;
     description?: string;
     link?: string;
+    characterID?: string;
   };
 }

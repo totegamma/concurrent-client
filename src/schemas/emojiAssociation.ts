@@ -13,5 +13,6 @@ export interface EmojiAssociation {
     avatar?: string;
     description?: string;
     link?: string;
+    characterID?: string;
   };
 }
