@@ -518,6 +518,10 @@ export class Api {
             })
     }
 
+    invalidateCharacter(author: string = "", schema: string = ""): void {
+        delete this.characterCache[author + schema]
+    }
+
     invalidateCharacterByID(id: string): void {
         Object.keys(this.characterCache).forEach(async (key) => {
             for (const character of (await this.characterCache[key]) ?? []) {
