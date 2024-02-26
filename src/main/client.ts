@@ -264,7 +264,8 @@ export class Client {
             username,
             description,
             avatar,
-            banner
+            banner,
+            subprofiles: []
         })
 
         await this.reloadUser()
@@ -272,12 +273,17 @@ export class Client {
         return profile
     }
 
-    async updateProfile(id: string, username: string, description: string, avatar: string, banner: string): Promise<CoreCharacter<Profile>> {
+    async updateProfile(id: string, updates: {username?: string, description?: string, avatar?: string, banner?: string, subprofiles?: string[]}): Promise<CoreCharacter<Profile>> {
+        if (!this.ccid) throw new Error('ccid is not set')
+        const currentProfile = (await this.api.getCharacterByID<Profile>(id, this.ccid))?.payload.body
+        if (!currentProfile) throw new Error('profile not found')
+
         const profile = await this.api.upsertCharacter<Profile>(Schemas.profile, {
-            username,
-            description,
-            avatar,
-            banner
+            username: updates.username ?? currentProfile.username,
+            description: updates.description ?? currentProfile.description,
+            avatar: updates.avatar ?? currentProfile.avatar,
+            banner: updates.banner ?? currentProfile.banner,
+            subprofiles: updates.subprofiles ?? currentProfile.subprofiles
         }, id)
 
         this.api.invalidateCharacterByID(id)

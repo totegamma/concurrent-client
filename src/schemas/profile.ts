@@ -10,6 +10,7 @@ export interface Profile {
   avatar?: string;
   description?: string;
   banner?: string;
+  subprofiles?: string[];
   links?: {
     key?: string;
     value?: string;

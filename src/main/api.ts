@@ -487,6 +487,25 @@ export class Api {
         return await this.characterCache[author + schema]
     }
 
+    async getCharacterByID<T>(id: string, author: string): Promise<Character<T> | null | undefined> {
+        const targetHost = await this.resolveAddress(author)
+        if (!targetHost) throw new Error('domain not found')
+        const request = this.fetchWithOnlineCheck(targetHost, `/character/${id}`, {
+            method: 'GET',
+            headers: {}
+        }).then(async (res) => {
+            const data = await res.json()
+            if (!data.content) {
+                return null
+            }
+            const character = data.content
+            character.rawpayload = character.payload
+            character.payload = JSON.parse(character.payload)
+            return character
+        })
+        return request
+    }
+
     async deleteCharacter(id: string): Promise<any> {
         const requestOptions = {
             method: 'DELETE'
