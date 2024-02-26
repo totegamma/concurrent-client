@@ -457,17 +457,57 @@ export class Api {
             })
     }
 
-    async getCharacter<T>(author: string = "", schema: string = ""): Promise<Character<T>[] | null | undefined> {
+    /**
+     * @deprecated
+     */
+    async getCharacter<T>(author: string = "", schema: string = "", domain?: string): Promise<Character<T>[] | null | undefined> {
         if (!author && !schema) return Promise.reject(new Error('author or schema is required'))
         if (this.characterCache[author + schema]) {
             const value = await this.characterCache[author + schema]
             if (value !== undefined) return value
         }
-        const targetHost = await this.resolveAddress(author)
+        const targetHost = domain ?? await this.resolveAddress(author)
         if (!targetHost) throw new Error('domain not found')
         this.characterCache[author + schema] = this.fetchWithOnlineCheck(
             targetHost,
             `/characters?author=${author}&schema=${encodeURIComponent(schema)}`,
+            {
+                method: 'GET',
+                headers: {}
+            }
+        ).then(async (res) => {
+            const data = await res.json()
+            if (data.content.length === 0) {
+                return null
+            }
+            const characters = data.content
+            characters.forEach((character: any) => {
+                character.rawpayload = character.payload
+                character.payload = JSON.parse(character.payload)
+            })
+            return characters
+        })
+        return await this.characterCache[author + schema]
+    }
+
+    async getCharacters<T>(query: {author?: string, schema?: string, domain?: string}): Promise<Character<T>[] | null | undefined> {
+        if (!query.author && !query.schema) return Promise.reject(new Error('author or schema is required'))
+        const author = query.author ?? ''
+        const schema = query.schema ?? ''
+        if (this.characterCache[author + schema]) {
+            const value = await this.characterCache[author + schema]
+            if (value !== undefined) return value
+        }
+        const targetHost = query.domain ?? (query.author && await this.resolveAddress(query.author)) ?? this.host
+        if (!targetHost) throw new Error('domain not found')
+
+        const queries = []
+        if (query.author) queries.push(`author=${query.author}`)
+        if (query.schema) queries.push(`schema=${encodeURIComponent(query.schema)}`)
+
+        this.characterCache[author + schema] = this.fetchWithOnlineCheck(
+            targetHost,
+            `/characters?${queries.join('&')}`,
             {
                 method: 'GET',
                 headers: {}
