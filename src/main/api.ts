@@ -494,18 +494,19 @@ export class Api {
         if (!query.author && !query.schema) return Promise.reject(new Error('author or schema is required'))
         const author = query.author ?? ''
         const schema = query.schema ?? ''
-        if (this.characterCache[author + schema]) {
-            const value = await this.characterCache[author + schema]
+        const cacheKey = author + schema + (query.domain ?? '')
+        const targetHost = query.domain ?? (query.author && await this.resolveAddress(query.author)) ?? this.host
+        if (this.characterCache[cacheKey]) {
+            const value = await this.characterCache[cacheKey]
             if (value !== undefined) return value
         }
-        const targetHost = query.domain ?? (query.author && await this.resolveAddress(query.author)) ?? this.host
         if (!targetHost) throw new Error('domain not found')
 
         const queries = []
         if (query.author) queries.push(`author=${query.author}`)
         if (query.schema) queries.push(`schema=${encodeURIComponent(query.schema)}`)
 
-        this.characterCache[author + schema] = this.fetchWithOnlineCheck(
+        this.characterCache[cacheKey] = this.fetchWithOnlineCheck(
             targetHost,
             `/characters?${queries.join('&')}`,
             {
@@ -524,7 +525,7 @@ export class Api {
             })
             return characters
         })
-        return await this.characterCache[author + schema]
+        return await this.characterCache[cacheKey]
     }
 
     async getCharacterByID<T>(id: string, author: string): Promise<Character<T> | null | undefined> {
@@ -558,8 +559,8 @@ export class Api {
             })
     }
 
-    invalidateCharacter(author: string = "", schema: string = ""): void {
-        delete this.characterCache[author + schema]
+    invalidateCharacter(author: string = "", schema: string = "", domain = ""): void {
+        delete this.characterCache[author + schema + domain]
     }
 
     invalidateCharacterByID(id: string): void {
