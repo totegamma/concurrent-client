@@ -686,14 +686,14 @@ export class Message<T> implements CoreMessage<T> {
         this.api.invalidateMessage(content.targetID)
     }
 
-    async reply(streams: string[], body: string, emojis?: Record<string, {imageURL?: string, animURL?: string}>) {
+    async reply(streams: string[], body: string, options?: CreateCurrentOptions) {
         const data = await this.api.createMessage<ReplyMessage>(
           Schemas.replyMessage,
           {
+              body,
               replyToMessageId: this.id,
               replyToMessageAuthor: this.author,
-              body,
-              emojis
+              ...options
           },
           streams
         )
@@ -711,14 +711,14 @@ export class Message<T> implements CoreMessage<T> {
         )
     }
 
-    async reroute(streams: string[], body?: string, emojis?: Record<string, {imageURL?: string, animURL?: string}>) {
+    async reroute(streams: string[], body?: string, options?: CreateCurrentOptions) {
         const { content } = await this.api.createMessage<RerouteMessage>(
             Schemas.rerouteMessage,
             {
                 body,
-                emojis,
                 rerouteMessageId: this.id,
-                rerouteMessageAuthor: this.author
+                rerouteMessageAuthor: this.author,
+                ...options
             },
             streams
         )
