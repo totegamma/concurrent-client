@@ -37,33 +37,36 @@ export class Socket {
 
             switch (event.type + '.' + event.action) {
                 case 'message.create':
-                    if (!event.body) return
-                    const dummy_message: any = event.body
-                    dummy_message.rawpayload = dummy_message.payload
-                    dummy_message.payload = JSON.parse(dummy_message.payload)
-                    this.api.cacheMessage(dummy_message as Message<any>)
+                    if (event.body) {
+                        const dummy_message: any = event.body
+                        dummy_message.rawpayload = dummy_message.payload
+                        dummy_message.payload = JSON.parse(dummy_message.payload)
+                        this.api.cacheMessage(dummy_message as Message<any>)
+                    }
                     break
                 case 'message.delete':
                     this.api.invalidateMessage(event.body.id)
                     this.client?.invalidateMessage(event.body.id)
                     break
                 case 'association.create': {
-                    if (!event.body) return
-                    const dummy_association: any = event.body
-                    dummy_association.rawpayload = dummy_association.payload
-                    dummy_association.payload = JSON.parse(dummy_association.payload)
-                    const association = dummy_association as Association<any>
-                    this.api.cacheAssociation(association)
-                    this.api.invalidateMessage(association.targetID)
-                    this.client?.invalidateMessage(association.targetID)
+                    if (event.body) {
+                        const dummy_association: any = event.body
+                        dummy_association.rawpayload = dummy_association.payload
+                        dummy_association.payload = JSON.parse(dummy_association.payload)
+                        const association = dummy_association as Association<any>
+                        this.api.cacheAssociation(association)
+                        this.api.invalidateMessage(association.targetID)
+                        this.client?.invalidateMessage(association.targetID)
+                    }
                     break
                 }
                 case 'association.delete': {
-                    if (!event.body) return
-                    const body = event.body as Association<any>
-                    this.api.invalidateAssociation(body.id)
-                    this.api.invalidateMessage(body.targetID)
-                    this.client?.invalidateMessage(body.targetID)
+                    if (event.body) {
+                        const body = event.body as Association<any>
+                        this.api.invalidateAssociation(body.id)
+                        this.api.invalidateMessage(body.targetID)
+                        this.client?.invalidateMessage(body.targetID)
+                    }
                     break
                 }
             }
