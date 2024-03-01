@@ -54,6 +54,7 @@ export class Client {
     keyPair?: KeyPair;
     socket?: Socket
     domainServices: Record<string, Service> = {}
+    ackings?: User[]
 
     user: User | null = null
 
@@ -82,6 +83,7 @@ export class Client {
             console.log('CLIENT::create::getUser::error', e)
             return null
         })
+        c.ackings = await c.user?.getAcking()
         c.domainServices = await fetchWithTimeout(key.domain, '/services', {}).then((res) => res.json()).catch((e) => {
             console.log('CLIENT::create::fetch::error', e)
             return {}
@@ -101,7 +103,7 @@ export class Client {
             return null
         })
         c.user = user
-
+        c.ackings = await c.user?.getAcking()
         c.domainServices = await fetchWithTimeout(host, '/services', {}).then((res) => res.json()).catch((e) => {
             console.log('CLIENT::create::fetch::error', e)
             return {}
@@ -149,6 +151,11 @@ export class Client {
             console.log('CLIENT::create::getUser::error', e)
             return null
         })
+    }
+
+    async reloadAckings(): Promise<void> {
+        if (!this.user) return
+        this.ackings = await this.user.getAcking()
     }
 
     async getUser(id: CCID): Promise<User | null> {
@@ -380,10 +387,12 @@ export class User implements CoreEntity {
 
     async Ack(): Promise<void> {
         await this.api.ack(this.ccid)
+        await this.client.reloadAckings()
     }
 
     async UnAck(): Promise<void> {
         await this.api.unack(this.ccid)
+        await this.client.reloadAckings()
     }
 
 
