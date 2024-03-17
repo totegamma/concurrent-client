@@ -3,7 +3,7 @@ export const fetchWithTimeout = async (
     domain: string,
     path: string,
     init: RequestInit,
-    timeoutMs = 15 * 1000
+    timeoutMs = 3 * 1000
 ): Promise<Response> => {
     const controller = new AbortController()
     const clientTimeout = setTimeout(() => {
