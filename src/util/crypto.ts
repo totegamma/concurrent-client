@@ -1,8 +1,12 @@
 import { ec as Ec } from 'elliptic'
 import { v4 as uuidv4 } from 'uuid'
-import { computeAddress, keccak256, recoverAddress } from 'ethers'
+import { keccak256, recoverAddress } from 'ethers'
 import { Mnemonic, randomBytes, HDNodeWallet } from 'ethers'
 import { LangJa } from './lang-ja'
+
+import { Secp256k1 } from "@cosmjs/crypto";
+import { toBech32 } from "@cosmjs/encoding";
+import { rawSecp256k1PubkeyToRawAddress } from "@cosmjs/amino";
 
 export interface Identity {
     mnemonic_ja: string
@@ -96,17 +100,18 @@ export const LoadSubKey = (secret: string): SubKey | null => {
 }
 
 export const ComputeCCID = (publickey: string): string => {
-    const ethAddress = computeAddress('0x' + publickey)
-    const ccid = 'CC' + ethAddress.slice(2)
-    return ccid
+    const bytes = parseHexString(publickey)
+    let compressedPubkey = Secp256k1.compressPubkey(bytes)
+    let address = toBech32('con', rawSecp256k1PubkeyToRawAddress(compressedPubkey))
+    return address
 }
 
 export const ComputeCKID = (publickey: string): string => {
-    const ethAddress = computeAddress('0x' + publickey)
-    const ccid = 'CK' + ethAddress.slice(2)
-    return ccid
+    const bytes = parseHexString(publickey)
+    let compressedPubkey = Secp256k1.compressPubkey(bytes)
+    let address = toBech32('cck', rawSecp256k1PubkeyToRawAddress(compressedPubkey))
+    return address
 }
-
 
 export const Sign = (privatekey: string, payload: string): string => {
     const ellipsis = new Ec('secp256k1')
@@ -207,6 +212,10 @@ function toHexString(byteArray: Uint8Array | number[]): string {
     return Array.from(byteArray, function (byte) {
         return ('0' + (byte & 0xff).toString(16)).slice(-2)
     }).join('')
+}
+
+function parseHexString(hexString: string): Uint8Array {
+    return new Uint8Array((hexString.match(/.{1,2}/g) ?? []).map((byte) => parseInt(byte, 16)))
 }
 
 export interface JwtPayload {
