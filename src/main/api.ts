@@ -911,19 +911,31 @@ export class Api {
         return await res.json()
     }
 
-    async register(ccid: string, meta: any = {}, registration: string, signature: string, invitation?: string, captcha?: string): Promise<Response> {
-        return await fetchWithTimeout(this.host, `${apiPath}/entity`, {
+    async register(document: string, signature: string, info: any = {}, invitation?: string, captcha?: string): Promise<Response> {
+
+        const optionObj = {
+            info: JSON.stringify(info),
+            invitation,
+            document,
+        }
+
+        const option = JSON.stringify(optionObj)
+
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json'
+        }
+
+        if (captcha) {
+            headers['captcha'] = captcha
+        }
+
+        return await fetchWithTimeout(this.host, `${apiPath}/commit`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers,
             body: JSON.stringify({
-                ccid: ccid,
-                meta: JSON.stringify(meta),
-                invitation,
-                registration,
+                document,
                 signature,
-                captcha
+                option
             })
         })
     }
