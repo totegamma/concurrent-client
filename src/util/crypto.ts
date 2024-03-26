@@ -2,15 +2,13 @@ import { ec as Ec } from 'elliptic'
 import { v4 as uuidv4 } from 'uuid'
 import { keccak256, recoverAddress } from 'ethers'
 import { Mnemonic, randomBytes, HDNodeWallet } from 'ethers'
-import { LangJa } from './lang-ja'
 
 import { Secp256k1 } from "@cosmjs/crypto";
 import { toBech32 } from "@cosmjs/encoding";
 import { rawSecp256k1PubkeyToRawAddress } from "@cosmjs/amino";
 
 export interface Identity {
-    mnemonic_ja: string
-    mnemonic_en: string
+    mnemonic: string
     privateKey: string
     publicKey: string
     CCID: string
@@ -18,16 +16,14 @@ export interface Identity {
 
 export const generateIdentity = (): Identity => {
     const entrophy = randomBytes(16)
-    const mnemonicJa = Mnemonic.fromEntropy(entrophy, null, LangJa.wordlist())
-    const mnemonicEn = Mnemonic.fromEntropy(entrophy, null)
-    const wallet = HDNodeWallet.fromPhrase(mnemonicEn.phrase)
-    const CCID = 'CC' + wallet.address.slice(2)
+    const mnemonic = Mnemonic.fromEntropy(entrophy, null)
+    const wallet = HDNodeWallet.fromPhrase(mnemonic.phrase)
+    const CCID = ComputeCCID(wallet.publicKey.slice(2))
     const privateKey = wallet.privateKey.slice(2)
     const publicKey = wallet.publicKey.slice(2)
 
     return {
-        mnemonic_ja: mnemonicJa.phrase.normalize().replaceAll('　', ' '),
-        mnemonic_en: mnemonicEn.phrase,
+        mnemonic: mnemonic.phrase,
         privateKey,
         publicKey,
         CCID

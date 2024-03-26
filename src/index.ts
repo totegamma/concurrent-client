@@ -39,3 +39,16 @@ export {
     Key as CoreKey,
 } from "./model/core"
 
+import {
+    DocumentBase,
+    AffiliationDocument,
+    MessageDocument,
+} from "./model/document"
+
+export namespace CCDocument {
+    export type Base<T, S> = DocumentBase<T, S>
+    export type Affiliation = AffiliationDocument
+    export type Message<T> = MessageDocument<T>
+}
+
+

@@ -9,6 +9,19 @@ export type CharacterID = string
 export type CollectionID = string
 export type CollectionItemID = string
 
+export interface AffiliationOption {
+    info: string
+    invitation?: string
+}
+
+export interface CommitRequest {
+    document: string
+    signature: string
+    option?: string
+}
+
+// ---
+
 export interface SignedObject<T> {
     signer: CCID
     type: string

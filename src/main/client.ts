@@ -31,8 +31,8 @@ import { RerouteAssociation } from "../schemas/rerouteAssociation";
 import { SimpleNote } from '../schemas/simpleNote'
 import { Commonstream } from '../schemas/commonstream'
 
-import { ComputeCCID, KeyPair, LoadKey, LoadSubKey, Sign } from "../util/crypto";
-import {CreateCurrentOptions} from "../model/others";
+import { ComputeCCID, KeyPair, LoadKey, LoadSubKey } from "../util/crypto";
+import { CreateCurrentOptions } from "../model/others";
 import { fetchWithTimeout } from '..';
 
 const cacheLifetime = 5 * 60 * 1000
@@ -108,39 +108,6 @@ export class Client {
             console.log('CLIENT::create::fetch::error', e)
             return {}
         })
-
-        // fix registration
-        let sigPayload = null
-        try {
-            sigPayload = JSON.parse(user?.payload ?? 'null')
-        } catch (e) {
-            console.log('CLIENT::create::getUser::error', e)
-        }
-
-        let isPayloadOK = sigPayload !== null && 'signedAt' in sigPayload
-        let isSignatureOK = user?.signature && user?.signature.length > 0 && user?.signature[0] !== ' '
-
-        if (!isPayloadOK || !isSignatureOK) {
-            console.log('CLIENT::create::getUser::needsUpdateRegistration')
-            const signObject = {
-                signer: c.ccid,
-                type: 'Entity',
-                body: {
-                    domain:host 
-                },
-                signedAt: new Date().toISOString()
-            }
-
-            const signedObject = JSON.stringify(signObject)
-            const signature = Sign(privatekey, signedObject)
-
-            await c.api.updateRegistration(c.ccid, signedObject, signature).catch((e) => {
-                console.log('CLIENT::create::updateRegistration::error', e)
-                return null
-            })
-            console.log('CLIENT::create::updateRegistration::success')
-        }
-        // -------
 
         return c
     }
