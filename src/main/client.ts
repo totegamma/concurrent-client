@@ -174,63 +174,69 @@ export class Client {
         return newMessage
     }
 
-    async setupUserstreams(): Promise<void> {
-        if (!this.ccid) throw new Error('ccid is not set')
-        const userstreams: CoreCharacter<Userstreams> | null | undefined = (await this.api.getCharacter<Userstreams>(this.ccid, Schemas.userstreams) ?? [undefined])[0]
-        const id = userstreams?.id
-        let homeStream = userstreams?.payload.body.homeStream
-        if (!homeStream) {
-            const res0 = await this.api.createStream(Schemas.utilitystream, {}, { writer: [this.ccid] })
-            homeStream = res0.id
-            console.log('home', homeStream)
-        }
-
-        let notificationStream = userstreams?.payload.body.notificationStream
-        if (!notificationStream) {
-            const res1 = await this.api.createStream(Schemas.utilitystream, {}, {})
-            notificationStream = res1.id
-            console.log('notification', notificationStream)
-        }
-
-        let associationStream = userstreams?.payload.body.associationStream
-        if (!associationStream) {
-            const res2 = await this.api.createStream(Schemas.utilitystream, {}, { writer: [this.ccid] })
-            associationStream = res2.id
-            console.log('association', associationStream)
-        }
-
-        let ackCollection = userstreams?.payload.body.ackCollection
-        if (!ackCollection) {
-            const res3 = await this.api.createCollection(Schemas.userAckCollection, true, {})
-            ackCollection = res3.id
-            console.log('ack', ackCollection)
-        }
-
-        this.api.upsertCharacter<Userstreams>(
-            Schemas.userstreams,
-            {
-                homeStream,
-                notificationStream,
-                associationStream,
-                ackCollection
-            },
-            id
-        ).then((data) => {
-            console.log(data)
-        })
-    }
-
     async getStreamsBySchema<T>(remote: FQDN, schema: string): Promise<Stream<T>[]> {
         const streams = await this.api.getStreamListBySchema<T>(schema, remote)
         return streams.map((e) => new Stream<T>(this, e))
     }
 
     async createCommonStream(name: string, description: string): Promise<void> {
-        await this.api.createStream<Commonstream>(Schemas.commonstream, {
+        await this.api.createTimeline<Commonstream>(Schemas.commonstream, {
             name,
             shortname: name,
             description
         })
+    }
+
+    async setProfile(updates: {username?: string, description?: string, avatar?: string, banner?: string, subprofiles?: string[]}): Promise<void> {
+        if (!this.ccid) throw new Error('ccid is not set')
+        // const currentProfile = (await this.api.getCharacterByID<Profile>(id, this.ccid))?.payload.body
+        // if (!currentProfile) throw new Error('profile not found')
+
+        const current: Profile = { // TODO: get current profile
+            username: '',
+            description: '',
+            avatar: '',
+            banner: '',
+            //subprofiles: [],
+            homeStream: '',
+            notificationStream: '',
+            associationStream: '',
+        }
+
+        let homeStream = current.homeStream
+        if (!homeStream) {
+            const res0 = await this.api.createTimeline(Schemas.utilitystream, {}, { indexable: false, domainOwned: false })
+            homeStream = res0.id
+            console.log('home', homeStream)
+        }
+
+        let notificationStream = current.notificationStream
+        if (!notificationStream) {
+            const res1 = await this.api.createTimeline(Schemas.utilitystream, {}, { indexable: false, domainOwned: false })
+            notificationStream = res1.id
+            console.log('notification', notificationStream)
+        }
+
+        let associationStream = current.associationStream
+        if (!associationStream) {
+            const res2 = await this.api.createTimeline(Schemas.utilitystream, {}, { indexable: false, domainOwned: false })
+            associationStream = res2.id
+            console.log('association', associationStream)
+        }
+
+        await this.api.setEntityExtension<Profile>(Schemas.profile, {
+            username: updates.username ?? current.username,
+            description: updates.description ?? current.description,
+            avatar: updates.avatar ?? current.avatar,
+            banner: updates.banner ?? current.banner,
+            homeStream,
+            notificationStream,
+            associationStream,
+            //subprofiles: updates.subprofiles ?? current.subprofiles
+        })
+
+        // this.api.invalidateCharacterByID(id)
+        await this.reloadUser()
     }
 
     async createProfile(username: string, description: string, avatar: string, banner: string): Promise<CoreCharacter<Profile>> {
@@ -239,7 +245,7 @@ export class Client {
             description,
             avatar,
             banner,
-            subprofiles: []
+            //subprofiles: []
         })
 
         await this.reloadUser()
@@ -247,7 +253,7 @@ export class Client {
         return profile
     }
 
-    async updateProfile(id: string, updates: {username?: string, description?: string, avatar?: string, banner?: string, subprofiles?: string[]}): Promise<CoreCharacter<Profile>> {
+    async updateProfile(id: string, updates: {username?: string, description?: string, avatar?: string, banner?: string/*, subprofiles?: string[]*/}): Promise<CoreCharacter<Profile>> {
         if (!this.ccid) throw new Error('ccid is not set')
         const currentProfile = (await this.api.getCharacterByID<Profile>(id, this.ccid))?.payload.body
         if (!currentProfile) throw new Error('profile not found')
@@ -257,7 +263,7 @@ export class Client {
             description: updates.description ?? currentProfile.description,
             avatar: updates.avatar ?? currentProfile.avatar,
             banner: updates.banner ?? currentProfile.banner,
-            subprofiles: updates.subprofiles ?? currentProfile.subprofiles
+            //subprofiles: updates.subprofiles ?? currentProfile.subprofiles
         }, id)
 
         this.api.invalidateCharacterByID(id)

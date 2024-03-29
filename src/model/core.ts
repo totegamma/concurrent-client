@@ -28,7 +28,7 @@ export interface SignedObject<T> {
     schema?: Schema
     body: T
     meta?: any
-    signedAt: string
+    signedAt: Date
     target?: string
     variant?: string
     keyID?: string
