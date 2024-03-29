@@ -7,7 +7,6 @@ export * from "./model/request"
 export * from "./model/others"
 export * from "./util/crypto"
 export * from "./util/misc"
-export * from "./mock/model"
 
 export * from "./schemas"
 export { Commonstream as CommonstreamSchema } from "./schemas/commonstream"
@@ -43,12 +42,22 @@ import {
     DocumentBase,
     AffiliationDocument,
     MessageDocument,
+    ProfileDocument,
+    AssociationDocument,
+    ExtensionDocument,
+    TimelineDocument,
+    DeleteDocument,
 } from "./model/document"
 
 export namespace CCDocument {
     export type Base<T, S> = DocumentBase<T, S>
     export type Affiliation = AffiliationDocument
     export type Message<T> = MessageDocument<T>
+    export type Profile<T> = ProfileDocument<T>
+    export type Association<T> = AssociationDocument<T>
+    export type Extension<T> = ExtensionDocument<T>
+    export type Timeline<T> = TimelineDocument<T>
+    export type Delete = DeleteDocument
 }
 
 

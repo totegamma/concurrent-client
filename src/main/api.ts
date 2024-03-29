@@ -4,6 +4,7 @@ import { MessagePostRequest } from '../model/request'
 import { fetchWithTimeout } from '../util/misc'
 import { Sign, IssueJWT, checkJwtIsValid, parseJWT, JwtPayload } from '../util/crypto'
 import { Schema } from '../schemas'
+import { CCDocument } from '..'
 
 const apiPath = '/api/v1'
 
@@ -149,7 +150,7 @@ export class Api {
             meta: {
                 client: this.client
             },
-            signedAt: new Date().toISOString()
+            signedAt: new Date()
         }
 
         if (this.ckid) {
@@ -326,7 +327,7 @@ export class Api {
             meta: {
                 client: this.client
             },
-            signedAt: new Date().toISOString(),
+            signedAt: new Date(),
             target,
             variant
         }
@@ -425,7 +426,7 @@ export class Api {
             meta: {
                 client: this.client
             },
-            signedAt: new Date().toISOString()
+            signedAt: new Date()
         }
 
         if (this.ckid) {
@@ -573,29 +574,44 @@ export class Api {
         })
     }
 
-    // Stream
-    async createStream<T>(
+    // Timeline
+    async createTimeline<T>(
         schema: string,
         payload: T,
-        { maintainer = [], writer = [], reader = [], visible = true }: { maintainer?: CCID[]; writer?: CCID[]; reader?: CCID[]; visible?: boolean } = {}
+        { indexable = true, domainOwned = true }: { indexable?: boolean, domainOwned?: boolean } = {}
     ): Promise<Stream<T>> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
+
+        const documentObj: CCDocument.Timeline<T> = {
+            signer: this.ccid,
+            type: 'timeline',
+            schema,
+            body: payload,
+            meta: {
+                client: this.client
+            },
+            signedAt: new Date(),
+            indexable,
+            domainOwned
+        }
+
+        if (this.ckid) {
+            documentObj.keyID = this.ckid
+        }
+
+        const document = JSON.stringify(documentObj)
+        const signature = Sign(this.privatekey, document)
 
         const requestOptions = {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({
-                visible,
-                schema,
-                payload: JSON.stringify(payload),
-                author: this.ccid,
-                maintainer,
-                writer,
-                reader,
+                document,
+                signature
             })
         }
 
-        return await this.fetchWithCredential(this.host, `${apiPath}/stream`, requestOptions)
+        return await this.fetchWithCredential(this.host, `${apiPath}/commit`, requestOptions)
             .then(async (res) => await res.json())
             .then((data) => {
                 return data.content
@@ -851,7 +867,7 @@ export class Api {
                from: this.ccid,
                to: target,
            },
-           signedAt: new Date().toISOString()
+           signedAt: new Date()
        }
 
         if (this.ckid) {
@@ -886,7 +902,7 @@ export class Api {
                from: this.ccid,
                to: target
            },
-           signedAt: new Date().toISOString()
+           signedAt: new Date()
        }
 
         if (this.ckid) {
@@ -988,6 +1004,38 @@ export class Api {
     async getEntities(): Promise<Entity[]> {
         return await fetchWithTimeout(this.host, `${apiPath}/entities`, {}).then(async (data) => {
             return (await data.json()).content
+        })
+    }
+
+    async setEntityExtension<T>(schema: Schema, body: T): Promise<Response> {
+        if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
+        const docObj: CCDocument.Extension<T> = {
+            signer: this.ccid,
+            type: 'extension',
+            schema,
+            body,
+            meta: {
+                client: this.client
+            },
+            signedAt: new Date()
+        }
+
+        if (this.ckid) {
+            docObj.keyID = this.ckid
+        }
+
+        const document = JSON.stringify(docObj)
+        const signature = Sign(this.privatekey, document)
+
+        return await this.fetchWithCredential(this.host, `${apiPath}/commit`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                document,
+                signature
+            })
         })
     }
 
@@ -1140,7 +1188,7 @@ export class Api {
                 Root: this.ccid,
                 Parent: this.ckid ?? this.ccid
             },
-            signedAt: new Date().toISOString()
+            signedAt: new Date()
         }
 
         if (this.ckid) {
@@ -1174,7 +1222,7 @@ export class Api {
             body: {
                 CKID: subkey
             },
-            signedAt: new Date().toISOString()
+            signedAt: new Date()
         }
 
         if (this.ckid) {
