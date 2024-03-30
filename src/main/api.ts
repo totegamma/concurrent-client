@@ -140,30 +140,31 @@ export class Api {
     }
 
     // Message
-    async createMessage<T>(schema: Schema, body: T, streams: string[]): Promise<any> {
+    async createMessage<T>(schema: Schema, body: T, timelines: string[]): Promise<any> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
-        const signObject: SignedObject<T> = {
+
+        const documentObj: CCDocument.Message<T> = {
             signer: this.ccid,
-            type: 'Message',
+            type: 'message',
             schema,
             body,
             meta: {
                 client: this.client
             },
+            timelines,
             signedAt: new Date()
         }
 
         if (this.ckid) {
-            signObject.keyID = this.ckid
+            documentObj.keyID = this.ckid
         }
 
-        const signedObject = JSON.stringify(signObject)
-        const signature = Sign(this.privatekey, signedObject)
+        const document = JSON.stringify(documentObj)
+        const signature = Sign(this.privatekey, document)
 
-        const request: MessagePostRequest = {
-            signedObject,
+        const request = {
+            document,
             signature,
-            streams
         }
 
         const requestOptions = {
@@ -172,7 +173,7 @@ export class Api {
             body: JSON.stringify(request)
         }
 
-        const res = await this.fetchWithCredential(this.host, `${apiPath}/message`, requestOptions)
+        const res = await this.fetchWithCredential(this.host, `${apiPath}/commit`, requestOptions)
 
         return await res.json()
     }
