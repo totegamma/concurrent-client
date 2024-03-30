@@ -167,7 +167,7 @@ export class Client {
                     associationStream.push(user.profile?.notificationStream)
                 }
             }
-            await this.api.createAssociation(Schemas.mention, {}, newMessage.content.id, this.ccid, 'messages', associationStream)
+            await this.api.createAssociation(Schemas.mention, {}, newMessage.content.id, this.ccid, associationStream)
         }
         return newMessage
     }
@@ -577,7 +577,7 @@ export class Message<T> implements CoreMessage<T> {
     async favorite() {
         const author = await this.getAuthor()
         const targetStream = [author.profile?.notificationStream, this.client.user?.profile?.associationStream].filter((e) => e) as string[]
-        await this.api.createAssociation<Like>(Schemas.like, {}, this.id, author.ccid, 'messages', targetStream)
+        await this.api.createAssociation<Like>(Schemas.like, {}, this.id, author.ccid, targetStream)
         this.api.invalidateMessage(this.id)
     }
 
@@ -592,7 +592,6 @@ export class Message<T> implements CoreMessage<T> {
             },
             this.id,
             author.ccid,
-            'messages',
             targetStream,
             imageUrl
         )
@@ -624,7 +623,6 @@ export class Message<T> implements CoreMessage<T> {
           { messageId: data.content.id, messageAuthor: this.user.ccid },
           this.id,
           this.author,
-          'messages',
           targetStream || []
         )
     }
@@ -650,7 +648,6 @@ export class Message<T> implements CoreMessage<T> {
             { messageId: created.id, messageAuthor: created.author },
             this.id,
             this.author,
-            'messages',
             targetStream
         )
     }

@@ -1,5 +1,5 @@
 
-import { Entity, Message, Character, Association, Stream, SignedObject, CCID, StreamItem, Domain, StreamID, FQDN, Collection, CollectionID, CollectionItem, Ack, AckObject, AckRequest, Key } from '../model/core'
+import { Entity, Message, Character, Association, Stream, SignedObject, CCID, StreamItem, Domain, FQDN, Collection, CollectionID, CollectionItem, Ack, AckObject, AckRequest, Key, TimelineID } from '../model/core'
 import { fetchWithTimeout } from '../util/misc'
 import { Sign, IssueJWT, checkJwtIsValid, parseJWT, JwtPayload } from '../util/crypto'
 import { Schema } from '../schemas'
@@ -139,7 +139,7 @@ export class Api {
     }
 
     // Message
-    async createMessage<T>(schema: Schema, body: T, timelines: string[]): Promise<any> {
+    async createMessage<T>(schema: Schema, body: T, timelines: TimelineID[]): Promise<any> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
 
         const documentObj: CCDocument.Message<T> = {
@@ -312,45 +312,45 @@ export class Api {
         body: T,
         target: string,
         targetAuthor: CCID,
-        targetType: string,
-        streams: StreamID[],
+        timelines: TimelineID[],
         variant: string = ''
     ): Promise<any> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
         const targetHost = await this.resolveAddress(targetAuthor)
         if (!targetHost) throw new Error('domain not found')
-        const signObject: SignedObject<T> = {
+
+        const documentObj: CCDocument.Association<T> = {
             signer: this.ccid,
-            type: 'Association',
+            type: 'association',
             schema,
             body,
             meta: {
                 client: this.client
             },
-            signedAt: new Date(),
             target,
-            variant
+            owner: targetAuthor,
+            variant,
+            timelines,
+            signedAt: new Date(),
         }
 
         if (this.ckid) {
-            signObject.keyID = this.ckid
+            documentObj.keyID = this.ckid
         }
 
-        const signedObject = JSON.stringify(signObject)
-        const signature = Sign(this.privatekey, signedObject)
+        const document = JSON.stringify(documentObj)
+        const signature = Sign(this.privatekey, document)
 
         const requestOptions = {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({
-                targetType,
-                signedObject,
+                document,
                 signature,
-                streams
             })
         }
 
-        return await this.fetchWithCredential(targetHost, `${apiPath}/association`, requestOptions)
+        return await this.fetchWithCredential(targetHost, `${apiPath}/commit`, requestOptions)
             .then(async (res) => await res.json())
             .then((data) => {
                 return data

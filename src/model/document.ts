@@ -21,7 +21,9 @@ export interface MessageDocument<T> extends DocumentBase<T, 'message'> {
 }
 
 export interface AssociationDocument<T> extends DocumentBase<T, 'association'> {
-    owner?: string
+    target: string
+    owner: string
+    variant: string
     timelines: string[]
 }
 
