@@ -48,9 +48,9 @@ export interface Key {
     id: string
     root: string
     parent: string
-    enactPayload: string
+    enactDocument: string
     enactSignature: string
-    revokePayload?: string
+    revokeDocument?: string
     revokeSignature?: string
     validSince: string
     validUntil: string
@@ -62,10 +62,14 @@ export interface Entity<T> {
     domain: FQDN 
     cdate: string
     score: number
-    certs: Certificate[]
+
+    affiliationDocument: string
+    affiliationSignature: string
+
+    tombstoneDocument?: string
+    tombstoneSignature?: string
+
     extension?: EntityExtension<T>
-    payload: string
-    signature: string
 }
 
 export interface EntityExtension<T> {
@@ -80,8 +84,8 @@ export interface Association<T> {
     id: AssociationID
     author: CCID
     schema: Schema
-    payload: SignedObject<T>
-    rawpayload: string
+    document: SignedObject<T>
+    _document: string
     signature: string
     targetID: MessageID
     targetType: 'messages' | 'characters'
@@ -92,8 +96,8 @@ export interface Message<T> {
     id: MessageID
     author: CCID
     schema: Schema
-    payload: SignedObject<T>
-    rawpayload: string
+    document: SignedObject<T>
+    _document: string
     signature: string
     streams: StreamID[]
     associations: Array<Association<any>>
@@ -106,7 +110,7 @@ export interface Character<T> {
     author: CCID
     schema: Schema
     id: CharacterID
-    payload: SignedObject<T>
+    document: SignedObject<T>
     signature: string
     cdate: string
 }
@@ -128,7 +132,7 @@ export interface Stream<T> {
     writer: CCID[]
     reader: CCID[]
     schema: CCID
-    payload: T
+    document: T
     cdate: string
 }
 
@@ -166,7 +170,7 @@ export interface Collection<T> {
 export interface CollectionItem<T> {
     id: string
     collectionId: string
-    payload: T
+    document: T
 }
 
 export interface Certificate {
@@ -185,7 +189,7 @@ export interface ProfileOverride {
 export interface Ack {
     from: string
     to: string
-    payload: string
+    document: string
     signature: string
 }
 

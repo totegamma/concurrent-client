@@ -202,12 +202,12 @@ export class Api {
                     return undefined
                 }
                 const message = data.content
-                message.rawpayload = message.payload
-                message.payload = JSON.parse(message.payload)
+                message._document = message.document
+                message.document = JSON.parse(message.document)
 
                 message.ownAssociations = message.ownAssociations?.map((a: any) => {
-                    a.rawpayload = a.payload
-                    a.payload = JSON.parse(a.payload)
+                    a._document = a.document
+                    a.document = JSON.parse(a.document)
                     return a
                 }) ?? []
 
@@ -225,12 +225,12 @@ export class Api {
                     return undefined
                 }
                 const message = data.content
-                message.rawpayload = message.payload
-                message.payload = JSON.parse(message.payload)
+                message._document = message.document
+                message.document = JSON.parse(message.document)
 
                 message.ownAssociations = message.ownAssociations?.map((a: any) => {
-                    a.rawpayload = a.payload
-                    a.payload = JSON.parse(a.payload)
+                    a._document = a.document
+                    a.document = JSON.parse(a.document)
                     return a
                 }) ?? []
 
@@ -261,8 +261,8 @@ export class Api {
 
         let data = (await resp.json()).content
         data = data?.map((a: any) => {
-            a.rawpayload = a.payload
-            a.payload = JSON.parse(a.payload)
+            a._document = a.document
+            a.document = JSON.parse(a.document)
             return a
         }) ?? []
 
@@ -401,8 +401,8 @@ export class Api {
                 return undefined
             }
             const association = data.content
-            association.rawpayload = association.payload
-            association.payload = JSON.parse(association.payload)
+            association._document = association.document
+            association.document = JSON.parse(association.document)
             this.associationCache[id] = association
             return association
         })
@@ -452,8 +452,8 @@ export class Api {
             .then(async (res) => await res.json())
             .then((data) => {
                 const character = data.content
-                character.rawpayload = character.payload
-                character.payload = JSON.parse(character.payload)
+                character._document = character.document
+                character.document = JSON.parse(character.document)
                 return character
             })
     }
@@ -483,8 +483,8 @@ export class Api {
             }
             const characters = data.content
             characters.forEach((character: any) => {
-                character.rawpayload = character.payload
-                character.payload = JSON.parse(character.payload)
+                character._document = character.document
+                character.document = JSON.parse(character.document)
             })
             return characters
         })
@@ -521,8 +521,8 @@ export class Api {
             }
             const characters = data.content
             characters.forEach((character: any) => {
-                character.rawpayload = character.payload
-                character.payload = JSON.parse(character.payload)
+                character._document = character.document
+                character.document = JSON.parse(character.document)
             })
             return characters
         })
@@ -541,8 +541,8 @@ export class Api {
                 return null
             }
             const character = data.content
-            character.rawpayload = character.payload
-            character.payload = JSON.parse(character.payload)
+            character._document = character.document
+            character.document = JSON.parse(character.document)
             return character
         })
         return request
@@ -577,7 +577,7 @@ export class Api {
     // Timeline
     async createTimeline<T>(
         schema: string,
-        payload: T,
+        body: T,
         { indexable = true, domainOwned = true }: { indexable?: boolean, domainOwned?: boolean } = {}
     ): Promise<Stream<T>> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
@@ -586,7 +586,7 @@ export class Api {
             signer: this.ccid,
             type: 'timeline',
             schema,
-            body: payload,
+            body,
             meta: {
                 client: this.client
             },
@@ -619,7 +619,7 @@ export class Api {
     }
 
     async updateStream(stream: Stream<any>): Promise<Stream<any>> {
-        stream.payload = JSON.stringify(stream.payload)
+        stream.document = JSON.stringify(stream.document)
         return await this.fetchWithCredential(this.host, `${apiPath}/stream/${stream.id}`, {
             method: 'PUT',
             headers: { 'content-type': 'application/json' },
@@ -656,7 +656,7 @@ export class Api {
             async (data) => {
                 return await data.json().then((data) => {
                     return data.content.map((e: any) => {
-                        return { ...e, payload: JSON.parse(e.payload) }
+                        return { ...e, document: JSON.parse(e.document) }
                     })
                 })
             }
@@ -679,12 +679,12 @@ export class Api {
                 return await Promise.reject(new Error(`fetch failed: ${res.status} ${await res.text()}`))
             }
             const data = (await res.json()).content
-            if (!data.payload) {
+            if (!data.document) {
                 return undefined
             }
             const stream = data
             stream.id = id
-            stream.payload = JSON.parse(stream.payload)
+            stream.document = JSON.parse(stream.document)
             this.streamCache[id] = stream
             return stream
         })
@@ -1071,7 +1071,7 @@ export class Api {
             collection.id = id
             collection.items = collection.items.map((item: CollectionItem<T>) => {return {
                 ...item,
-                payload: JSON.parse(item.payload as string)
+                document: JSON.parse(item.document as string)
             }})
             return collection
         })
@@ -1157,7 +1157,7 @@ export class Api {
                 return Promise.reject(new Error(data.message))
             }
             const deleted = data.content
-            deleted.payload = JSON.parse(deleted.payload as string)
+            deleted.document = JSON.parse(deleted.document as string)
             return deleted
         })
     }
