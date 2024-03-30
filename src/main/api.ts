@@ -286,12 +286,33 @@ export class Api {
     }
 
     async deleteMessage(target: string, host: string = ''): Promise<any> {
+        if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
         const targetHost = !host ? this.host : host
-        const requestOptions = {
-            method: 'DELETE',
+
+        const documentObj: CCDocument.Delete = {
+            signer: this.ccid,
+            type: 'delete',
+            target,
+            signedAt: new Date()
         }
 
-        return await this.fetchWithCredential(targetHost, `${apiPath}/message/${target}`, requestOptions)
+        if (this.ckid) {
+            documentObj.keyID = this.ckid
+        }
+
+        const document = JSON.stringify(documentObj)
+        const signature = Sign(this.privatekey, document)
+
+        const requestOptions = {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+                document,
+                signature
+            })
+        }
+
+        return await this.fetchWithCredential(targetHost, `${apiPath}/commit`, requestOptions)
             .then(async (res) => await res.json())
             .then((data) => {
                 return data
@@ -361,13 +382,34 @@ export class Api {
         target: string,
         targetAuthor: CCID
     ): Promise<{ status: string; content: Association<any> }> {
+        if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
         const targetHost = await this.resolveAddress(targetAuthor)
         if (!targetHost) throw new Error('domain not found')
-        const requestOptions = {
-            method: 'DELETE',
+
+        const documentObj: CCDocument.Delete = {
+            signer: this.ccid,
+            type: 'delete',
+            target,
+            signedAt: new Date()
         }
 
-        return await this.fetchWithCredential(targetHost, `${apiPath}/association/${target}`, requestOptions)
+        if (this.ckid) {
+            documentObj.keyID = this.ckid
+        }
+
+        const document = JSON.stringify(documentObj)
+        const signature = Sign(this.privatekey, document)
+
+        const requestOptions = {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+                document,
+                signature
+            })
+        }
+
+        return await this.fetchWithCredential(targetHost, `${apiPath}/commit`, requestOptions)
             .then(async (res) => await res.json())
             .then((data: { status: string; content: Association<any> }) => {
                 return data

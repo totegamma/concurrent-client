@@ -5,16 +5,15 @@ export interface DocumentBase<T, S> {
     type: S
     schema?: string
     keyID?: string
-    body: T
+    body?: T
     meta?: any
     signedAt: Date
 }
 
 
-export interface AffiliationBody {
+export interface AffiliationDocument extends DocumentBase<undefined, 'affiliation'> {
     domain: string
 }
-export type AffiliationDocument = DocumentBase<AffiliationBody, 'affiliation'>
 
 export interface MessageDocument<T> extends DocumentBase<T, 'message'> {
     timelines: string[]
@@ -29,11 +28,10 @@ export interface AssociationDocument<T> extends DocumentBase<T, 'association'> {
 
 export type ProfileDocument<T> = DocumentBase<T, 'profile'>
 
-export interface DeleteBody {
+
+export interface DeleteDocument extends DocumentBase<undefined, 'delete'> {
     target: string
 }
-
-export type DeleteDocument = DocumentBase<DeleteBody, 'delete'>
 
 export type ExtensionDocument<T> = DocumentBase<T, 'extension'>
 
