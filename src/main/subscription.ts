@@ -1,5 +1,5 @@
 import { Socket } from './socket';
-import { StreamEvent } from '../model/core';
+import { TimelineEvent } from '../model/core';
 
 type socketEvent = 'MessageCreated' | 'MessageDeleted' | 'AssociationCreated' | 'AssociationDeleted'
 
@@ -7,19 +7,19 @@ export class Subscription {
 
     socket: Socket;
     streams: string[] = [];
-    fns: Record<socketEvent, Set<(event: StreamEvent) => void>>
+    fns: Record<socketEvent, Set<(event: TimelineEvent) => void>>
 
-    on(type: socketEvent, fn: (event: StreamEvent) => void) {
+    on(type: socketEvent, fn: (event: TimelineEvent) => void) {
         if (this.fns[type]) {
             this.fns[type].add(fn)
         } else {
             this.fns[type] = new Set([fn])
         }
     }
-    off(type: socketEvent, fn: (event: StreamEvent) => void) {
+    off(type: socketEvent, fn: (event: TimelineEvent) => void) {
         this.fns[type]?.delete(fn)
     }
-    emit(type: socketEvent, event: StreamEvent) {
+    emit(type: socketEvent, event: TimelineEvent) {
         for (const fn of this.fns[type] || []) fn(event)
     }
 
@@ -36,7 +36,7 @@ export class Subscription {
     async listen(streams: string[]): Promise<void> {
         this.streams = streams
         await this.socket.waitOpen()
-        this.socket.listen(streams, (event: StreamEvent) => {
+        this.socket.listen(streams, (event: TimelineEvent) => {
             switch (event.type + '.' + event.action) {
                 case 'message.create':
                     this.emit('MessageCreated', event);

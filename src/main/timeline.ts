@@ -1,12 +1,12 @@
 import { Socket } from './socket';
-import { Association, Message, StreamEvent, StreamItem } from '../model/core';
+import { Association, Message, TimelineEvent, StreamItem } from '../model/core';
 import { Api } from './api';
 
 export class Timeline {
 
     body: StreamItem[] = [];
     onUpdate?: () => void;
-    onRealtimeEvent?: (event: StreamEvent) => void;
+    onRealtimeEvent?: (event: TimelineEvent) => void;
     socket: Socket;
     api: Api;
     streams: string[] = [];
@@ -16,7 +16,8 @@ export class Timeline {
         this.socket = socket;
     }
 
-    processEvent(event: StreamEvent) {
+    processEvent(event: TimelineEvent) {
+        console.log('event', event)
         switch (event.type + '.' + event.action) {
             case 'message.create':
                 if (this.body.find(m => m.objectID === event.item.objectID)) return;
