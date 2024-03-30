@@ -1,5 +1,5 @@
 
-import { Entity, Message, Character, Association, Stream, SignedObject, CCID, StreamItem, Domain, FQDN, Collection, CollectionID, CollectionItem, Ack, AckObject, AckRequest, Key, TimelineID } from '../model/core'
+import { Entity, Message, Character, Association, Timeline, CCID, Domain, FQDN, Collection, CollectionID, CollectionItem, Ack, AckObject, AckRequest, Key, TimelineID, TimelineItem } from '../model/core'
 import { fetchWithTimeout } from '../util/misc'
 import { Sign, IssueJWT, checkJwtIsValid, parseJWT, JwtPayload } from '../util/crypto'
 import { Schema } from '../schemas'
@@ -41,7 +41,7 @@ export class Api {
     messageCache: Record<string, Promise<Message<any>> | null | undefined> = {}
     characterCache: Record<string, Promise<Character<any>[]> | null | undefined> = {}
     associationCache: Record<string, Promise<Association<any>> | null | undefined> = {}
-    streamCache: Record<string, Promise<Stream<any>> | null | undefined> = {}
+    streamCache: Record<string, Promise<Timeline<any>> | null | undefined> = {}
     domainCache: Record<string, Promise<Domain> | null | undefined> = {}
 
     constructor(conf: {host: string, ccid?: string, privatekey?: string, client?: string, token?: string, ckid?: string}) {
@@ -137,6 +137,7 @@ export class Api {
         })
         return await this.addressCache[ccid]
     }
+
 
     // Message
     async createMessage<T>(schema: Schema, body: T, timelines: TimelineID[]): Promise<any> {
@@ -460,9 +461,9 @@ export class Api {
     // Character
     async upsertCharacter<T>(schema: Schema, body: T, id?: string): Promise<any> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
-        const signObject: SignedObject<T> = {
+        const signObject: CCDocument.Profile<T> = {
             signer: this.ccid,
-            type: 'Character',
+            type: 'profile',
             schema,
             body,
             meta: {
@@ -621,7 +622,7 @@ export class Api {
         schema: string,
         body: T,
         { indexable = true, domainOwned = true }: { indexable?: boolean, domainOwned?: boolean } = {}
-    ): Promise<Stream<T>> {
+    ): Promise<Timeline<T>> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
 
         const documentObj: CCDocument.Timeline<T> = {
@@ -660,13 +661,16 @@ export class Api {
             })
     }
 
-    async updateStream(stream: Stream<any>): Promise<Stream<any>> {
-        stream.document = JSON.stringify(stream.document)
+    async updateStream(_timeline: Timeline<any>): Promise<Timeline<any>> {
+        /*
+        timeline.document = JSON.stringify(stream.document)
         return await this.fetchWithCredential(this.host, `${apiPath}/stream/${stream.id}`, {
             method: 'PUT',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify(stream)
         }).then(async (res) => (await res.json()).content)
+        */
+       return await Promise.reject(new Error('not implemented'))
     }
 
     async deleteStream(id: string): Promise<any> {
@@ -693,8 +697,9 @@ export class Api {
         ).then(async (res) => await res.json())
     }
 
-    async getStreamListBySchema<T>(schema: string, remote?: FQDN): Promise<Array<Stream<T>>> {
-        return await fetchWithTimeout(remote ?? this.host, `${apiPath}/streams?schema=${schema}`, {}).then(
+    async getTimelineListBySchema<T>(schema: string, remote?: FQDN): Promise<Array<Timeline<T>>> {
+        schema = encodeURIComponent(schema)
+        return await fetchWithTimeout(remote ?? this.host, `${apiPath}/timelines?schema=${schema}`, {}).then(
             async (data) => {
                 return await data.json().then((data) => {
                     return data.content.map((e: any) => {
@@ -705,14 +710,14 @@ export class Api {
         )
     }
 
-    async getStream(id: string): Promise<Stream<any> | null | undefined> {
+    async getTimeline(id: string): Promise<Timeline<any> | null | undefined> {
         if (this.streamCache[id]) {
             const value = await this.streamCache[id]
             if (value !== undefined) return value
         }
         const key = id.split('@')[0]
         const host = id.split('@')[1] ?? this.host
-        this.streamCache[id] = this.fetchWithOnlineCheck(host, `/stream/${key}`, {
+        this.streamCache[id] = this.fetchWithOnlineCheck(host, `/timeline/${key}`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
@@ -726,6 +731,7 @@ export class Api {
             }
             const stream = data
             stream.id = id
+            stream._document = stream.document
             stream.document = JSON.parse(stream.document)
             this.streamCache[id] = stream
             return stream
@@ -733,14 +739,14 @@ export class Api {
         return await this.streamCache[id]
     }
 
-    async getTimelineRecent(streams: string[]): Promise<StreamItem[]> {
+    async getTimelineRecent(streams: string[]): Promise<TimelineItem[]> {
 
         const requestOptions = {
             method: 'GET',
             headers: {}
         }
 
-        let result: StreamItem[] = []
+        let result: TimelineItem[] = []
 
         try {
             const response = await this.fetchWithOnlineCheck(
@@ -763,7 +769,7 @@ export class Api {
         return result
     }
 
-    async getTimelineRanged(streams: string[], param: {until?: Date, since?: Date}): Promise<StreamItem[]> {
+    async getTimelineRanged(streams: string[], param: {until?: Date, since?: Date}): Promise<TimelineItem[]> {
 
         console.log('readStreamRanged', streams, param)
 
@@ -775,7 +781,7 @@ export class Api {
         const sinceQuery = !param.since ? '' : `&since=${Math.floor(param.since.getTime()/1000)}`
         const untilQuery = !param.until ? '' : `&until=${Math.ceil(param.until.getTime()/1000)}`
 
-        let result: StreamItem[] = []
+        let result: TimelineItem[] = []
         try {
             const response = await this.fetchWithOnlineCheck(
                 this.host,
@@ -910,15 +916,13 @@ export class Api {
     async ack(target: string): Promise<any> {
         if (!this.ccid || !this.privatekey) throw new Error()
 
-       const signObject: SignedObject<AckObject> = {
-           type: 'ack',
-           signer: this.ccid,
-           body: {
-               from: this.ccid,
-               to: target,
-           },
-           signedAt: new Date()
-       }
+        const signObject: CCDocument.Ack = {
+            type: 'ack',
+            signer: this.ccid,
+            from: this.ccid,
+            to: target,
+            signedAt: new Date()
+        }
 
         if (this.ckid) {
             signObject.keyID = this.ckid
@@ -945,15 +949,13 @@ export class Api {
     async unack(target: string): Promise<any> {
         if (!this.ccid || !this.privatekey) throw new Error()
 
-       const signObject: SignedObject<AckObject> = {
-           type: 'unack',
-           signer: this.ccid,
-           body: {
-               from: this.ccid,
-               to: target
-           },
-           signedAt: new Date()
-       }
+        const signObject: CCDocument.Unack = {
+            type: 'unack',
+            signer: this.ccid,
+            from: this.ccid,
+            to: target,
+            signedAt: new Date()
+        }
 
         if (this.ckid) {
             signObject.keyID = this.ckid
@@ -1230,14 +1232,12 @@ export class Api {
     // enactSubkey
     async enactSubkey(subkey: string): Promise<void> {
         if (!this.ccid || !this.privatekey) throw new InvalidKeyError()
-        const signObject: SignedObject<any> = {
+        const signObject: CCDocument.Enact = {
             signer: this.ccid,
             type: 'enact',
-            body: {
-                CKID: subkey,
-                Root: this.ccid,
-                Parent: this.ckid ?? this.ccid
-            },
+            target: subkey,
+            root: this.ccid,
+            parent: this.ckid ?? this.ccid,
             signedAt: new Date()
         }
 
@@ -1266,12 +1266,10 @@ export class Api {
     // revokeSubkey
    async revokeSubkey(subkey: string): Promise<void> {
         if (!this.ccid || !this.privatekey) throw new InvalidKeyError()
-        const signObject: SignedObject<any> = {
+        const signObject: CCDocument.Revoke = {
             signer: this.ccid,
             type: 'revoke',
-            body: {
-                CKID: subkey
-            },
+            target: subkey,
             signedAt: new Date()
         }
 

@@ -1,5 +1,5 @@
 import { Api } from './api';
-import { Association, Message, StreamID, TimelineEvent } from '../model/core';
+import { Association, Message, TimelineID, TimelineEvent } from '../model/core';
 import { Client } from './client';
 
 const WS = typeof window === 'undefined' ? require('ws') : window.WebSocket;
@@ -117,7 +117,7 @@ export class Socket {
         }
     }
 
-    listen(timelines: StreamID[], callback: (event: TimelineEvent) => void) {
+    listen(timelines: TimelineID[], callback: (event: TimelineEvent) => void) {
         const currenttimelines = Array.from(this.subscriptions.keys())
         timelines.forEach(topic => {
             if (!this.subscriptions.has(topic)) {
@@ -131,7 +131,7 @@ export class Socket {
         }
     }
 
-    unlisten(timelines: StreamID[], callback: (event: TimelineEvent) => void) {
+    unlisten(timelines: TimelineID[], callback: (event: TimelineEvent) => void) {
         const currenttimelines = Array.from(this.subscriptions.keys())
         timelines.forEach(topic => {
             if (this.subscriptions.has(topic)) {

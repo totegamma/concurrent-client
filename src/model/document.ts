@@ -1,42 +1,68 @@
+import { CCID } from ".."
 
-export interface DocumentBase<T, S> {
+export interface DocumentBase<S> {
     id?: string
     signer: string
     type: S
-    schema?: string
     keyID?: string
-    body?: T
     meta?: any
     signedAt: Date
 }
 
+export interface DocumentBaseWithBody<T, S> extends DocumentBase<S> {
+    schema: string
+    body: T
+}
 
-export interface AffiliationDocument extends DocumentBase<undefined, 'affiliation'> {
+export type Document<T, S> = DocumentBase<S> | DocumentBaseWithBody<T, S>
+
+
+export interface AffiliationDocument extends DocumentBase<'affiliation'> {
     domain: string
 }
 
-export interface MessageDocument<T> extends DocumentBase<T, 'message'> {
+export interface MessageDocument<T> extends DocumentBaseWithBody<T, 'message'> {
     timelines: string[]
 }
 
-export interface AssociationDocument<T> extends DocumentBase<T, 'association'> {
+export interface AssociationDocument<T> extends DocumentBaseWithBody<T, 'association'> {
     target: string
     owner: string
     variant: string
     timelines: string[]
 }
 
-export type ProfileDocument<T> = DocumentBase<T, 'profile'>
+export type ProfileDocument<T> = DocumentBaseWithBody<T, 'profile'>
 
 
-export interface DeleteDocument extends DocumentBase<undefined, 'delete'> {
+export interface DeleteDocument extends DocumentBase<'delete'> {
     target: string
 }
 
-export type ExtensionDocument<T> = DocumentBase<T, 'extension'>
+export type ExtensionDocument<T> = DocumentBaseWithBody<T, 'extension'>
 
-export interface TimelineDocument<T> extends DocumentBase<T, 'timeline'> {
+export interface TimelineDocument<T> extends DocumentBaseWithBody<T, 'timeline'> {
     indexable: boolean
     domainOwned: boolean
+}
+
+export interface AckDocument extends DocumentBase<'ack'> {
+    from: CCID
+    to: CCID
+}
+
+export interface UnackDocument extends DocumentBase<'unack'> {
+    from: CCID
+    to: CCID
+}
+
+export interface EnactDocument extends DocumentBase<'enact'> {
+    target: string
+    root: string
+    parent: string
+}
+
+export interface RevokeDocument extends DocumentBase<'revoke'> {
+    target: string
 }
 

@@ -1,10 +1,10 @@
 import { Socket } from './socket';
-import { Association, Message, TimelineEvent, StreamItem } from '../model/core';
+import { Association, Message, TimelineEvent, TimelineItem } from '../model/core';
 import { Api } from './api';
 
-export class Timeline {
+export class TimelineReader {
 
-    body: StreamItem[] = [];
+    body: TimelineItem[] = [];
     onUpdate?: () => void;
     onRealtimeEvent?: (event: TimelineEvent) => void;
     socket: Socket;
@@ -53,7 +53,7 @@ export class Timeline {
 
         console.log('listen!', streams)
 
-        await this.api.getTimelineRecent(streams).then((items: StreamItem[]) => {
+        await this.api.getTimelineRecent(streams).then((items: TimelineItem[]) => {
             this.body = items;
             if (items.length < 16) {
                 hasMore = false;
