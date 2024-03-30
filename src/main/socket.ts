@@ -27,9 +27,6 @@ export class Socket {
         this.ws = new WS('wss://' + this.api.host + '/api/v1/socket');
 
         this.ws.onmessage = (rawevent: any) => {
-
-            console.log('socket message', rawevent.data)
-
             const event: TimelineEvent = JSON.parse(rawevent.data);
             if (!event) return
 
