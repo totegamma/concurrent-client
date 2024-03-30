@@ -1,20 +1,18 @@
 import { Api } from './api'
 
 import { Socket } from './socket'
-import { Timeline } from './timeline'
+import { TimelineReader } from './timeline'
 import { Subscription } from './subscription'
 
 import { 
     Message as CoreMessage,
     Association as CoreAssociation,
     Entity as CoreEntity,
-    Stream as CoreStream,
+    Timeline as CoreTimeline,
     CCID,
     FQDN,
     MessageID,
     AssociationID,
-    StreamID,
-    SignedObject,
     TimelineID,
 } from "../model/core";
 
@@ -31,7 +29,7 @@ import { Commonstream } from '../schemas/commonstream'
 
 import { ComputeCCID, KeyPair, LoadKey, LoadSubKey } from "../util/crypto";
 import { CreateCurrentOptions } from "../model/others";
-import { fetchWithTimeout } from '..';
+import { CCDocument, fetchWithTimeout } from '..';
 
 const cacheLifetime = 5 * 60 * 1000
 
@@ -127,8 +125,8 @@ export class Client {
         return await User.load(this, id)
     }
 
-    async getStream<T>(id: StreamID): Promise<Stream<T> | null> {
-        return await Stream.load(this, id)
+    async getTimeline<T>(id: TimelineID): Promise<Timeline<T> | null> {
+        return await Timeline.load(this, id)
     }
 
     async getAssociation<T>(id: AssociationID, owner: CCID): Promise<Association<T> | null | undefined> {
@@ -156,7 +154,7 @@ export class Client {
         delete this.messageCache[id]
     }
 
-    async createCurrent(body: string, streams: StreamID[], options?: CreateCurrentOptions): Promise<Error | null> {
+    async createCurrent(body: string, streams: TimelineID[], options?: CreateCurrentOptions): Promise<Error | null> {
         if (!this.ccid) return new Error('ccid is not set')
         const newMessage = await this.api.createMessage<SimpleNote>(Schemas.simpleNote, {body, ...options}, streams)
         if(options?.mentions && options.mentions.length > 0) {
@@ -172,9 +170,9 @@ export class Client {
         return newMessage
     }
 
-    async getStreamsBySchema<T>(remote: FQDN, schema: string): Promise<Stream<T>[]> {
-        const streams = await this.api.getStreamListBySchema<T>(schema, remote)
-        return streams.map((e) => new Stream<T>(this, e))
+    async getTimelinesBySchema<T>(remote: FQDN, schema: string): Promise<Timeline<T>[]> {
+        const streams = await this.api.getTimelineListBySchema<T>(schema, remote)
+        return streams.map((e) => new Timeline<T>(this, e))
     }
 
     async createCommonStream(name: string, description: string): Promise<void> {
@@ -233,9 +231,9 @@ export class Client {
         return this.socket!
     }
 
-    async newTimeline(): Promise<Timeline> {
+    async newTimelineReader(): Promise<TimelineReader> {
         const socket = await this.newSocket()
-        return new Timeline(this.api, socket)
+        return new TimelineReader(this.api, socket)
     }
 
     async newSubscription(): Promise<Subscription> {
@@ -314,7 +312,7 @@ export class Association<T> implements CoreAssociation<T> {
     author: CCID
     cdate: string
     id: AssociationID
-    document: SignedObject<T>
+    document: CCDocument.Association<T>
     _document: string
     schema: Schema
     signature: string
@@ -382,44 +380,44 @@ export class Association<T> implements CoreAssociation<T> {
     }
 }
 
-export class Stream<T> implements CoreStream<T> {
+export class Timeline<T> implements CoreTimeline<T> {
 
     api: Api
     client: Client
 
-    id: StreamID
-    visible: boolean
+    id: TimelineID
+    indexable: boolean
     author: CCID
-    maintainer: CCID[]
-    writer: CCID[]
-    reader: CCID[]
+    domainOwned: boolean
     schema: CCID
-    document: T
+    document: CCDocument.Timeline<T>
+    signature: string
     cdate: string
+    mdate: string
 
-    constructor(client: Client, data: CoreStream<T>) {
+    constructor(client: Client, data: CoreTimeline<T>) {
         this.api = client.api
         this.client = client
 
         this.id = data.id
-        this.visible = data.visible
+        this.indexable = data.indexable
         this.author = data.author
-        this.maintainer = data.maintainer
-        this.writer = data.writer
-        this.reader = data.reader
+        this.domainOwned = data.domainOwned
         this.schema = data.schema
         this.document = data.document
+        this.signature = data.signature
         this.cdate = data.cdate
+        this.mdate = data.mdate
     }
 
-    static async load<T>(client: Client, id: StreamID): Promise<Stream<T> | null> {
-        const stream = await client.api.getStream(id).catch((e) => {
+    static async load<T>(client: Client, id: TimelineID): Promise<Timeline<T> | null> {
+        const stream = await client.api.getTimeline(id).catch((e) => {
             console.log('CLIENT::getStream::readStream::error', e)
             return null
         })
         if (!stream) return null
 
-        return new Stream<T>(client, stream)
+        return new Timeline<T>(client, stream)
     }
 
 }
@@ -434,7 +432,7 @@ export class Message<T> implements CoreMessage<T> {
     author: CCID
     cdate: string
     id: MessageID
-    document: SignedObject<T>
+    document: CCDocument.Message<T>
     _document: string
     schema: Schema
     signature: string
@@ -442,7 +440,7 @@ export class Message<T> implements CoreMessage<T> {
 
     associationCounts?: Record<string, number>
     reactionCounts?: Record<string, number>
-    postedStreams?: Stream<any>[]
+    postedStreams?: Timeline<any>[]
 
     authorUser?: User
 
@@ -480,9 +478,9 @@ export class Message<T> implements CoreMessage<T> {
         }
 
         const timelines = await Promise.all(
-            message.timelines.map((e) => client.getStream(e))
+            message.timelines.map((e) => client.getTimeline(e))
         )
-        message.postedStreams = timelines.filter((e) => e) as Stream<any>[]
+        message.postedStreams = timelines.filter((e) => e) as Timeline<any>[]
 
         return message
     }
@@ -495,9 +493,9 @@ export class Message<T> implements CoreMessage<T> {
         return author
     }
 
-    async getTimelines<T>() : Promise<Stream<T>[]> {
-        const timelines = await Promise.all(this.timelines.map((e) => this.client.getStream(e)))
-        return timelines.filter((e) => e) as Stream<T>[]
+    async getTimelines<T>() : Promise<Timeline<T>[]> {
+        const timelines = await Promise.all(this.timelines.map((e) => this.client.getTimeline(e)))
+        return timelines.filter((e) => e) as Timeline<T>[]
     }
 
     async getReplyAssociations(): Promise<Association<ReplyAssociation>[]> {

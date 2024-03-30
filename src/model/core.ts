@@ -1,8 +1,8 @@
 import { Schema } from "../schemas"
+import { CCDocument } from ".."
 
 export type CCID = string
 export type FQDN = string
-export type StreamID = string
 export type TimelineID = string
 export type MessageID = string
 export type AssociationID = string
@@ -22,18 +22,6 @@ export interface CommitRequest {
 }
 
 // ---
-
-export interface SignedObject<T> {
-    signer: CCID
-    type: string
-    schema?: Schema
-    body: T
-    meta?: any
-    signedAt: Date
-    target?: string
-    variant?: string
-    keyID?: string
-}
 
 export interface keyEnact {
     CKID: string
@@ -76,7 +64,7 @@ export interface Entity<T> {
 export interface EntityExtension<T> {
     owner: string
     schema: Schema
-    document: SignedObject<T>
+    document: CCDocument.Extension<T>
     _document: string
     signature: string
 }
@@ -85,7 +73,7 @@ export interface Association<T> {
     id: AssociationID
     author: CCID
     schema: Schema
-    document: SignedObject<T>
+    document: CCDocument.Association<T>
     _document: string
     signature: string
     targetID: MessageID
@@ -97,7 +85,7 @@ export interface Message<T> {
     id: MessageID
     author: CCID
     schema: Schema
-    document: SignedObject<T>
+    document: CCDocument.Message<T>
     _document: string
     signature: string
     timelines: TimelineID[]
@@ -111,7 +99,7 @@ export interface Character<T> {
     author: CCID
     schema: Schema
     id: CharacterID
-    document: SignedObject<T>
+    document: CCDocument.Profile<T>
     signature: string
     cdate: string
 }
@@ -125,27 +113,27 @@ export interface Domain {
     score: number
 }
 
-export interface Stream<T> {
-    id: StreamID
-    visible: boolean
+export interface Timeline<T> {
+    id: TimelineID
+    indexable: boolean
     author: CCID
-    maintainer: CCID[]
-    writer: CCID[]
-    reader: CCID[]
+    domainOwned: boolean
     schema: CCID
-    document: T
+    document: CCDocument.Timeline<T>
+    signature: string
     cdate: string
+    mdate: string
 }
 
 export interface TimelineEvent {
     type: string
     action: string
     timelineID: TimelineID
-    item: StreamItem
+    item: TimelineItem
     body: Message<any> | Association<any>
 }
 
-export interface StreamItem {
+export interface TimelineItem {
     cdate: Date
     objectID: string
     timelineID: string
@@ -171,11 +159,6 @@ export interface CollectionItem<T> {
     id: string
     collectionId: string
     document: T
-}
-
-export interface Certificate {
-    icon: string
-    description: string
 }
 
 export interface ProfileOverride {

@@ -26,20 +26,19 @@ export { UserAck as UserAckSchema } from "./schemas/userAck"
 
 export {
     CCID,
-    SignedObject,
     Character as CoreCharacter,
     Entity as CoreEntity,
     Association as CoreAssociation,
     Message as CoreMessage,
     Domain as CoreDomain,
-    Stream as CoreStream,
-    StreamItem as CoreStreamItem,
+    Timeline as CoreTimeline,
+    TimelineItem as CoreTimelineItem,
     TimelineEvent as CoreTimelineEvent,
     Key as CoreKey,
 } from "./model/core"
 
 import {
-    DocumentBase,
+    Document,
     AffiliationDocument,
     MessageDocument,
     ProfileDocument,
@@ -47,10 +46,14 @@ import {
     ExtensionDocument,
     TimelineDocument,
     DeleteDocument,
+    AckDocument,
+    UnackDocument,
+    EnactDocument,
+    RevokeDocument,
 } from "./model/document"
 
 export namespace CCDocument {
-    export type Base<T, S> = DocumentBase<T, S>
+    export type Base<T, S> = Document<T, S>
     export type Affiliation = AffiliationDocument
     export type Message<T> = MessageDocument<T>
     export type Profile<T> = ProfileDocument<T>
@@ -58,6 +61,9 @@ export namespace CCDocument {
     export type Extension<T> = ExtensionDocument<T>
     export type Timeline<T> = TimelineDocument<T>
     export type Delete = DeleteDocument
+    export type Ack = AckDocument
+    export type Unack = UnackDocument
+    export type Enact = EnactDocument
+    export type Revoke = RevokeDocument
 }
-
 
