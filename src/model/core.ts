@@ -137,10 +137,10 @@ export interface Stream<T> {
     cdate: string
 }
 
-export interface StreamEvent {
+export interface TimelineEvent {
     type: string
     action: string
-    stream: string
+    timelineID: TimelineID
     item: StreamItem
     body: Message<any> | Association<any>
 }

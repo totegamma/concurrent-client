@@ -1,5 +1,5 @@
 import { Api } from './api';
-import { Association, Message, StreamEvent, StreamID } from '../model/core';
+import { Association, Message, StreamID, TimelineEvent } from '../model/core';
 import { Client } from './client';
 
 const WS = typeof window === 'undefined' ? require('ws') : window.WebSocket;
@@ -9,7 +9,7 @@ export class Socket {
     ws: any;
     api: Api;
     client?: Client;
-    subscriptions: Map<string, Set<(event: StreamEvent) => void>> = new Map()
+    subscriptions: Map<string, Set<(event: TimelineEvent) => void>> = new Map()
 
     pingstate = false
     failcount = 0
@@ -27,7 +27,10 @@ export class Socket {
         this.ws = new WS('wss://' + this.api.host + '/api/v1/socket');
 
         this.ws.onmessage = (rawevent: any) => {
-            const event: StreamEvent = JSON.parse(rawevent.data);
+
+            console.log('socket message', rawevent.data)
+
+            const event: TimelineEvent = JSON.parse(rawevent.data);
             if (!event) return
 
             if (event.type === 'pong') {
@@ -71,8 +74,7 @@ export class Socket {
                 }
             }
 
-            const stream = event.stream
-            this.distribute(stream, event)
+            this.distribute(event.timelineID, event)
         }
 
         this.ws.onerror = (event: any) => {
@@ -107,31 +109,31 @@ export class Socket {
         }
     }
 
-    distribute(stream: string, event: StreamEvent) {
-        if (this.subscriptions.has(stream)) {
-            this.subscriptions.get(stream)?.forEach(callback => {
+    distribute(timelineID: string, event: TimelineEvent) {
+        if (this.subscriptions.has(timelineID)) {
+            this.subscriptions.get(timelineID)?.forEach(callback => {
                 callback(event)
             })
         }
     }
 
-    listen(streams: StreamID[], callback: (event: StreamEvent) => void) {
-        const currentStreams = Array.from(this.subscriptions.keys())
-        streams.forEach(topic => {
+    listen(timelines: StreamID[], callback: (event: TimelineEvent) => void) {
+        const currenttimelines = Array.from(this.subscriptions.keys())
+        timelines.forEach(topic => {
             if (!this.subscriptions.has(topic)) {
                 this.subscriptions.set(topic, new Set())
             }
             this.subscriptions.get(topic)?.add(callback)
         })
-        const newStreams = Array.from(this.subscriptions.keys())
-        if (newStreams.length > currentStreams.length) {
-            this.ws.send(JSON.stringify({ type: 'listen', channels: newStreams }))
+        const newtimelines = Array.from(this.subscriptions.keys())
+        if (newtimelines.length > currenttimelines.length) {
+            this.ws.send(JSON.stringify({ type: 'listen', channels: newtimelines }))
         }
     }
 
-    unlisten(streams: StreamID[], callback: (event: StreamEvent) => void) {
-        const currentStreams = Array.from(this.subscriptions.keys())
-        streams.forEach(topic => {
+    unlisten(timelines: StreamID[], callback: (event: TimelineEvent) => void) {
+        const currenttimelines = Array.from(this.subscriptions.keys())
+        timelines.forEach(topic => {
             if (this.subscriptions.has(topic)) {
                 this.subscriptions.get(topic)?.delete(callback)
 
@@ -140,9 +142,9 @@ export class Socket {
                 }
             }
         })
-        const newStreams = Array.from(this.subscriptions.keys())
-        if (newStreams.length < currentStreams.length) {
-            this.ws.send(JSON.stringify({ type: 'unlisten', channels: newStreams }))
+        const newtimelines = Array.from(this.subscriptions.keys())
+        if (newtimelines.length < currenttimelines.length) {
+            this.ws.send(JSON.stringify({ type: 'unlisten', channels: newtimelines }))
         }
     }
 

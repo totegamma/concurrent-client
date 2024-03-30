@@ -34,7 +34,7 @@ export {
     Domain as CoreDomain,
     Stream as CoreStream,
     StreamItem as CoreStreamItem,
-    StreamEvent as CoreStreamEvent,
+    TimelineEvent as CoreTimelineEvent,
     Key as CoreKey,
 } from "./model/core"
 
