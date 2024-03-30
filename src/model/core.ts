@@ -56,14 +56,23 @@ export interface Key {
     validUntil: string
 }
 
-export interface Entity {
+export interface Entity<T> {
     ccid: CCID
     tag: string
     domain: FQDN 
     cdate: string
     score: number
     certs: Certificate[]
+    extension?: EntityExtension<T>
     payload: string
+    signature: string
+}
+
+export interface EntityExtension<T> {
+    owner: string
+    schema: Schema
+    document: SignedObject<T>
+    _document: string
     signature: string
 }
 

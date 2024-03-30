@@ -21,7 +21,6 @@ import {
 
 import { Schemas, Schema } from "../schemas";
 import { Like } from "../schemas/like";
-import { Userstreams } from "../schemas/userstreams";
 import { Profile } from "../schemas/profile";
 import { EmojiAssociation } from "../schemas/emojiAssociation";
 import { ReplyMessage } from "../schemas/replyMessage";
@@ -165,8 +164,8 @@ export class Client {
             const associationStream = []
             for(const mention of options.mentions) {
                 const user = await this.getUser(mention)
-                if(user?.userstreams?.payload.body.notificationStream) {
-                    associationStream.push(user.userstreams.payload.body.notificationStream)
+                if(user?.profile?.notificationStream) {
+                    associationStream.push(user.profile?.notificationStream)
                 }
             }
             await this.api.createAssociation(Schemas.mention, {}, newMessage.content.id, this.ccid, 'messages', associationStream)
@@ -189,35 +188,24 @@ export class Client {
 
     async setProfile(updates: {username?: string, description?: string, avatar?: string, banner?: string, subprofiles?: string[]}): Promise<void> {
         if (!this.ccid) throw new Error('ccid is not set')
-        // const currentProfile = (await this.api.getCharacterByID<Profile>(id, this.ccid))?.payload.body
-        // if (!currentProfile) throw new Error('profile not found')
 
-        const current: Profile = { // TODO: get current profile
-            username: '',
-            description: '',
-            avatar: '',
-            banner: '',
-            //subprofiles: [],
-            homeStream: '',
-            notificationStream: '',
-            associationStream: '',
-        }
+        const current = (await this.api.getEntity<Profile>(this.ccid, Schemas.profile))?.extension?.document.body
 
-        let homeStream = current.homeStream
+        let homeStream = current?.homeStream
         if (!homeStream) {
             const res0 = await this.api.createTimeline(Schemas.utilitystream, {}, { indexable: false, domainOwned: false })
             homeStream = res0.id
             console.log('home', homeStream)
         }
 
-        let notificationStream = current.notificationStream
+        let notificationStream = current?.notificationStream
         if (!notificationStream) {
             const res1 = await this.api.createTimeline(Schemas.utilitystream, {}, { indexable: false, domainOwned: false })
             notificationStream = res1.id
             console.log('notification', notificationStream)
         }
 
-        let associationStream = current.associationStream
+        let associationStream = current?.associationStream
         if (!associationStream) {
             const res2 = await this.api.createTimeline(Schemas.utilitystream, {}, { indexable: false, domainOwned: false })
             associationStream = res2.id
@@ -225,52 +213,17 @@ export class Client {
         }
 
         await this.api.setEntityExtension<Profile>(Schemas.profile, {
-            username: updates.username ?? current.username,
-            description: updates.description ?? current.description,
-            avatar: updates.avatar ?? current.avatar,
-            banner: updates.banner ?? current.banner,
+            username: updates.username ?? current?.username,
+            description: updates.description ?? current?.description,
+            avatar: updates.avatar ?? current?.avatar,
+            banner: updates.banner ?? current?.banner,
+            subprofiles: updates.subprofiles ?? current?.subprofiles,
             homeStream,
             notificationStream,
             associationStream,
-            //subprofiles: updates.subprofiles ?? current.subprofiles
-        })
-
-        // this.api.invalidateCharacterByID(id)
-        await this.reloadUser()
-    }
-
-    async createProfile(username: string, description: string, avatar: string, banner: string): Promise<CoreCharacter<Profile>> {
-        const profile = await this.api.upsertCharacter<Profile>(Schemas.profile, {
-            username,
-            description,
-            avatar,
-            banner,
-            //subprofiles: []
         })
 
         await this.reloadUser()
-
-        return profile
-    }
-
-    async updateProfile(id: string, updates: {username?: string, description?: string, avatar?: string, banner?: string/*, subprofiles?: string[]*/}): Promise<CoreCharacter<Profile>> {
-        if (!this.ccid) throw new Error('ccid is not set')
-        const currentProfile = (await this.api.getCharacterByID<Profile>(id, this.ccid))?.payload.body
-        if (!currentProfile) throw new Error('profile not found')
-
-        const profile = await this.api.upsertCharacter<Profile>(Schemas.profile, {
-            username: updates.username ?? currentProfile.username,
-            description: updates.description ?? currentProfile.description,
-            avatar: updates.avatar ?? currentProfile.avatar,
-            banner: updates.banner ?? currentProfile.banner,
-            //subprofiles: updates.subprofiles ?? currentProfile.subprofiles
-        }, id)
-
-        this.api.invalidateCharacterByID(id)
-
-        await this.reloadUser()
-
-        return profile
     }
 
     async newSocket(): Promise<Socket> {
@@ -292,7 +245,7 @@ export class Client {
     }
 }
 
-export class User implements CoreEntity {
+export class User implements CoreEntity<Profile> {
 
     api: Api
     client: Client
@@ -306,14 +259,13 @@ export class User implements CoreEntity {
     payload: string
     signature: string
 
-    profile?: CoreCharacter<Profile>
-    userstreams?: CoreCharacter<Userstreams>
+    profile?: Profile
 
     constructor(client: Client,
                 domain: FQDN,
-                data: CoreEntity,
-                profile?: CoreCharacter<Profile>,
-                userstreams?: CoreCharacter<Userstreams>) {
+                data: CoreEntity<Profile>,
+                profile?: Profile,
+    ) {
         this.api = client.api
         this.client = client
         this.ccid = data.ccid
@@ -325,7 +277,6 @@ export class User implements CoreEntity {
         this.profile = profile
         this.payload= data.payload
         this.signature = data.signature
-        this.userstreams = userstreams
     }
 
     static async load(client: Client, id: CCID): Promise<User | null> {
@@ -334,16 +285,13 @@ export class User implements CoreEntity {
             return null
         })
         if (!domain) return null
-        const entity = await client.api.getEntity(id).catch((e) => {
+        const entity = await client.api.getEntity<Profile>(id, Schemas.profile).catch((e) => {
             console.log('CLIENT::getUser::readEntity::error', e)
             return null
         })
         if (!entity) return null
 
-        const profile: CoreCharacter<Profile> | undefined = (await client.api.getCharacter<Profile>(id, Schemas.profile) ?? [undefined])[0]
-        const userstreams: CoreCharacter<Userstreams> | undefined = (await client.api.getCharacter<Userstreams>(id, Schemas.userstreams) ?? [undefined])[0]
-
-        return new User(client, domain, entity, profile, userstreams)
+        return new User(client, domain, entity, entity.extension?.document.body)
     }
 
     async getAcking(): Promise<User[]> {
@@ -640,14 +588,14 @@ export class Message<T> implements CoreMessage<T> {
 
     async favorite() {
         const author = await this.getAuthor()
-        const targetStream = [author.userstreams?.payload.body.notificationStream, this.client.user?.userstreams?.payload.body.associationStream].filter((e) => e) as string[]
+        const targetStream = [author.profile?.notificationStream, this.client.user?.profile?.associationStream].filter((e) => e) as string[]
         await this.api.createAssociation<Like>(Schemas.like, {}, this.id, author.ccid, 'messages', targetStream)
         this.api.invalidateMessage(this.id)
     }
 
     async reaction(shortcode: string, imageUrl: string) {
         const author = await this.getAuthor()
-        const targetStream = [author.userstreams?.payload.body.notificationStream, this.client.user?.userstreams?.payload.body.associationStream].filter((e) => e) as string[]
+        const targetStream = [author.profile?.notificationStream, this.client.user?.profile?.associationStream].filter((e) => e) as string[]
         await this.client.api.createAssociation<EmojiAssociation>(
             Schemas.emojiAssociation,
             {
@@ -681,7 +629,7 @@ export class Message<T> implements CoreMessage<T> {
         )
 
         const author = await this.getAuthor()
-        const targetStream = [author.userstreams?.payload.body.notificationStream, this.user.userstreams?.payload.body.associationStream].filter((e) => e) as string[]
+        const targetStream = [author.profile?.notificationStream, this.user.profile?.associationStream].filter((e) => e) as string[]
 
         await this.api.createAssociation<ReplyAssociation>(
           Schemas.replyAssociation,
@@ -707,7 +655,7 @@ export class Message<T> implements CoreMessage<T> {
         const created = content
 
         const author = await this.getAuthor()
-        const targetStream = [author.userstreams?.payload.body.notificationStream, this.user.userstreams?.payload.body.associationStream].filter((e) => e) as string[]
+        const targetStream = [author.profile?.notificationStream, this.user.profile?.associationStream].filter((e) => e) as string[]
 
         await this.api.createAssociation<RerouteAssociation>(
             Schemas.rerouteAssociation,

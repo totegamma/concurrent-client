@@ -15,6 +15,7 @@ export interface Profile {
     value?: string;
     [k: string]: unknown;
   }[];
+  subprofiles?: string[];
   homeStream?: string;
   notificationStream?: string;
   associationStream?: string;

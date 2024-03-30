@@ -38,7 +38,7 @@ export class Api {
     client: string
 
     addressCache: Record<string, Promise<string> | null | undefined> = {}
-    entityCache: Record<string, Promise<Entity> | null | undefined> = {}
+    entityCache: Record<string, Promise<Entity<any>> | null | undefined> = {}
     messageCache: Record<string, Promise<Message<any>> | null | undefined> = {}
     characterCache: Record<string, Promise<Character<any>[]> | null | undefined> = {}
     associationCache: Record<string, Promise<Association<any>> | null | undefined> = {}
@@ -809,7 +809,7 @@ export class Api {
     }
 
     // Entity
-    async getEntity(ccid: CCID): Promise<Entity | null | undefined> {
+    async getEntity<T>(ccid: CCID, extension?: string): Promise<Entity<T> | null | undefined> {
         if (this.entityCache[ccid]) {
             const value = await this.entityCache[ccid]
             if (value !== undefined) return value
@@ -818,7 +818,9 @@ export class Api {
         const targetHost = await this.resolveAddress(ccid)
         if (!targetHost) throw new Error('domain not found')
 
-        this.entityCache[ccid] = fetchWithTimeout(targetHost, `${apiPath}/entity/${ccid}`, {
+        const path = extension ? `/entity/${ccid}?extension=${encodeURIComponent(extension)}` : `/entity/${ccid}`
+
+        this.entityCache[ccid] = fetchWithTimeout(targetHost, apiPath + path, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
@@ -826,6 +828,12 @@ export class Api {
             if (!entity || entity.ccid === '') {
                 return undefined
             }
+
+            if (entity.extension) {
+                entity.extension._document = entity.extension.document
+                entity.extension.document = JSON.parse(entity.extension.document)
+            }
+
             return entity
         })
         return await this.entityCache[ccid]
@@ -983,7 +991,7 @@ export class Api {
         })
     }
 
-    async updateEntity(entity: Entity): Promise<Response> {
+    async updateEntity(entity: Entity<any>): Promise<Response> {
         const body: any = entity
         return await this.fetchWithCredential(this.host, `${apiPath}/entity/${entity.ccid}`, {
             method: 'PUT',
@@ -1001,7 +1009,7 @@ export class Api {
         })
     }
 
-    async getEntities(): Promise<Entity[]> {
+    async getEntities(): Promise<Entity<any>[]> {
         return await fetchWithTimeout(this.host, `${apiPath}/entities`, {}).then(async (data) => {
             return (await data.json()).content
         })
