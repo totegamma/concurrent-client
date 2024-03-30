@@ -1,5 +1,5 @@
 
-import { Entity, Message, Character, Association, Timeline, CCID, Domain, FQDN, Collection, CollectionID, CollectionItem, Ack, AckObject, AckRequest, Key, TimelineID, TimelineItem } from '../model/core'
+import { Entity, Message, Character, Association, Timeline, CCID, Domain, FQDN, Collection, CollectionID, CollectionItem, Ack, AckRequest, Key, TimelineID, TimelineItem } from '../model/core'
 import { fetchWithTimeout } from '../util/misc'
 import { Sign, IssueJWT, checkJwtIsValid, parseJWT, JwtPayload } from '../util/crypto'
 import { Schema } from '../schemas'
@@ -916,7 +916,7 @@ export class Api {
     async ack(target: string): Promise<any> {
         if (!this.ccid || !this.privatekey) throw new Error()
 
-        const signObject: CCDocument.Ack = {
+        const documentObj: CCDocument.Ack = {
             type: 'ack',
             signer: this.ccid,
             from: this.ccid,
@@ -925,31 +925,29 @@ export class Api {
         }
 
         if (this.ckid) {
-            signObject.keyID = this.ckid
+            documentObj.keyID = this.ckid
         }
 
-        const signedObject = JSON.stringify(signObject)
-        const signature = Sign(this.privatekey, signedObject)
-
-        const request: AckRequest = {
-            signedObject,
-            signature
-        }
+        const document = JSON.stringify(documentObj)
+        const signature = Sign(this.privatekey, document)
 
         const requestOptions = {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify(request)
+            body: JSON.stringify({
+                document,
+                signature
+            })
         }
 
-        const res = await this.fetchWithCredential(this.host, `${apiPath}/entities/ack`, requestOptions)
+        const res = await this.fetchWithCredential(this.host, `${apiPath}/commit`, requestOptions)
         return await res.json()
     }
 
     async unack(target: string): Promise<any> {
         if (!this.ccid || !this.privatekey) throw new Error()
 
-        const signObject: CCDocument.Unack = {
+        const documentObj: CCDocument.Unack = {
             type: 'unack',
             signer: this.ccid,
             from: this.ccid,
@@ -958,24 +956,22 @@ export class Api {
         }
 
         if (this.ckid) {
-            signObject.keyID = this.ckid
+            documentObj.keyID = this.ckid
         }
 
-        const signedObject = JSON.stringify(signObject)
-        const signature = Sign(this.privatekey, signedObject)
-
-        const request: AckRequest = {
-            signedObject,
-            signature
-        }
+        const document = JSON.stringify(documentObj)
+        const signature = Sign(this.privatekey, document)
 
         const requestOptions = {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
-            body: JSON.stringify(request)
+            body: JSON.stringify({
+                document,
+                signature
+            })
         }
 
-        const res = await this.fetchWithCredential(this.host, `${apiPath}/entities/ack`, requestOptions)
+        const res = await this.fetchWithCredential(this.host, `${apiPath}/commit`, requestOptions)
         return await res.json()
     }
 
