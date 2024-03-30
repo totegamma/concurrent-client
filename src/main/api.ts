@@ -1,6 +1,5 @@
 
 import { Entity, Message, Character, Association, Stream, SignedObject, CCID, StreamItem, Domain, StreamID, FQDN, Collection, CollectionID, CollectionItem, Ack, AckObject, AckRequest, Key } from '../model/core'
-import { MessagePostRequest } from '../model/request'
 import { fetchWithTimeout } from '../util/misc'
 import { Sign, IssueJWT, checkJwtIsValid, parseJWT, JwtPayload } from '../util/crypto'
 import { Schema } from '../schemas'
@@ -692,7 +691,7 @@ export class Api {
         return await this.streamCache[id]
     }
 
-    async getStreamRecent(streams: string[]): Promise<StreamItem[]> {
+    async getTimelineRecent(streams: string[]): Promise<StreamItem[]> {
 
         const requestOptions = {
             method: 'GET',
@@ -704,7 +703,7 @@ export class Api {
         try {
             const response = await this.fetchWithOnlineCheck(
                 this.host,
-                `/streams/recent?streams=${streams}`,
+                `/timelines/recent?timelines=${streams}`,
                 requestOptions
             ).then(async (res) => {
                 const data = await res.json()
@@ -722,7 +721,7 @@ export class Api {
         return result
     }
 
-    async getStreamRanged(streams: string[], param: {until?: Date, since?: Date}): Promise<StreamItem[]> {
+    async getTimelineRanged(streams: string[], param: {until?: Date, since?: Date}): Promise<StreamItem[]> {
 
         console.log('readStreamRanged', streams, param)
 
@@ -738,7 +737,7 @@ export class Api {
         try {
             const response = await this.fetchWithOnlineCheck(
                 this.host,
-                `/streams/range?streams=${streams.join(',')}${sinceQuery}${untilQuery}`,
+                `/timelines/range?timelines=${streams.join(',')}${sinceQuery}${untilQuery}`,
                 requestOptions
             ).then(async (res) => {
                 const data = await res.json()

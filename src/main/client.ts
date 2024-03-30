@@ -15,6 +15,7 @@ import {
     AssociationID,
     StreamID,
     SignedObject,
+    TimelineID,
 } from "../model/core";
 
 import { Schemas, Schema } from "../schemas";
@@ -437,7 +438,7 @@ export class Message<T> implements CoreMessage<T> {
     _document: string
     schema: Schema
     signature: string
-    streams: StreamID[]
+    timelines: TimelineID[]
 
     associationCounts?: Record<string, number>
     reactionCounts?: Record<string, number>
@@ -458,7 +459,7 @@ export class Message<T> implements CoreMessage<T> {
         this._document = data._document
         this.schema = data.schema
         this.signature = data.signature
-        this.streams = data.streams
+        this.timelines = data.timelines
     }
 
     static async load<T>(client: Client, id: MessageID, authorID: CCID, hint?: string): Promise<Message<T> | null> {
@@ -478,10 +479,10 @@ export class Message<T> implements CoreMessage<T> {
             console.log('CLIENT::getMessage::error', e)
         }
 
-        const streams = await Promise.all(
-            message.streams.map((e) => client.getStream(e))
+        const timelines = await Promise.all(
+            message.timelines.map((e) => client.getStream(e))
         )
-        message.postedStreams = streams.filter((e) => e) as Stream<any>[]
+        message.postedStreams = timelines.filter((e) => e) as Stream<any>[]
 
         return message
     }
@@ -494,9 +495,9 @@ export class Message<T> implements CoreMessage<T> {
         return author
     }
 
-    async getStreams<T>() : Promise<Stream<T>[]> {
-        const streams = await Promise.all(this.streams.map((e) => this.client.getStream(e)))
-        return streams.filter((e) => e) as Stream<T>[]
+    async getTimelines<T>() : Promise<Stream<T>[]> {
+        const timelines = await Promise.all(this.timelines.map((e) => this.client.getStream(e)))
+        return timelines.filter((e) => e) as Stream<T>[]
     }
 
     async getReplyAssociations(): Promise<Association<ReplyAssociation>[]> {

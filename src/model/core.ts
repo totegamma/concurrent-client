@@ -3,6 +3,7 @@ import { Schema } from "../schemas"
 export type CCID = string
 export type FQDN = string
 export type StreamID = string
+export type TimelineID = string
 export type MessageID = string
 export type AssociationID = string
 export type CharacterID = string
@@ -99,7 +100,7 @@ export interface Message<T> {
     document: SignedObject<T>
     _document: string
     signature: string
-    streams: StreamID[]
+    timelines: TimelineID[]
     associations: Array<Association<any>>
     ownAssociations: Array<Association<any>>
     cdate: string
@@ -147,8 +148,7 @@ export interface StreamEvent {
 export interface StreamItem {
     cdate: Date
     objectID: string
-    streamID: string
-    type: string
+    timelineID: string
     author: string
     owner: string
     lastUpdate: Date

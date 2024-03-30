@@ -39,8 +39,8 @@ export class Socket {
                 case 'message.create':
                     if (event.body) {
                         const dummy_message: any = event.body
-                        dummy_message.rawpayload = dummy_message.payload
-                        dummy_message.payload = JSON.parse(dummy_message.payload)
+                        dummy_message._document = dummy_message.document
+                        dummy_message.document = JSON.parse(dummy_message.document)
                         this.api.cacheMessage(dummy_message as Message<any>)
                     }
                     break
@@ -51,8 +51,8 @@ export class Socket {
                 case 'association.create': {
                     if (event.body) {
                         const dummy_association: any = event.body
-                        dummy_association.rawpayload = dummy_association.payload
-                        dummy_association.payload = JSON.parse(dummy_association.payload)
+                        dummy_association._document = dummy_association.document
+                        dummy_association.document = JSON.parse(dummy_association.document)
                         const association = dummy_association as Association<any>
                         this.api.cacheAssociation(association)
                         this.api.invalidateMessage(association.targetID)
