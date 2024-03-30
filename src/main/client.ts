@@ -9,14 +9,12 @@ import {
     Association as CoreAssociation,
     Entity as CoreEntity,
     Stream as CoreStream,
-    Character as CoreCharacter,
     CCID,
     FQDN,
     MessageID,
     AssociationID,
     StreamID,
     SignedObject,
-    Certificate,
 } from "../model/core";
 
 import { Schemas, Schema } from "../schemas";
@@ -245,38 +243,27 @@ export class Client {
     }
 }
 
-export class User implements CoreEntity<Profile> {
+export class User {
 
     api: Api
     client: Client
 
     ccid: CCID
-    tag: string
     domain: FQDN 
-    cdate: string
-    score: number
-    certs: Certificate[]
-    payload: string
-    signature: string
-
     profile?: Profile
+    _entity: CoreEntity<Profile>
 
     constructor(client: Client,
                 domain: FQDN,
-                data: CoreEntity<Profile>,
+                entity: CoreEntity<Profile>,
                 profile?: Profile,
     ) {
         this.api = client.api
         this.client = client
-        this.ccid = data.ccid
-        this.tag = data.tag
+        this.ccid = entity.ccid
         this.domain = domain
-        this.cdate = data.cdate
-        this.score = data.score
-        this.certs = data.certs
         this.profile = profile
-        this.payload= data.payload
-        this.signature = data.signature
+        this._entity = entity
     }
 
     static async load(client: Client, id: CCID): Promise<User | null> {
@@ -326,8 +313,8 @@ export class Association<T> implements CoreAssociation<T> {
     author: CCID
     cdate: string
     id: AssociationID
-    payload: SignedObject<T>
-    rawpayload: string
+    document: SignedObject<T>
+    _document: string
     schema: Schema
     signature: string
     targetID: MessageID
@@ -343,8 +330,8 @@ export class Association<T> implements CoreAssociation<T> {
         this.author = data.author
         this.cdate = data.cdate
         this.id = data.id
-        this.payload = data.payload
-        this.rawpayload = data.rawpayload
+        this.document = data.document
+        this._document = data._document
         this.schema = data.schema
         this.signature = data.signature
         this.targetID = data.targetID
@@ -406,7 +393,7 @@ export class Stream<T> implements CoreStream<T> {
     writer: CCID[]
     reader: CCID[]
     schema: CCID
-    payload: T
+    document: T
     cdate: string
 
     constructor(client: Client, data: CoreStream<T>) {
@@ -420,7 +407,7 @@ export class Stream<T> implements CoreStream<T> {
         this.writer = data.writer
         this.reader = data.reader
         this.schema = data.schema
-        this.payload = data.payload
+        this.document = data.document
         this.cdate = data.cdate
     }
 
@@ -446,8 +433,8 @@ export class Message<T> implements CoreMessage<T> {
     author: CCID
     cdate: string
     id: MessageID
-    payload: SignedObject<T>
-    rawpayload: string
+    document: SignedObject<T>
+    _document: string
     schema: Schema
     signature: string
     streams: StreamID[]
@@ -467,8 +454,8 @@ export class Message<T> implements CoreMessage<T> {
         this.author = data.author
         this.cdate = data.cdate
         this.id = data.id
-        this.payload = data.payload
-        this.rawpayload = data.rawpayload
+        this.document = data.document
+        this._document = data._document
         this.schema = data.schema
         this.signature = data.signature
         this.streams = data.streams
@@ -531,7 +518,7 @@ export class Message<T> implements CoreMessage<T> {
                 async (e) => {
                     return {
                         association: await Association.loadByBody<ReplyAssociation>(this.client, e, this.author) ?? undefined,
-                        message: await this.client.getMessage<ReplyMessage>(e.payload.body.messageId, e.payload.body.messageAuthor) ?? undefined
+                        message: await this.client.getMessage<ReplyMessage>(e.document.body.messageId, e.document.body.messageAuthor) ?? undefined
                     }
                 }
             )
@@ -546,7 +533,7 @@ export class Message<T> implements CoreMessage<T> {
                 async (e) => {
                     return {
                         association: await Association.loadByBody<RerouteAssociation>(this.client, e, this.author) ?? undefined,
-                        message: await this.client.getMessage<RerouteMessage>(e.payload.body.messageId, e.payload.body.messageAuthor) ?? undefined
+                        message: await this.client.getMessage<RerouteMessage>(e.document.body.messageId, e.document.body.messageAuthor) ?? undefined
                     }
                 }
             )
@@ -574,7 +561,7 @@ export class Message<T> implements CoreMessage<T> {
         if (this.schema != Schemas.replyMessage) {
             throw new Error('This message is not a reply')
         }
-        const replyPayload = this.payload.body as ReplyMessage
+        const replyPayload = this.document.body as ReplyMessage
         return await Message.load<ReplyMessage>(this.client, replyPayload.replyToMessageId, replyPayload.replyToMessageAuthor)
     }
 
@@ -582,7 +569,7 @@ export class Message<T> implements CoreMessage<T> {
         if (this.schema != Schemas.rerouteMessage) {
             throw new Error('This message is not a reroute')
         }
-        const reroutePayload = this.payload.body as RerouteMessage
+        const reroutePayload = this.document.body as RerouteMessage
         return await Message.load<RerouteMessage>(this.client, reroutePayload.rerouteMessageId, reroutePayload.rerouteMessageAuthor)
     }
 
