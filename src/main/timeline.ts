@@ -17,7 +17,6 @@ export class TimelineReader {
     }
 
     processEvent(event: TimelineEvent) {
-        console.log('event', event)
         switch (event.type + '.' + event.action) {
             case 'message.create':
                 if (this.body.find(m => m.objectID === event.item.objectID)) return;
