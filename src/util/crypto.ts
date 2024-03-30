@@ -153,7 +153,7 @@ const atob = (input: string): string => {
 }
 
 export const SignJWT = (payload: string, privatekey: string): string => {
-    const header = JSON.stringify({ alg: 'ECRECOVER', typ: 'JWT' })
+    const header = JSON.stringify({ alg: 'CONCRNT', typ: 'JWT' })
     const body = makeUrlSafe(btoa(header) + '.' + btoa(payload))
     const bodyHash = keccak256(new TextEncoder().encode(body)).slice(2)
     const ellipsis = new Ec('secp256k1')
