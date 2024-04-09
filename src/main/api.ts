@@ -677,14 +677,15 @@ export class Api {
     }
 
     // Timeline
-    async createTimeline<T>(
+    async upsertTimeline<T>(
         schema: string,
         body: T,
-        { semanticID = undefined, indexable = true, domainOwned = true }: { semanticID?: string, indexable?: boolean, domainOwned?: boolean } = {}
+        { id = undefined, semanticID = undefined, indexable = true, domainOwned = true }: { id?: string, semanticID?: string, indexable?: boolean, domainOwned?: boolean } = {}
     ): Promise<Timeline<T>> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
 
         const documentObj: CCDocument.Timeline<T> = {
+            id,
             signer: this.ccid,
             type: 'timeline',
             schema,
@@ -721,24 +722,34 @@ export class Api {
             })
     }
 
-    async updateStream(_timeline: Timeline<any>): Promise<Timeline<any>> {
-        /*
-        timeline.document = JSON.stringify(stream.document)
-        return await this.fetchWithCredential(this.host, `${apiPath}/stream/${stream.id}`, {
-            method: 'PUT',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify(stream)
-        }).then(async (res) => (await res.json()).content)
-        */
-       return await Promise.reject(new Error('not implemented'))
-    }
+    async deleteTimeline(target: string, host: string = ''): Promise<any> {
+        if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
+        const targetHost = !host ? this.host : host
 
-    async deleteStream(id: string): Promise<any> {
-        const requestOptions = {
-            method: 'DELETE'
+        const documentObj: CCDocument.Delete = {
+            signer: this.ccid,
+            type: 'delete',
+            target,
+            signedAt: new Date()
         }
 
-        return await this.fetchWithCredential(this.host, `${apiPath}/stream/${id}`, requestOptions)
+        if (this.ckid) {
+            documentObj.keyID = this.ckid
+        }
+
+        const document = JSON.stringify(documentObj)
+        const signature = Sign(this.privatekey, document)
+
+        const requestOptions = {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+                document,
+                signature
+            })
+        }
+
+        return await this.fetchWithCredential(targetHost, `${apiPath}/commit`, requestOptions)
             .then(async (res) => await res.json())
             .then((data) => {
                 return data
