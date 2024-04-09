@@ -43,7 +43,6 @@ import {
     MessageDocument,
     ProfileDocument,
     AssociationDocument,
-    ExtensionDocument,
     TimelineDocument,
     DeleteDocument,
     AckDocument,
@@ -58,7 +57,6 @@ export namespace CCDocument {
     export type Message<T> = MessageDocument<T>
     export type Profile<T> = ProfileDocument<T>
     export type Association<T> = AssociationDocument<T>
-    export type Extension<T> = ExtensionDocument<T>
     export type Timeline<T> = TimelineDocument<T>
     export type Delete = DeleteDocument
     export type Ack = AckDocument

@@ -6,6 +6,7 @@ export interface DocumentBase<S> {
     type: S
     keyID?: string
     meta?: any
+    semanticID?: string
     signedAt: Date
 }
 
@@ -38,8 +39,6 @@ export type ProfileDocument<T> = DocumentBaseWithBody<T, 'profile'>
 export interface DeleteDocument extends DocumentBase<'delete'> {
     target: string
 }
-
-export type ExtensionDocument<T> = DocumentBaseWithBody<T, 'extension'>
 
 export interface TimelineDocument<T> extends DocumentBaseWithBody<T, 'timeline'> {
     indexable: boolean

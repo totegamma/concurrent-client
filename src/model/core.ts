@@ -7,6 +7,7 @@ export type TimelineID = string
 export type MessageID = string
 export type AssociationID = string
 export type CharacterID = string
+export type ProfileID = string
 export type CollectionID = string
 export type CollectionItemID = string
 
@@ -45,7 +46,7 @@ export interface Key {
     validUntil: string
 }
 
-export interface Entity<T> {
+export interface Entity {
     ccid: CCID
     tag: string
     domain: FQDN 
@@ -57,17 +58,8 @@ export interface Entity<T> {
 
     tombstoneDocument?: string
     tombstoneSignature?: string
-
-    extension?: EntityExtension<T>
 }
 
-export interface EntityExtension<T> {
-    owner: string
-    schema: Schema
-    document: CCDocument.Extension<T>
-    _document: string
-    signature: string
-}
 
 export interface Association<T> {
     id: AssociationID
@@ -99,6 +91,16 @@ export interface Character<T> {
     author: CCID
     schema: Schema
     id: CharacterID
+    document: CCDocument.Profile<T>
+    signature: string
+    cdate: string
+}
+
+export interface Profile<T> {
+    associations: Array<Association<any>>
+    author: CCID
+    schema: Schema
+    id: ProfileID
     document: CCDocument.Profile<T>
     signature: string
     cdate: string

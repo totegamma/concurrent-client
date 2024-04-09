@@ -10,13 +10,10 @@ export interface Profile {
   avatar?: string;
   description?: string;
   banner?: string;
+  subprofiles?: string[];
   links?: {
     key?: string;
     value?: string;
     [k: string]: unknown;
   }[];
-  subprofiles?: string[];
-  homeStream?: string;
-  notificationStream?: string;
-  associationStream?: string;
 }
