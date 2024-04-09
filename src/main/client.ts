@@ -177,7 +177,7 @@ export class Client {
     }
 
     async createCommonStream(name: string, description: string): Promise<void> {
-        await this.api.createTimeline<Commonstream>(Schemas.commonstream, {
+        await this.api.upsertTimeline<Commonstream>(Schemas.commonstream, {
             name,
             shortname: name,
             description
@@ -190,19 +190,19 @@ export class Client {
 
         let homeStream = await this.api.getTimeline('world.concrnt.t-home@' + this.ccid)
         if (!homeStream) {
-            const res0 = await this.api.createTimeline(Schemas.utilitystream, {}, { semanticID: 'world.concrnt.t-home', indexable: false, domainOwned: false })
+            const res0 = await this.api.upsertTimeline(Schemas.utilitystream, {}, { semanticID: 'world.concrnt.t-home', indexable: false, domainOwned: false })
             console.log('home', res0)
         }
 
         let notificationStream = await this.api.getTimeline('world.concrnt.t-notify@' + this.ccid)
         if (!notificationStream) {
-            const res1 = await this.api.createTimeline(Schemas.utilitystream, {}, { semanticID: 'world.concrnt.t-notify', indexable: false, domainOwned: false })
+            const res1 = await this.api.upsertTimeline(Schemas.utilitystream, {}, { semanticID: 'world.concrnt.t-notify', indexable: false, domainOwned: false })
             console.log('notification', res1)
         }
 
         let associationStream = await this.api.getTimeline('world.concrnt.t-assoc@' + this.ccid)
         if (!associationStream) {
-            const res2 = await this.api.createTimeline(Schemas.utilitystream, {}, { semanticID: 'world.concrnt.t-assoc', indexable: false, domainOwned: false })
+            const res2 = await this.api.upsertTimeline(Schemas.utilitystream, {}, { semanticID: 'world.concrnt.t-assoc', indexable: false, domainOwned: false })
             console.log('association', res2)
         }
 
