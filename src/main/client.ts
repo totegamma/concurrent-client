@@ -160,10 +160,11 @@ export class Client {
         if(options?.mentions && options.mentions.length > 0) {
             const associationStream = []
             for(const mention of options.mentions) {
-                const user = await this.getUser(mention)
-                if(user?.profile?.notificationStream) {
-                    associationStream.push(user.profile?.notificationStream)
-                }
+                //const user = await this.getUser(mention)
+                //if(user?.profile?.notificationStream) {
+                //    associationStream.push(user.profile?.notificationStream)
+                //}
+                associationStream.push('world.concrnt.t-notify@' + mention)
             }
             await this.api.createAssociation(Schemas.mention, {}, newMessage.content.id, this.ccid, associationStream)
         }
@@ -186,39 +187,34 @@ export class Client {
     async setProfile(updates: {username?: string, description?: string, avatar?: string, banner?: string, subprofiles?: string[]}): Promise<void> {
         if (!this.ccid) throw new Error('ccid is not set')
 
-        const current = (await this.api.getEntity<Profile>(this.ccid, Schemas.profile))?.extension?.document.body
 
-        let homeStream = current?.homeStream
+        let homeStream = await this.api.getTimeline('world.concrnt.t-home@' + this.ccid)
         if (!homeStream) {
-            const res0 = await this.api.createTimeline(Schemas.utilitystream, {}, { indexable: false, domainOwned: false })
-            homeStream = res0.id
-            console.log('home', homeStream)
+            const res0 = await this.api.createTimeline(Schemas.utilitystream, {}, { semanticID: 'world.concrnt.t-home', indexable: false, domainOwned: false })
+            console.log('home', res0)
         }
 
-        let notificationStream = current?.notificationStream
+        let notificationStream = await this.api.getTimeline('world.concrnt.t-notify@' + this.ccid)
         if (!notificationStream) {
-            const res1 = await this.api.createTimeline(Schemas.utilitystream, {}, { indexable: false, domainOwned: false })
-            notificationStream = res1.id
-            console.log('notification', notificationStream)
+            const res1 = await this.api.createTimeline(Schemas.utilitystream, {}, { semanticID: 'world.concrnt.t-notify', indexable: false, domainOwned: false })
+            console.log('notification', res1)
         }
 
-        let associationStream = current?.associationStream
+        let associationStream = await this.api.getTimeline('world.concrnt.t-assoc@' + this.ccid)
         if (!associationStream) {
-            const res2 = await this.api.createTimeline(Schemas.utilitystream, {}, { indexable: false, domainOwned: false })
-            associationStream = res2.id
-            console.log('association', associationStream)
+            const res2 = await this.api.createTimeline(Schemas.utilitystream, {}, { semanticID: 'world.concrnt.t-assoc', indexable: false, domainOwned: false })
+            console.log('association', res2)
         }
 
-        await this.api.setEntityExtension<Profile>(Schemas.profile, {
-            username: updates.username ?? current?.username,
-            description: updates.description ?? current?.description,
-            avatar: updates.avatar ?? current?.avatar,
-            banner: updates.banner ?? current?.banner,
-            subprofiles: updates.subprofiles ?? current?.subprofiles,
-            homeStream,
-            notificationStream,
-            associationStream,
-        })
+        const currentprof = (await this.api.getProfileBySemanticID<Profile>('world.concrnt.p', this.ccid))?.document.body
+
+        await this.api.upsertProfile<Profile>(Schemas.profile, {
+            username: updates.username ?? currentprof?.username,
+            description: updates.description ?? currentprof?.description,
+            avatar: updates.avatar ?? currentprof?.avatar,
+            banner: updates.banner ?? currentprof?.banner,
+            subprofiles: updates.subprofiles ?? currentprof?.subprofiles,
+        }, { semanticID: 'world.concrnt.p'})
 
         await this.reloadUser()
     }
@@ -242,27 +238,55 @@ export class Client {
     }
 }
 
-export class User {
+export class User implements CoreEntity {
 
     api: Api
     client: Client
 
     ccid: CCID
+    tag: string
     domain: FQDN 
+    cdate: string
+    score: number
+
+    affiliationDocument: string
+    affiliationSignature: string
+
+    tombstoneDocument?: string
+    tombstoneSignature?: string
+
     profile?: Profile
-    _entity: CoreEntity<Profile>
+
+    get notificationTimeline(): string {
+        return 'world.concrnt.t-notify@' + this.ccid
+    }
+
+    get associationTimeline(): string {
+        return 'world.concrnt.t-assoc@' + this.ccid
+    }
+
+    get homeTimeline(): string {
+        return 'world.concrnt.t-home@' + this.ccid
+    }
 
     constructor(client: Client,
                 domain: FQDN,
-                entity: CoreEntity<Profile>,
-                profile?: Profile,
+                entity: CoreEntity,
+                profile?: Profile
     ) {
         this.api = client.api
         this.client = client
         this.ccid = entity.ccid
+        this.tag = entity.tag
         this.domain = domain
+        this.cdate = entity.cdate
+        this.score = entity.score
+        this.affiliationDocument = entity.affiliationDocument
+        this.affiliationSignature = entity.affiliationSignature
+        this.tombstoneDocument = entity.tombstoneDocument
+        this.tombstoneSignature = entity.tombstoneSignature
+
         this.profile = profile
-        this._entity = entity
     }
 
     static async load(client: Client, id: CCID): Promise<User | null> {
@@ -271,13 +295,18 @@ export class User {
             return null
         })
         if (!domain) return null
-        const entity = await client.api.getEntity<Profile>(id, Schemas.profile).catch((e) => {
+        const entity = await client.api.getEntity(id).catch((e) => {
             console.log('CLIENT::getUser::readEntity::error', e)
             return null
         })
         if (!entity) return null
 
-        return new User(client, domain, entity, entity.extension?.document.body)
+        const profile = await client.api.getProfileBySemanticID<Profile>('world.concrnt.p', id).catch((e) => {
+            console.log('CLIENT::getUser::readProfile::error', e)
+            return null
+        })
+
+        return new User(client, domain, entity, profile?.document.body ?? undefined)
     }
 
     async getAcking(): Promise<User[]> {
@@ -574,14 +603,16 @@ export class Message<T> implements CoreMessage<T> {
 
     async favorite() {
         const author = await this.getAuthor()
-        const targetStream = [author.profile?.notificationStream, this.client.user?.profile?.associationStream].filter((e) => e) as string[]
+        //const targetStream = [author.profile?.notificationStream, this.client.user?.profile?.associationStream].filter((e) => e) as string[]
+        const targetStream = ['world.concrnt.t-notify@' + author.ccid, 'world.concrnt.t-assoc@' + this.user.ccid]
         await this.api.createAssociation<Like>(Schemas.like, {}, this.id, author.ccid, targetStream)
         this.api.invalidateMessage(this.id)
     }
 
     async reaction(shortcode: string, imageUrl: string) {
         const author = await this.getAuthor()
-        const targetStream = [author.profile?.notificationStream, this.client.user?.profile?.associationStream].filter((e) => e) as string[]
+        //const targetStream = [author.profile?.notificationStream, this.client.user?.profile?.associationStream].filter((e) => e) as string[]
+        const targetStream = ['world.concrnt.t-notify@' + author.ccid, 'world.concrnt.t-assoc@' + this.user.ccid]
         await this.client.api.createAssociation<EmojiAssociation>(
             Schemas.emojiAssociation,
             {
@@ -614,7 +645,8 @@ export class Message<T> implements CoreMessage<T> {
         )
 
         const author = await this.getAuthor()
-        const targetStream = [author.profile?.notificationStream, this.user.profile?.associationStream].filter((e) => e) as string[]
+        //const targetStream = [author.profile?.notificationStream, this.user.profile?.associationStream].filter((e) => e) as string[]
+        const targetStream = ['world.concrnt.t-notify@' + author.ccid, 'world.concrnt.t-assoc@' + this.user.ccid]
 
         await this.api.createAssociation<ReplyAssociation>(
           Schemas.replyAssociation,
@@ -639,7 +671,8 @@ export class Message<T> implements CoreMessage<T> {
         const created = content
 
         const author = await this.getAuthor()
-        const targetStream = [author.profile?.notificationStream, this.user.profile?.associationStream].filter((e) => e) as string[]
+        //const targetStream = [author.profile?.notificationStream, this.user.profile?.associationStream].filter((e) => e) as string[]
+        const targetStream = ['world.concrnt.t-notify@' + author.ccid, 'world.concrnt.t-assoc@' + this.user.ccid]
 
         await this.api.createAssociation<RerouteAssociation>(
             Schemas.rerouteAssociation,

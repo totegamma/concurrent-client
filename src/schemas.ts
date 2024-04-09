@@ -10,7 +10,7 @@ export const Schemas = {
     emojiAssociation:   'https://raw.githubusercontent.com/totegamma/concurrent-schemas/master/associations/emoji/0.0.1.json',
     userAck:            'https://raw.githubusercontent.com/totegamma/concurrent-schemas/master/associations/userack/v1.json',
 
-    profile:            'https://raw.githubusercontent.com/totegamma/concurrent-schemas/master/characters/profile/v3.json',
+    profile:            'https://raw.githubusercontent.com/totegamma/concurrent-schemas/master/characters/profile/0.0.2.json',
     userstreams:        'https://raw.githubusercontent.com/totegamma/concurrent-schemas/master/characters/userstreams/0.0.1.json',
     domainProfile:      'https://raw.githubusercontent.com/totegamma/concurrent-schemas/master/characters/domainprofile/0.0.1.json',
 

@@ -1,6 +1,6 @@
 
-import { Entity, Message, Character, Association, Timeline, CCID, Domain, FQDN, Collection, CollectionID, CollectionItem, Ack, AckRequest, Key, TimelineID, TimelineItem } from '../model/core'
-import { fetchWithTimeout } from '../util/misc'
+import { Entity, Message, Character, Association, Timeline, Profile, CCID, Domain, FQDN, Collection, CollectionID, CollectionItem, Ack, Key, TimelineID, TimelineItem } from '../model/core'
+import { fetchWithTimeout, isCCID } from '../util/misc'
 import { Sign, IssueJWT, checkJwtIsValid, parseJWT, JwtPayload } from '../util/crypto'
 import { Schema } from '../schemas'
 import { CCDocument } from '..'
@@ -37,7 +37,7 @@ export class Api {
     client: string
 
     addressCache: Record<string, Promise<string> | null | undefined> = {}
-    entityCache: Record<string, Promise<Entity<any>> | null | undefined> = {}
+    entityCache: Record<string, Promise<Entity> | null | undefined> = {}
     messageCache: Record<string, Promise<Message<any>> | null | undefined> = {}
     characterCache: Record<string, Promise<Character<any>[]> | null | undefined> = {}
     associationCache: Record<string, Promise<Association<any>> | null | undefined> = {}
@@ -458,6 +458,65 @@ export class Api {
         return await this.getAssociation(associationId, targetHost)
     }
 
+    // Profile
+
+    async getProfileBySemanticID<T>(semanticID: string, owner: string): Promise<Profile<T> | null | undefined> {
+        const targetHost = await this.resolveAddress(owner)
+        if (!targetHost) throw new Error('domain not found')
+        return await this.fetchWithOnlineCheck(targetHost, `/profile/${owner}/${semanticID}`, {
+            method: 'GET',
+            headers: {}
+        }).then(async (res) => {
+            const data = await res.json()
+            const profile = data.content
+            if (!profile) {
+                return null
+            }
+            profile._document = profile.document
+            profile.document = JSON.parse(profile.document)
+            return profile
+        })
+    }
+
+    async upsertProfile<T>(schema: Schema, body: T, opts: {id?: string, semanticID?: string} = {id: undefined, semanticID: undefined}): Promise<any> {
+        if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
+        const documentObj: CCDocument.Profile<T> = {
+            id: opts.id,
+            semanticID: opts.semanticID,
+            signer: this.ccid,
+            type: 'profile',
+            schema,
+            body,
+            meta: {
+                client: this.client
+            },
+            signedAt: new Date()
+        }
+
+        if (this.ckid) {
+            documentObj.keyID = this.ckid
+        }
+
+        const document = JSON.stringify(documentObj)
+        const signature = Sign(this.privatekey, document)
+
+        const request = {
+            document,
+            signature
+        }
+
+        const requestOptions = {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(request)
+        }
+
+        const res = await this.fetchWithCredential(this.host, `${apiPath}/commit`, requestOptions)
+
+        return await res.json()
+    }
+
+
     // Character
     async upsertCharacter<T>(schema: Schema, body: T, id?: string): Promise<any> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
@@ -621,7 +680,7 @@ export class Api {
     async createTimeline<T>(
         schema: string,
         body: T,
-        { indexable = true, domainOwned = true }: { indexable?: boolean, domainOwned?: boolean } = {}
+        { semanticID = undefined, indexable = true, domainOwned = true }: { semanticID?: string, indexable?: boolean, domainOwned?: boolean } = {}
     ): Promise<Timeline<T>> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
 
@@ -635,6 +694,7 @@ export class Api {
             },
             signedAt: new Date(),
             indexable,
+            semanticID,
             domainOwned
         }
 
@@ -716,7 +776,14 @@ export class Api {
             if (value !== undefined) return value
         }
         const key = id.split('@')[0]
-        const host = id.split('@')[1] ?? this.host
+        let host = id.split('@')[1] ?? this.host
+
+        if (isCCID(host)) {
+            const domain = await this.resolveAddress(host)
+            if (!domain) throw new Error('domain not found')
+            host = domain
+        }
+
         this.streamCache[id] = this.fetchWithOnlineCheck(host, `/timeline/${key}`, {
             method: 'GET',
             headers: {}
@@ -857,7 +924,7 @@ export class Api {
     }
 
     // Entity
-    async getEntity<T>(ccid: CCID, extension?: string): Promise<Entity<T> | null | undefined> {
+    async getEntity(ccid: CCID): Promise<Entity | null | undefined> {
         if (this.entityCache[ccid]) {
             const value = await this.entityCache[ccid]
             if (value !== undefined) return value
@@ -866,7 +933,7 @@ export class Api {
         const targetHost = await this.resolveAddress(ccid)
         if (!targetHost) throw new Error('domain not found')
 
-        const path = extension ? `/entity/${ccid}?extension=${encodeURIComponent(extension)}` : `/entity/${ccid}`
+        const path = `/entity/${ccid}`
 
         this.entityCache[ccid] = fetchWithTimeout(targetHost, apiPath + path, {
             method: 'GET',
@@ -875,11 +942,6 @@ export class Api {
             const entity = (await res.json()).content
             if (!entity || entity.ccid === '') {
                 return undefined
-            }
-
-            if (entity.extension) {
-                entity.extension._document = entity.extension.document
-                entity.extension.document = JSON.parse(entity.extension.document)
             }
 
             return entity
@@ -1031,7 +1093,7 @@ export class Api {
         })
     }
 
-    async updateEntity(entity: Entity<any>): Promise<Response> {
+    async updateEntity(entity: Entity): Promise<Response> {
         const body: any = entity
         return await this.fetchWithCredential(this.host, `${apiPath}/entity/${entity.ccid}`, {
             method: 'PUT',
@@ -1049,41 +1111,9 @@ export class Api {
         })
     }
 
-    async getEntities(): Promise<Entity<any>[]> {
+    async getEntities(): Promise<Entity[]> {
         return await fetchWithTimeout(this.host, `${apiPath}/entities`, {}).then(async (data) => {
             return (await data.json()).content
-        })
-    }
-
-    async setEntityExtension<T>(schema: Schema, body: T): Promise<Response> {
-        if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
-        const docObj: CCDocument.Extension<T> = {
-            signer: this.ccid,
-            type: 'extension',
-            schema,
-            body,
-            meta: {
-                client: this.client
-            },
-            signedAt: new Date()
-        }
-
-        if (this.ckid) {
-            docObj.keyID = this.ckid
-        }
-
-        const document = JSON.stringify(docObj)
-        const signature = Sign(this.privatekey, document)
-
-        return await this.fetchWithCredential(this.host, `${apiPath}/commit`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                document,
-                signature
-            })
         })
     }
 
