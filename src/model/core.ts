@@ -144,6 +144,32 @@ export interface TimelineItem {
     lastUpdate: Date
 }
 
+export interface Subscription<T> {
+    id: string
+    author: CCID
+    indexable: boolean
+    domainOwned: boolean
+    schema: Schema
+    document: CCDocument.Subscription<T>
+    signature: string
+    items: SubscriptionItem[]
+    cdate: string
+    mdate: string
+}
+
+enum ResolverType {
+    Entity = 0,
+    Domain = 1,
+}
+
+export interface SubscriptionItem {
+    id: string
+    resolverType: ResolverType
+    entity: string
+    domain: string
+    subscription: string
+}
+
 export interface Collection<T> {
     id: string
     visible: boolean

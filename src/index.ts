@@ -34,6 +34,7 @@ export {
     Timeline as CoreTimeline,
     TimelineItem as CoreTimelineItem,
     TimelineEvent as CoreTimelineEvent,
+    Subscription as CoreSubscription,
     Key as CoreKey,
 } from "./model/core"
 
@@ -49,6 +50,9 @@ import {
     UnackDocument,
     EnactDocument,
     RevokeDocument,
+    SubscriptionDocument,
+    SubscribeDocument,
+    UnsubscribeDocument,
 } from "./model/document"
 
 export namespace CCDocument {
@@ -63,5 +67,8 @@ export namespace CCDocument {
     export type Unack = UnackDocument
     export type Enact = EnactDocument
     export type Revoke = RevokeDocument
+    export type Subscription<T> = SubscriptionDocument<T>
+    export type Subscribe = SubscribeDocument
+    export type Unsubscribe = UnsubscribeDocument
 }
 

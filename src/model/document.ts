@@ -65,3 +65,18 @@ export interface RevokeDocument extends DocumentBase<'revoke'> {
     target: string
 }
 
+export interface SubscriptionDocument<T> extends DocumentBaseWithBody<T, 'subscription'> {
+    indexable: boolean
+    domainOwned: boolean
+}
+
+export interface SubscribeDocument extends DocumentBase<'subscribe'> {
+    target: string
+    subscription: string
+}
+
+export interface UnsubscribeDocument extends DocumentBase<'unsubscribe'> {
+    target: string
+    subscription: string
+}
+

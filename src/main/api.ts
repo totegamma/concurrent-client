@@ -1,5 +1,5 @@
 
-import { Entity, Message, Character, Association, Timeline, Profile, CCID, Domain, FQDN, Collection, CollectionID, CollectionItem, Ack, Key, TimelineID, TimelineItem } from '../model/core'
+import { Entity, Message, Character, Association, Timeline, Profile, CCID, Domain, FQDN, Collection, CollectionID, CollectionItem, Ack, Key, TimelineID, TimelineItem, Subscription } from '../model/core'
 import { fetchWithTimeout, isCCID } from '../util/misc'
 import { Sign, IssueJWT, checkJwtIsValid, parseJWT, JwtPayload } from '../util/crypto'
 import { Schema } from '../schemas'
@@ -81,6 +81,36 @@ export class Api {
         this.token = token
 
         return token
+    }
+
+    async commit<T>(obj: any, host: string = ''): Promise<T> {
+        if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
+
+        if (this.ckid) {
+            obj.keyID = this.ckid
+        }
+
+        const document = JSON.stringify(obj)
+        const signature = Sign(this.privatekey, document)
+
+        const requestOptions = {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+                document,
+                signature
+            })
+        }
+
+        return await this.fetchWithCredential(
+            host || this.host,
+            `${apiPath}/commit`,
+            requestOptions
+        )
+            .then(async (res) => await res.json())
+            .then((data) => {
+                return data.content
+            })
     }
 
     async fetchWithOnlineCheck(domain: string, path: string, init: RequestInit, timeoutMs?: number): Promise<Response> {
@@ -879,6 +909,69 @@ export class Api {
         }
 
         return result
+    }
+
+    // Subscription
+    async upsertSubscription<T>(
+        schema: string,
+        body: T,
+        { id = undefined, semanticID = undefined, indexable = true, domainOwned = true }: { id?: string, semanticID?: string, indexable?: boolean, domainOwned?: boolean } = {}
+    ): Promise<Timeline<T>> {
+        if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
+        const doc: CCDocument.Subscription<T> = {
+            id,
+            signer: this.ccid,
+            type: 'subscription',
+            schema,
+            body,
+            meta: {
+                client: this.client
+            },
+            signedAt: new Date(),
+            indexable,
+            semanticID,
+            domainOwned
+        }
+
+        return await this.commit(doc)
+    }
+
+    async subscribe(target: string, subscription: string): Promise<any> {
+        if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
+
+        const document: CCDocument.Subscribe = {
+            signer: this.ccid,
+            type: 'subscribe',
+            target,
+            subscription,
+            signedAt: new Date()
+        }
+
+        return await this.commit(document)
+    }
+
+    async unsubscribe(target: string, subscription: string): Promise<any> {
+        if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
+
+        const document: CCDocument.Unsubscribe = {
+            signer: this.ccid,
+            type: 'unsubscribe',
+            target,
+            subscription,
+            signedAt: new Date()
+        }
+
+        return await this.commit(document)
+    }
+
+    async getOwnSubscriptions(): Promise<Subscription<any>[]> {
+        if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
+        return await this.fetchWithCredential(this.host, `${apiPath}/subscriptions/mine`, {
+            method: 'GET',
+            headers: {}
+        }).then(async (res) => {
+            return (await res.json()).content
+        })
     }
 
     // Domain
