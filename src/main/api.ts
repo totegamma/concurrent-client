@@ -964,6 +964,32 @@ export class Api {
         return await this.commit(document)
     }
 
+    async getSubscription(id: string): Promise<Subscription<any> | null | undefined> {
+        const key = id.split('@')[0]
+        let host = id.split('@')[1] ?? this.host
+
+        if (isCCID(host)) {
+            const domain = await this.resolveAddress(host)
+            if (!domain) throw new Error('domain not found')
+            host = domain
+        }
+
+        return await this.fetchWithOnlineCheck(host, `/subscription/${key}`, {
+            method: 'GET',
+            headers: {}
+        }).then(async (res) => {
+            const data = await res.json()
+            if (!data.content) {
+                return null
+            }
+            const subscription = data.content
+            subscription._document = subscription.document
+            subscription.document = JSON.parse(subscription.document)
+            return subscription
+        })
+    }
+
+
     async getOwnSubscriptions(): Promise<Subscription<any>[]> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
         return await this.fetchWithCredential(this.host, `${apiPath}/subscriptions/mine`, {
