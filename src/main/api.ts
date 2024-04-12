@@ -816,7 +816,6 @@ export class Api {
             const value = await this.streamCache[id]
             if (value !== undefined) return value
         }
-        const key = id.split('@')[0]
         let host = id.split('@')[1] ?? this.host
 
         if (isCCID(host)) {
@@ -825,7 +824,7 @@ export class Api {
             host = domain
         }
 
-        this.streamCache[id] = this.fetchWithOnlineCheck(host, `/timeline/${key}`, {
+        this.streamCache[id] = this.fetchWithOnlineCheck(host, `/timeline/${id}`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
