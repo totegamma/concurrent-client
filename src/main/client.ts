@@ -441,7 +441,7 @@ export class Timeline<T> implements CoreTimeline<T> {
 
     static async load<T>(client: Client, id: TimelineID): Promise<Timeline<T> | null> {
         const stream = await client.api.getTimeline(id).catch((e) => {
-            console.log('CLIENT::getStream::readStream::error', e)
+            console.log('CLIENT::Timeline::load::error', e)
             return null
         })
         if (!stream) return null

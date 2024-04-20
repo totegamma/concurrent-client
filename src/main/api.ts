@@ -74,8 +74,7 @@ export class Api {
         const token = IssueJWT(this.privatekey, {
             aud: this.host,
             iss: this.ckid || this.ccid,
-            sub: 'CC_API',
-            scp: '*;*;*'
+            sub: 'concrnt',
         })
 
         this.token = token
@@ -147,25 +146,12 @@ export class Api {
     }
 
     async resolveAddress(ccid: string, hint?: string): Promise<string | null | undefined> {
-        if (this.addressCache[ccid]) {
-            const value = await this.addressCache[ccid]
-            if (value !== undefined) return value
+        const entity = await this.getEntity(ccid, hint)
+        if (!entity) {
+            console.log(`entity not found: ${ccid}`)
+            return null
         }
-        let query = `/address/${ccid}`
-        if (hint) {
-            query += `?hint=${hint}`
-        }
-        this.addressCache[ccid] = this.fetchWithOnlineCheck(this.host, query, {
-            method: 'GET',
-            headers: {}
-        }).then(async (res) => {
-            const data = await res.json()
-            if (!data.content) {
-                return undefined
-            }
-            return data.content
-        })
-        return await this.addressCache[ccid]
+        return entity.domain
     }
 
 
@@ -820,7 +806,7 @@ export class Api {
 
         if (isCCID(host)) {
             const domain = await this.resolveAddress(host)
-            if (!domain) throw new Error('domain not found')
+            if (!domain) throw new Error('domain not found: ' + host)
             host = domain
         }
 
@@ -1053,18 +1039,18 @@ export class Api {
     }
 
     // Entity
-    async getEntity(ccid: CCID): Promise<Entity | null | undefined> {
+    async getEntity(ccid: CCID, hint?: string): Promise<Entity | null | undefined> {
         if (this.entityCache[ccid]) {
             const value = await this.entityCache[ccid]
             if (value !== undefined) return value
         }
 
-        const targetHost = await this.resolveAddress(ccid)
-        if (!targetHost) throw new Error('domain not found')
+        let path = `/entity/${ccid}`
+        if (hint) {
+            path += `?hint=${hint}`
+        }
 
-        const path = `/entity/${ccid}`
-
-        this.entityCache[ccid] = fetchWithTimeout(targetHost, apiPath + path, {
+        this.entityCache[ccid] = fetchWithTimeout(this.host, apiPath + path, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
