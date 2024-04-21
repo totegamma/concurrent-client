@@ -1,6 +1,7 @@
-import { Socket } from './socket';
-import { Association, Message, TimelineEvent, TimelineItem } from '../model/core';
+import { Socket, TimelineEvent } from './socket';
+import { Association, TimelineItem } from '../model/core';
 import { Api } from './api';
+import { CCDocument } from '..';
 
 export class TimelineReader {
 
@@ -17,29 +18,41 @@ export class TimelineReader {
     }
 
     processEvent(event: TimelineEvent) {
-        switch (event.type + '.' + event.action) {
-            case 'message.create':
+        switch (event.document?.type) {
+            case 'message': {
                 if (this.body.find(m => m.objectID === event.item.objectID)) return;
                 this.body.unshift(event.item);
                 this.onUpdate?.();
                 break;
-            case 'message.delete': {
-                const body = event.body as Message<any>
-                this.body = this.body.filter(m => m.objectID !== body.id);
-                this.onUpdate?.();
-                break;
             }
-            case 'association.create':
-            case 'association.delete':
-                if (!event.body) return;
-                const body = event.body as Association<any>
-                const target = this.body.find(m => m.objectID === body.targetID);
+            case 'association': {
+                if (!event.document) return;
+                const document = event.document as CCDocument.Association<any>
+                const target = this.body.find(m => m.objectID === document.target);
                 if (!target) return;
                 target.lastUpdate = new Date();
                 this.onUpdate?.();
                 break;
-            default:
-                console.log('unknown event', event)
+            }
+            case 'delete': {
+                console.log('delete:', event)
+                if (!event.document) return;
+                const document = event.document as CCDocument.Delete
+                switch (document.target[0]) {
+                    case 'm':
+                        this.body = this.body.filter(m => m.objectID !== document.target);
+                        this.onUpdate?.();
+                        break;
+                    case 'a':
+                        if (!event.resource) return;
+                        const resource = event.resource as Association<any>
+                        const target = this.body.find(m => m.objectID === resource.target);
+                        if (!target) return;
+                        target.lastUpdate = new Date();
+                        this.onUpdate?.();
+                        break;
+                }
+            }
         }
         this.onRealtimeEvent?.(event);
     }
@@ -49,8 +62,6 @@ export class TimelineReader {
         this.streams = streams;
 
         let hasMore = true;
-
-        console.log('listen!', streams)
 
         await this.api.getTimelineRecent(streams).then((items: TimelineItem[]) => {
             this.body = items;

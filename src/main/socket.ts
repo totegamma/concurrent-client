@@ -1,8 +1,18 @@
 import { Api } from './api';
-import { Association, Message, TimelineID, TimelineEvent } from '../model/core';
+import { Association, Message, TimelineID, Event, TimelineItem } from '../model/core';
 import { Client } from './client';
+import { CCDocument } from '..';
 
 const WS = typeof window === 'undefined' ? require('ws') : window.WebSocket;
+
+export interface TimelineEvent {
+    timelineID: TimelineID
+    item: TimelineItem
+    document?: CCDocument.Message<any> | CCDocument.Association<any> | CCDocument.Delete
+    resource?: Message<any> | Association<any>
+    _document: string
+    signature: string
+}
 
 export class Socket {
 
@@ -18,60 +28,59 @@ export class Socket {
         this.api = api;
         this.client = client;
         this.connect()
+        /*
         setInterval(() => {
             this.checkConnection()
         }, 5000)
+        */
     }
 
     connect() {
         this.ws = new WS('wss://' + this.api.host + '/api/v1/socket');
 
         this.ws.onmessage = (rawevent: any) => {
-            const event: TimelineEvent = JSON.parse(rawevent.data);
+            const event: Event = JSON.parse(rawevent.data);
             if (!event) return
 
-            if (event.type === 'pong') {
-                this.pingstate = true
-                return
+            const document = JSON.parse(event.document)
+            const timelineEvent: TimelineEvent = {
+                timelineID: event.timelineID,
+                item: event.item,
+                document: document,
+                _document: event.document,
+                signature: event.signature,
+                resource: event.resource
             }
 
-            switch (event.type + '.' + event.action) {
-                case 'message.create':
-                    if (event.body) {
-                        const dummy_message: any = event.body
-                        dummy_message._document = dummy_message.document
-                        dummy_message.document = JSON.parse(dummy_message.document)
-                        this.api.cacheMessage(dummy_message as Message<any>)
+            switch (timelineEvent.document?.type) { // TODO
+                case 'message':
+                break
+                case 'association':
+                    const association = timelineEvent.document as CCDocument.Association<any>
+                    this.api.invalidateMessage(association.target)
+                    this.client?.invalidateMessage(association.target)
+                break
+                case 'delete':
+                    const deletion = timelineEvent.document as CCDocument.Delete
+                    switch (deletion.target[0]) {
+                        case 'm':
+                            this.api.invalidateMessage(deletion.target)
+                            this.client?.invalidateMessage(deletion.target)
+                        break
+                        case 'a':
+                            const resource = timelineEvent.resource as Association<any>
+                            if (resource.target) {
+                                this.api.invalidateMessage(resource.target)
+                                this.client?.invalidateMessage(resource.target)
+                            }
+                        break
                     }
-                    break
-                case 'message.delete':
-                    this.api.invalidateMessage(event.body.id)
-                    this.client?.invalidateMessage(event.body.id)
-                    break
-                case 'association.create': {
-                    if (event.body) {
-                        const dummy_association: any = event.body
-                        dummy_association._document = dummy_association.document
-                        dummy_association.document = JSON.parse(dummy_association.document)
-                        const association = dummy_association as Association<any>
-                        this.api.cacheAssociation(association)
-                        this.api.invalidateMessage(association.targetID)
-                        this.client?.invalidateMessage(association.targetID)
-                    }
-                    break
-                }
-                case 'association.delete': {
-                    if (event.body) {
-                        const body = event.body as Association<any>
-                        this.api.invalidateAssociation(body.id)
-                        this.api.invalidateMessage(body.targetID)
-                        this.client?.invalidateMessage(body.targetID)
-                    }
-                    break
-                }
+                break
+                default:
+                console.log('unknown event document type', event)
             }
 
-            this.distribute(event.timelineID, event)
+            this.distribute(event.timelineID, timelineEvent)
         }
 
         this.ws.onerror = (event: any) => {
@@ -88,6 +97,7 @@ export class Socket {
         }
     }
 
+    /*
     checkConnection() {
         this.ping()
         if (this.pingstate) {
@@ -105,6 +115,7 @@ export class Socket {
             }
         }
     }
+    */
 
     distribute(timelineID: string, event: TimelineEvent) {
         if (this.subscriptions.has(timelineID)) {
