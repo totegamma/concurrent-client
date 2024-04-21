@@ -31,8 +31,8 @@ export class Api {
     ccid?: string
     ckid?: string
     privatekey?: string
-    token?: string
-    passports: Record<string, string> = {}
+    tokens: Record<string, string> = {}
+    passport?: string
 
     client: string
 
@@ -50,34 +50,39 @@ export class Api {
         this.ckid = conf.ckid
         this.privatekey = conf.privatekey
         this.client = conf.client || 'N/A'
-        this.token = conf.token
+
+        if (conf.token) {
+            this.tokens[conf.host] = conf.token
+        } else {
+            this.tokens[conf.host] = this.generateApiToken(conf.host)
+        }
         console.log('oOoOoOoOoO API SERVICE CREATED OoOoOoOoOo')
     }
 
-    async getPassport(remote: string): Promise<string> {
+    async getPassport(): Promise<string> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
-        return await this.fetchWithCredential(this.host, `${apiPath}/auth/passport/${remote}`, {
+        return await this.fetchWithCredential(this.host, `${apiPath}/auth/passport`, {
             method: 'GET',
             headers: {}
         })
             .then(async (res) => await res.json())
             .then((data) => {
-                this.passports[remote] = data.content
+                this.passport = data.content
                 return data.content
             })
     }
 
-    generateApiToken(): string {
+    generateApiToken(remote: string): string {
 
         if (!this.ccid || !this.privatekey) throw new InvalidKeyError()
 
         const token = IssueJWT(this.privatekey, {
-            aud: this.host,
+            aud: remote,
             iss: this.ckid || this.ccid,
             sub: 'concrnt',
         })
 
-        this.token = token
+        this.tokens[remote] = token
 
         return token
     }
@@ -120,28 +125,30 @@ export class Api {
 
     async fetchWithCredential(domain: string, path: string, init: RequestInit, timeoutMs?: number): Promise<Response> {
 
-        let credential = ''
-
-        if (domain === this.host) {
-            credential = this.token || ''
-            if (!credential || !checkJwtIsValid(credential)) {
-                if (!this.privatekey) return Promise.reject(new JWTExpiredError())
-                credential = this.generateApiToken()
-            }
-        } else {
-            credential = this.passports[domain]
-            if (!credential || !checkJwtIsValid(credential)) {
-                if (!this.privatekey) return Promise.reject(new JWTExpiredError())
-                credential = await this.getPassport(domain)
-            }
+        let credential = this.tokens[domain]
+        if (!credential || !checkJwtIsValid(credential)) {
+            if (!this.privatekey) return Promise.reject(new JWTExpiredError())
+            credential = this.generateApiToken(domain)
         }
+
+        const headers: any = {
+            ...init.headers,
+            authorization: 'Bearer ' + credential
+        }
+
+        if (domain !== this.host) {
+            if (!this.passport) {
+                await this.getPassport()
+            }
+            headers['passport'] = this.passport!
+        }
+
         const requestInit = {
             ...init,
-            headers: {
-                ...init.headers,
-                authorization: 'Bearer ' + credential
-            }
+            headers
         }
+        console.log('fetching', domain, path, requestInit)
+
         return await fetchWithTimeout(domain, path, requestInit, timeoutMs)
     }
 
@@ -207,7 +214,7 @@ export class Api {
         }
 
         const messageHost = host || this.host
-        if ((this.token || this.privatekey) && this.privatekey !== "8c215bedacf0888470fd2567d03a813f4ae926be4a2cd587979809b629d70592") { // Well-known Guest key
+        if (this.tokens || this.privatekey)  {
             this.messageCache[id] = this.fetchWithCredential(messageHost, `${apiPath}/message/${id}`, requestOptions).then(async (res) => {
 
                 if (!res.ok) {
@@ -1052,7 +1059,6 @@ export class Api {
 
         this.entityCache[ccid] = fetchWithTimeout(this.host, apiPath + path, {
             method: 'GET',
-            headers: {}
         }).then(async (res) => {
             const entity = (await res.json()).content
             if (!entity || entity.ccid === '') {
@@ -1467,10 +1473,5 @@ export class Api {
        }).then(async (data) => {
            return await data.json()
        })
-   }
-
-   getTokenClaims(): JwtPayload {
-       if (!this.token) return {}
-       return parseJWT(this.token)
    }
 }

@@ -38,6 +38,8 @@ export {
     Key as CoreKey,
 } from "./model/core"
 
+export { TimelineEvent } from "./main/socket"
+
 import {
     Document,
     AffiliationDocument,

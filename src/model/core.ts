@@ -127,7 +127,7 @@ export interface Timeline<T> {
 }
 
 export interface Event {
-    timelineID: TimelineID
+    timeline: TimelineID
     item: TimelineItem
     document: string
     signature: string
@@ -136,7 +136,7 @@ export interface Event {
 
 export interface TimelineItem {
     cdate: Date
-    objectID: string
+    resourceID: string
     timelineID: string
     author: string
     owner: string
