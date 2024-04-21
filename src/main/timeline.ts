@@ -20,7 +20,7 @@ export class TimelineReader {
     processEvent(event: TimelineEvent) {
         switch (event.document?.type) {
             case 'message': {
-                if (this.body.find(m => m.objectID === event.item.objectID)) return;
+                if (this.body.find(m => m.resourceID === event.item.resourceID)) return;
                 this.body.unshift(event.item);
                 this.onUpdate?.();
                 break;
@@ -28,7 +28,7 @@ export class TimelineReader {
             case 'association': {
                 if (!event.document) return;
                 const document = event.document as CCDocument.Association<any>
-                const target = this.body.find(m => m.objectID === document.target);
+                const target = this.body.find(m => m.resourceID === document.target);
                 if (!target) return;
                 target.lastUpdate = new Date();
                 this.onUpdate?.();
@@ -40,13 +40,13 @@ export class TimelineReader {
                 const document = event.document as CCDocument.Delete
                 switch (document.target[0]) {
                     case 'm':
-                        this.body = this.body.filter(m => m.objectID !== document.target);
+                        this.body = this.body.filter(m => m.resourceID !== document.target);
                         this.onUpdate?.();
                         break;
                     case 'a':
                         if (!event.resource) return;
                         const resource = event.resource as Association<any>
-                        const target = this.body.find(m => m.objectID === resource.target);
+                        const target = this.body.find(m => m.resourceID === resource.target);
                         if (!target) return;
                         target.lastUpdate = new Date();
                         this.onUpdate?.();
@@ -79,7 +79,7 @@ export class TimelineReader {
     async readMore(): Promise<boolean> {
         const last = this.body[this.body.length - 1];
         const items = await this.api.getTimelineRanged(this.streams, {until: last.cdate});
-        const newdata = items.filter(item => !this.body.find(i => i.objectID === item.objectID));
+        const newdata = items.filter(item => !this.body.find(i => i.resourceID === item.resourceID));
         if (newdata.length === 0) return false
         this.body = this.body.concat(newdata);
         this.onUpdate?.();

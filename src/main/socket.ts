@@ -6,7 +6,7 @@ import { CCDocument } from '..';
 const WS = typeof window === 'undefined' ? require('ws') : window.WebSocket;
 
 export interface TimelineEvent {
-    timelineID: TimelineID
+    timeline: TimelineID
     item: TimelineItem
     document?: CCDocument.Message<any> | CCDocument.Association<any> | CCDocument.Delete
     resource?: Message<any> | Association<any>
@@ -44,7 +44,7 @@ export class Socket {
 
             const document = JSON.parse(event.document)
             const timelineEvent: TimelineEvent = {
-                timelineID: event.timelineID,
+                timeline: event.timeline,
                 item: event.item,
                 document: document,
                 _document: event.document,
@@ -80,7 +80,7 @@ export class Socket {
                 console.log('unknown event document type', event)
             }
 
-            this.distribute(event.timelineID, timelineEvent)
+            this.distribute(event.timeline, timelineEvent)
         }
 
         this.ws.onerror = (event: any) => {
