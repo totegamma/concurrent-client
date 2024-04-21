@@ -345,7 +345,7 @@ export class Association<T> implements CoreAssociation<T> {
     _document: string
     schema: Schema
     signature: string
-    targetID: MessageID
+    target: MessageID
     targetType: 'messages' | 'characters'
 
     owner?: CCID
@@ -362,8 +362,13 @@ export class Association<T> implements CoreAssociation<T> {
         this._document = data._document
         this.schema = data.schema
         this.signature = data.signature
-        this.targetID = data.targetID
-        this.targetType = data.targetType
+        this.target = data.target
+
+        if (data.target[0] === 'm') {
+            this.targetType = 'messages'
+        } else {
+            this.targetType = 'characters'
+        }
     }
 
     static async load<T>(client: Client, id: AssociationID, owner: CCID): Promise<Association<T> | null> {
@@ -398,14 +403,14 @@ export class Association<T> implements CoreAssociation<T> {
     async getTargetMessage(): Promise<Message<any>> {
         if (this.targetType !== 'messages') throw new Error(`target is not message (actual: ${this.targetType})`)
         if (!this.owner) throw new Error('owner is not set')
-        const message = await this.client.getMessage(this.targetID, this.owner)
+        const message = await this.client.getMessage(this.target, this.owner)
         if (!message) throw new Error('target message not found')
         return message
     }
 
     async delete(): Promise<void> {
         const { content } = await this.api.deleteAssociation(this.id, this.owner ?? this.author)
-        this.api.invalidateMessage(content.targetID)
+        this.api.invalidateMessage(content.target)
     }
 }
 
@@ -629,7 +634,7 @@ export class Message<T> implements CoreMessage<T> {
 
     async deleteAssociation(associationID: string) {
         const { content } = await this.api.deleteAssociation(associationID, this.author)
-        this.api.invalidateMessage(content.targetID)
+        this.api.invalidateMessage(content.target)
     }
 
     async reply(streams: string[], body: string, options?: CreateCurrentOptions) {

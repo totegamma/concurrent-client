@@ -33,7 +33,7 @@ export {
     Domain as CoreDomain,
     Timeline as CoreTimeline,
     TimelineItem as CoreTimelineItem,
-    TimelineEvent as CoreTimelineEvent,
+    Event as CoreEvent,
     Subscription as CoreSubscription,
     Key as CoreKey,
 } from "./model/core"

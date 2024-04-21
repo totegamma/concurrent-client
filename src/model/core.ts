@@ -68,8 +68,7 @@ export interface Association<T> {
     document: CCDocument.Association<T>
     _document: string
     signature: string
-    targetID: MessageID
-    targetType: 'messages' | 'characters'
+    target: MessageID
     cdate: string
 }
 
@@ -127,12 +126,12 @@ export interface Timeline<T> {
     mdate: string
 }
 
-export interface TimelineEvent {
-    type: string
-    action: string
+export interface Event {
     timelineID: TimelineID
     item: TimelineItem
-    body: Message<any> | Association<any>
+    document: string
+    signature: string
+    resource: Message<any> | Association<any>
 }
 
 export interface TimelineItem {

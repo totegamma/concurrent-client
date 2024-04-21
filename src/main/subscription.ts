@@ -1,5 +1,4 @@
-import { Socket } from './socket';
-import { TimelineEvent } from '../model/core';
+import { Socket, TimelineEvent } from './socket';
 
 type socketEvent = 'MessageCreated' | 'MessageDeleted' | 'AssociationCreated' | 'AssociationDeleted'
 
@@ -37,18 +36,22 @@ export class Subscription {
         this.streams = streams
         await this.socket.waitOpen()
         this.socket.listen(streams, (event: TimelineEvent) => {
-            switch (event.type + '.' + event.action) {
-                case 'message.create':
+            switch (event.document?.type) {
+                case 'message':
                     this.emit('MessageCreated', event);
                     break;
-                case 'message.delete':
-                    this.emit('MessageDeleted', event);
-                    break;
-                case 'association.create':
+                case 'association':
                     this.emit('AssociationCreated', event);
                     break;
-                case 'association.delete':
-                    this.emit('AssociationDeleted', event);
+                case 'delete':
+                    switch (event.document.target[0]) {
+                        case 'm':
+                            this.emit('MessageDeleted', event);
+                            break;
+                        case 'a':
+                            this.emit('AssociationDeleted', event);
+                            break;
+                    }
                     break;
                 default:
                     console.log('unknown event', event)
