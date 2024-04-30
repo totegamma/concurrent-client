@@ -36,7 +36,7 @@ export class Socket {
     }
 
     connect() {
-        this.ws = new WS('wss://' + this.api.host + '/api/v1/socket');
+        this.ws = new WS('wss://' + this.api.host + '/api/v1/timelines/realtime');
 
         this.ws.onmessage = (rawevent: any) => {
             const event: Event = JSON.parse(rawevent.data);
