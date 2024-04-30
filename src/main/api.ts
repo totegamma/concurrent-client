@@ -1388,25 +1388,7 @@ export class Api {
             signedAt: new Date()
         }
 
-        if (this.ckid) {
-            signObject.keyID = this.ckid
-        }
-
-        const signedObject = JSON.stringify(signObject)
-        const signature = Sign(this.privatekey, signedObject)
-
-        const request = {
-            signedObject,
-            signature
-        }
-
-        const requestOptions = {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify(request)
-        }
-
-        await this.fetchWithCredential(this.host, `${apiPath}/key`, requestOptions)
+        return await this.commit(signObject)
     }
 
 
@@ -1420,25 +1402,7 @@ export class Api {
             signedAt: new Date()
         }
 
-        if (this.ckid) {
-            signObject.keyID = this.ckid
-        }
-
-        const signedObject = JSON.stringify(signObject)
-        const signature = Sign(this.privatekey, signedObject)
-
-        const request = {
-            signedObject,
-            signature
-        }
-
-        const requestOptions = {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify(request)
-        }
-
-        await this.fetchWithCredential(this.host, `${apiPath}/key`, requestOptions)
+        return await this.commit(signObject)
    }
 
    // getKeyList
