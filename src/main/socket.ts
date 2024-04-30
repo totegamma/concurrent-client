@@ -21,24 +21,25 @@ export class Socket {
     client?: Client;
     subscriptions: Map<string, Set<(event: TimelineEvent) => void>> = new Map()
 
-    pingstate = false
     failcount = 0
+    reconnecting = false
 
     constructor(api: Api, client?: Client) {
         this.api = api;
         this.client = client;
         this.connect()
-        /*
         setInterval(() => {
             this.checkConnection()
-        }, 5000)
-        */
+        }, 1000)
     }
 
     connect() {
         this.ws = new WS('wss://' + this.api.host + '/api/v1/timelines/realtime');
 
         this.ws.onmessage = (rawevent: any) => {
+
+            console.log('rawevent', rawevent)
+
             const event: Event = JSON.parse(rawevent.data);
             if (!event) return
 
@@ -97,25 +98,28 @@ export class Socket {
         }
     }
 
-    /*
     checkConnection() {
-        this.ping()
-        if (this.pingstate) {
-            this.pingstate = false
+        if (this.ws.readyState !== WS.OPEN && !this.reconnecting) {
             this.failcount = 0
-            return
-        } else {
-            this.failcount++
-            console.log('ping fail', this.failcount)
-            if (this.failcount > 3) {
-                console.log('try to reconnect')
-                this.ws.close()
-                this.connect()
-                this.failcount = 0
-            }
+            this.reconnecting = true
+            this.reconnect()
         }
     }
-    */
+
+    reconnect() {
+        if (this.ws.readyState === WS.OPEN) {
+            console.log('reconnect confirmed')
+            this.reconnecting = false
+            this.failcount = 0
+        } else {
+            console.log('reconnecting. attempt: ', this.failcount)
+            this.connect()
+            this.failcount++
+            setTimeout(() => {
+                this.reconnect()
+            }, 500 * Math.pow(1.5, Math.min(this.failcount, 15)))
+        }
+    }
 
     distribute(timelineID: string, event: TimelineEvent) {
         if (this.subscriptions.has(timelineID)) {
