@@ -14,6 +14,8 @@ export const Schemas = {
     communityTimeline:   'https://schema.concrnt.world/t/community.json',
     emptyTimeline:       'https://schema.concrnt.world/t/empty.json',
 
+    listSubscription:    'https://schema.concrnt.world/s/list.json',
+
 } as const;
 
 export type Schema = typeof Schemas[keyof typeof Schemas];

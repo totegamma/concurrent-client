@@ -10,4 +10,5 @@ export * from './replyAssociation';
 export * from './replyMessage';
 export * from './rerouteAssociation';
 export * from './rerouteMessage';
+export * from './listSubscription';
 
