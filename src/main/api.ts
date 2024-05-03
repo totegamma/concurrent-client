@@ -956,7 +956,7 @@ export class Api {
         return await this.commit(document)
     }
 
-    async getSubscription(id: string): Promise<Subscription<any> | null | undefined> {
+    async getSubscription<T>(id: string): Promise<Subscription<T> | null | undefined> {
         const key = id.split('@')[0]
         let host = id.split('@')[1] ?? this.host
 
@@ -982,13 +982,22 @@ export class Api {
     }
 
 
-    async getOwnSubscriptions(): Promise<Subscription<any>[]> {
+    async getOwnSubscriptions<T>(): Promise<Subscription<T>[]> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
         return await this.fetchWithCredential(this.host, `${apiPath}/subscriptions/mine`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
-            return (await res.json()).content
+            const data = await res.json()
+            if (!data.content) {
+                return []
+            }
+
+            return data.content.map((e: any) => {
+                e._document = e.document
+                e.document = JSON.parse(e.document)
+                return e
+            })
         })
     }
 
