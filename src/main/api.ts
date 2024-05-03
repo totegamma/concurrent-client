@@ -1001,6 +1001,19 @@ export class Api {
         })
     }
 
+    async deleteSubscription(id: string): Promise<any> {
+        if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
+
+        const documentObj: CCDocument.Delete = {
+            signer: this.ccid,
+            type: 'delete',
+            target: id,
+            signedAt: new Date()
+        }
+
+        return await this.commit(documentObj)
+    }
+
     // Domain
     async getDomain(remote?: string): Promise<Domain | null | undefined> {
         const fqdn = remote || this.host
