@@ -17,15 +17,18 @@ import {
 } from "../model/core";
 
 import { Schemas, Schema } from "../schemas";
-import { Like } from "../schemas/like";
-import { Profile } from "../schemas/profile";
-import { EmojiAssociation } from "../schemas/emojiAssociation";
-import { ReplyMessage } from "../schemas/replyMessage";
-import { ReplyAssociation } from "../schemas/replyAssociation";
-import { RerouteMessage } from "../schemas/rerouteMessage";
-import { RerouteAssociation } from "../schemas/rerouteAssociation";
-import { SimpleNote } from '../schemas/simpleNote'
-import { Commonstream } from '../schemas/commonstream'
+import { 
+    MarkdownMessageSchema,
+    ReplyMessageSchema,
+    RerouteMessageSchema,
+    LikeAssociationSchema,
+    ReactionAssociationSchema,
+    ReplyAssociationSchema,
+    RerouteAssociationSchema,
+    ProfileSchema,
+    CommunityTimelineSchema,
+
+} from "../schemas/";
 
 import { ComputeCCID, KeyPair, LoadKey, LoadSubKey } from "../util/crypto";
 import { CreateCurrentOptions } from "../model/others";
@@ -154,9 +157,9 @@ export class Client {
         delete this.messageCache[id]
     }
 
-    async createCurrent(body: string, streams: TimelineID[], options?: CreateCurrentOptions): Promise<Error | null> {
+    async createMarkdownCrnt(body: string, streams: TimelineID[], options?: CreateCurrentOptions): Promise<Error | null> {
         if (!this.ccid) return new Error('ccid is not set')
-        const newMessage = await this.api.createMessage<SimpleNote>(Schemas.simpleNote, {body, ...options}, streams)
+        const newMessage = await this.api.createMessage<MarkdownMessageSchema>(Schemas.markdownMessage, {body, ...options}, streams)
         if(options?.mentions && options.mentions.length > 0) {
             const associationStream = []
             for(const mention of options.mentions) {
@@ -166,7 +169,7 @@ export class Client {
                 //}
                 associationStream.push('world.concrnt.t-notify@' + mention)
             }
-            await this.api.createAssociation(Schemas.mention, {}, newMessage.content.id, this.ccid, associationStream)
+            await this.api.createAssociation(Schemas.mentionAssociation, {}, newMessage.content.id, this.ccid, associationStream)
         }
         return newMessage
     }
@@ -176,8 +179,8 @@ export class Client {
         return streams.map((e) => new Timeline<T>(this, e))
     }
 
-    async createCommonStream(name: string, description: string): Promise<void> {
-        await this.api.upsertTimeline<Commonstream>(Schemas.commonstream, {
+    async createCommunityTimeline(name: string, description: string): Promise<void> {
+        await this.api.upsertTimeline<CommunityTimelineSchema>(Schemas.communityTimeline, {
             name,
             shortname: name,
             description
@@ -190,25 +193,25 @@ export class Client {
 
         let homeStream = await this.api.getTimeline('world.concrnt.t-home@' + this.ccid)
         if (!homeStream) {
-            const res0 = await this.api.upsertTimeline(Schemas.utilitystream, {}, { semanticID: 'world.concrnt.t-home', indexable: false, domainOwned: false })
+            const res0 = await this.api.upsertTimeline(Schemas.emptyTimeline, {}, { semanticID: 'world.concrnt.t-home', indexable: false, domainOwned: false })
             console.log('home', res0)
         }
 
         let notificationStream = await this.api.getTimeline('world.concrnt.t-notify@' + this.ccid)
         if (!notificationStream) {
-            const res1 = await this.api.upsertTimeline(Schemas.utilitystream, {}, { semanticID: 'world.concrnt.t-notify', indexable: false, domainOwned: false })
+            const res1 = await this.api.upsertTimeline(Schemas.emptyTimeline, {}, { semanticID: 'world.concrnt.t-notify', indexable: false, domainOwned: false })
             console.log('notification', res1)
         }
 
         let associationStream = await this.api.getTimeline('world.concrnt.t-assoc@' + this.ccid)
         if (!associationStream) {
-            const res2 = await this.api.upsertTimeline(Schemas.utilitystream, {}, { semanticID: 'world.concrnt.t-assoc', indexable: false, domainOwned: false })
+            const res2 = await this.api.upsertTimeline(Schemas.emptyTimeline, {}, { semanticID: 'world.concrnt.t-assoc', indexable: false, domainOwned: false })
             console.log('association', res2)
         }
 
-        const currentprof = (await this.api.getProfileBySemanticID<Profile>('world.concrnt.p', this.ccid))?.document.body
+        const currentprof = (await this.api.getProfileBySemanticID<ProfileSchema>('world.concrnt.p', this.ccid))?.document.body
 
-        await this.api.upsertProfile<Profile>(Schemas.profile, {
+        await this.api.upsertProfile<ProfileSchema>(Schemas.profile, {
             username: updates.username ?? currentprof?.username,
             description: updates.description ?? currentprof?.description,
             avatar: updates.avatar ?? currentprof?.avatar,
@@ -255,7 +258,7 @@ export class User implements CoreEntity {
     tombstoneDocument?: string
     tombstoneSignature?: string
 
-    profile?: Profile
+    profile?: ProfileSchema
 
     get notificationTimeline(): string {
         return 'world.concrnt.t-notify@' + this.ccid
@@ -272,7 +275,7 @@ export class User implements CoreEntity {
     constructor(client: Client,
                 domain: FQDN,
                 entity: CoreEntity,
-                profile?: Profile
+                profile?: ProfileSchema
     ) {
         this.api = client.api
         this.client = client
@@ -301,7 +304,7 @@ export class User implements CoreEntity {
         })
         if (!entity) return null
 
-        const profile = await client.api.getProfileBySemanticID<Profile>('world.concrnt.p', id).catch((e) => {
+        const profile = await client.api.getProfileBySemanticID<ProfileSchema>('world.concrnt.p', id).catch((e) => {
             console.log('CLIENT::getUser::readProfile::error', e)
             return null
         })
@@ -506,7 +509,7 @@ export class Message<T> implements CoreMessage<T> {
         message.authorUser = await client.getUser(authorID) ?? undefined
         try {
             message.associationCounts = await client.api.getMessageAssociationCountsByTarget(id, authorID)
-            message.reactionCounts = await client.api.getMessageAssociationCountsByTarget(id, authorID, {schema: Schemas.emojiAssociation})
+            message.reactionCounts = await client.api.getMessageAssociationCountsByTarget(id, authorID, {schema: Schemas.reactionAssociation})
         } catch (e) {
             console.log('CLIENT::getMessage::error', e)
         }
@@ -532,26 +535,26 @@ export class Message<T> implements CoreMessage<T> {
         return timelines.filter((e) => e) as Timeline<T>[]
     }
 
-    async getReplyAssociations(): Promise<Association<ReplyAssociation>[]> {
-        const coreass = await this.client.api.getMessageAssociationsByTarget<ReplyAssociation>(this.id, this.author, {schema: Schemas.replyAssociation})
-        const ass: Array<Association<ReplyAssociation> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<ReplyAssociation>(this.client, e, this.author)))
-        return ass.filter(e => e) as Array<Association<ReplyAssociation>>
+    async getReplyAssociations(): Promise<Association<ReplyAssociationSchema>[]> {
+        const coreass = await this.client.api.getMessageAssociationsByTarget<ReplyAssociationSchema>(this.id, this.author, {schema: Schemas.replyAssociation})
+        const ass: Array<Association<ReplyAssociationSchema> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<ReplyAssociationSchema>(this.client, e, this.author)))
+        return ass.filter(e => e) as Array<Association<ReplyAssociationSchema>>
     }
 
-    async getRerouteAssociations(): Promise<Association<RerouteAssociation>[]> {
-        const coreass = await this.client.api.getMessageAssociationsByTarget<RerouteAssociation>(this.id, this.author, {schema: Schemas.rerouteAssociation})
-        const ass: Array<Association<Like> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<RerouteAssociation>(this.client, e, this.author)))
-        return ass.filter(e => e) as Array<Association<RerouteAssociation>>
+    async getRerouteAssociations(): Promise<Association<RerouteAssociationSchema>[]> {
+        const coreass = await this.client.api.getMessageAssociationsByTarget<RerouteAssociationSchema>(this.id, this.author, {schema: Schemas.rerouteAssociation})
+        const ass: Array<Association<LikeAssociationSchema> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<RerouteAssociationSchema>(this.client, e, this.author)))
+        return ass.filter(e => e) as Array<Association<RerouteAssociationSchema>>
     }
 
-    async getReplyMessages(): Promise<{association?: Association<ReplyAssociation>, message?: Message<ReplyMessage>}[]> {
-        const associations = await this.client.api.getMessageAssociationsByTarget<ReplyAssociation>(this.id, this.author, {schema: Schemas.replyAssociation})
+    async getReplyMessages(): Promise<{association?: Association<ReplyAssociationSchema>, message?: Message<ReplyMessageSchema>}[]> {
+        const associations = await this.client.api.getMessageAssociationsByTarget<ReplyAssociationSchema>(this.id, this.author, {schema: Schemas.replyAssociation})
         const results = await Promise.all(
             associations.map(
                 async (e) => {
                     return {
-                        association: await Association.loadByBody<ReplyAssociation>(this.client, e, this.author) ?? undefined,
-                        message: await this.client.getMessage<ReplyMessage>(e.document.body.messageId, e.document.body.messageAuthor) ?? undefined
+                        association: await Association.loadByBody<ReplyAssociationSchema>(this.client, e, this.author) ?? undefined,
+                        message: await this.client.getMessage<ReplyMessageSchema>(e.document.body.messageId, e.document.body.messageAuthor) ?? undefined
                     }
                 }
             )
@@ -559,14 +562,14 @@ export class Message<T> implements CoreMessage<T> {
         return results
     }
 
-    async getRerouteMessages(): Promise<{association?: Association<RerouteAssociation>, message?: Message<RerouteMessage>}[]> {
-        const associations = await this.client.api.getMessageAssociationsByTarget<RerouteAssociation>(this.id, this.author, {schema: Schemas.rerouteAssociation})
+    async getRerouteMessages(): Promise<{association?: Association<RerouteAssociationSchema>, message?: Message<RerouteMessageSchema>}[]> {
+        const associations = await this.client.api.getMessageAssociationsByTarget<RerouteAssociationSchema>(this.id, this.author, {schema: Schemas.rerouteAssociation})
         const results = await Promise.all(
             associations.map(
                 async (e) => {
                     return {
-                        association: await Association.loadByBody<RerouteAssociation>(this.client, e, this.author) ?? undefined,
-                        message: await this.client.getMessage<RerouteMessage>(e.document.body.messageId, e.document.body.messageAuthor) ?? undefined
+                        association: await Association.loadByBody<RerouteAssociationSchema>(this.client, e, this.author) ?? undefined,
+                        message: await this.client.getMessage<RerouteMessageSchema>(e.document.body.messageId, e.document.body.messageAuthor) ?? undefined
                     }
                 }
             )
@@ -574,43 +577,43 @@ export class Message<T> implements CoreMessage<T> {
         return results
     }
 
-    async getFavorites(): Promise<Association<Like>[]> {
-        const coreass = await this.client.api.getMessageAssociationsByTarget<Like>(this.id, this.author, {schema: Schemas.like})
-        const ass: Array<Association<Like> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<Like>(this.client, e, this.author)))
-        return ass.filter(e => e) as Array<Association<Like>>
+    async getFavorites(): Promise<Association<LikeAssociationSchema>[]> {
+        const coreass = await this.client.api.getMessageAssociationsByTarget<LikeAssociationSchema>(this.id, this.author, {schema: Schemas.likeAssociation})
+        const ass: Array<Association<LikeAssociationSchema> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<LikeAssociationSchema>(this.client, e, this.author)))
+        return ass.filter(e => e) as Array<Association<LikeAssociationSchema>>
     }
 
-    async getReactions(imgUrl?: string): Promise<Association<EmojiAssociation>[]> {
-        let query: any = {schema: Schemas.emojiAssociation}
+    async getReactions(imgUrl?: string): Promise<Association<ReactionAssociationSchema>[]> {
+        let query: any = {schema: Schemas.reactionAssociation}
         if (imgUrl) {
-            query = {schema: Schemas.emojiAssociation, variant: imgUrl}
+            query = {schema: Schemas.reactionAssociation, variant: imgUrl}
         }
-        const coreass = await this.client.api.getMessageAssociationsByTarget<EmojiAssociation>(this.id, this.author, query)
-        const ass: Array<Association<EmojiAssociation> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<EmojiAssociation>(this.client, e, this.author)))
-        return ass.filter(e => e) as Array<Association<EmojiAssociation>>
+        const coreass = await this.client.api.getMessageAssociationsByTarget<ReactionAssociationSchema>(this.id, this.author, query)
+        const ass: Array<Association<ReactionAssociationSchema> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<ReactionAssociationSchema>(this.client, e, this.author)))
+        return ass.filter(e => e) as Array<Association<ReactionAssociationSchema>>
     }
 
-    async getReplyTo(): Promise<Message<ReplyMessage> | null> {
+    async getReplyTo(): Promise<Message<ReplyMessageSchema> | null> {
         if (this.schema != Schemas.replyMessage) {
             throw new Error('This message is not a reply')
         }
-        const replyPayload = this.document.body as ReplyMessage
-        return await Message.load<ReplyMessage>(this.client, replyPayload.replyToMessageId, replyPayload.replyToMessageAuthor)
+        const replyPayload = this.document.body as ReplyMessageSchema
+        return await Message.load<ReplyMessageSchema>(this.client, replyPayload.replyToMessageId, replyPayload.replyToMessageAuthor)
     }
 
-    async GetRerouteTo(): Promise<Message<RerouteMessage> | null> {
+    async GetRerouteTo(): Promise<Message<RerouteMessageSchema> | null> {
         if (this.schema != Schemas.rerouteMessage) {
             throw new Error('This message is not a reroute')
         }
-        const reroutePayload = this.document.body as RerouteMessage
-        return await Message.load<RerouteMessage>(this.client, reroutePayload.rerouteMessageId, reroutePayload.rerouteMessageAuthor)
+        const reroutePayload = this.document.body as RerouteMessageSchema
+        return await Message.load<RerouteMessageSchema>(this.client, reroutePayload.rerouteMessageId, reroutePayload.rerouteMessageAuthor)
     }
 
     async favorite() {
         const author = await this.getAuthor()
         //const targetStream = [author.profile?.notificationStream, this.client.user?.profile?.associationStream].filter((e) => e) as string[]
         const targetStream = ['world.concrnt.t-notify@' + author.ccid, 'world.concrnt.t-assoc@' + this.user.ccid]
-        await this.api.createAssociation<Like>(Schemas.like, {}, this.id, author.ccid, targetStream)
+        await this.api.createAssociation<LikeAssociationSchema>(Schemas.likeAssociation, {}, this.id, author.ccid, targetStream)
         this.api.invalidateMessage(this.id)
     }
 
@@ -618,8 +621,8 @@ export class Message<T> implements CoreMessage<T> {
         const author = await this.getAuthor()
         //const targetStream = [author.profile?.notificationStream, this.client.user?.profile?.associationStream].filter((e) => e) as string[]
         const targetStream = ['world.concrnt.t-notify@' + author.ccid, 'world.concrnt.t-assoc@' + this.user.ccid]
-        await this.client.api.createAssociation<EmojiAssociation>(
-            Schemas.emojiAssociation,
+        await this.client.api.createAssociation<ReactionAssociationSchema>(
+            Schemas.reactionAssociation,
             {
                 shortcode,
                 imageUrl
@@ -638,7 +641,7 @@ export class Message<T> implements CoreMessage<T> {
     }
 
     async reply(streams: string[], body: string, options?: CreateCurrentOptions) {
-        const data = await this.api.createMessage<ReplyMessage>(
+        const data = await this.api.createMessage<ReplyMessageSchema>(
           Schemas.replyMessage,
           {
               body,
@@ -653,7 +656,7 @@ export class Message<T> implements CoreMessage<T> {
         //const targetStream = [author.profile?.notificationStream, this.user.profile?.associationStream].filter((e) => e) as string[]
         const targetStream = ['world.concrnt.t-notify@' + author.ccid, 'world.concrnt.t-assoc@' + this.user.ccid]
 
-        await this.api.createAssociation<ReplyAssociation>(
+        await this.api.createAssociation<ReplyAssociationSchema>(
           Schemas.replyAssociation,
           { messageId: data.content.id, messageAuthor: this.user.ccid },
           this.id,
@@ -663,7 +666,7 @@ export class Message<T> implements CoreMessage<T> {
     }
 
     async reroute(streams: string[], body?: string, options?: CreateCurrentOptions) {
-        const { content } = await this.api.createMessage<RerouteMessage>(
+        const { content } = await this.api.createMessage<RerouteMessageSchema>(
             Schemas.rerouteMessage,
             {
                 body,
@@ -679,7 +682,7 @@ export class Message<T> implements CoreMessage<T> {
         //const targetStream = [author.profile?.notificationStream, this.user.profile?.associationStream].filter((e) => e) as string[]
         const targetStream = ['world.concrnt.t-notify@' + author.ccid, 'world.concrnt.t-assoc@' + this.user.ccid]
 
-        await this.api.createAssociation<RerouteAssociation>(
+        await this.api.createAssociation<RerouteAssociationSchema>(
             Schemas.rerouteAssociation,
             { messageId: created.id, messageAuthor: created.author },
             this.id,
