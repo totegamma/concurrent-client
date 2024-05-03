@@ -36,12 +36,11 @@ export class Api {
 
     client: string
 
-    addressCache: Record<string, Promise<string> | null | undefined> = {}
     entityCache: Record<string, Promise<Entity> | null | undefined> = {}
     messageCache: Record<string, Promise<Message<any>> | null | undefined> = {}
     characterCache: Record<string, Promise<Character<any>[]> | null | undefined> = {}
     associationCache: Record<string, Promise<Association<any>> | null | undefined> = {}
-    streamCache: Record<string, Promise<Timeline<any>> | null | undefined> = {}
+    timelineCache: Record<string, Promise<Timeline<any>> | null | undefined> = {}
     domainCache: Record<string, Promise<Domain> | null | undefined> = {}
 
     constructor(conf: {host: string, ccid?: string, privatekey?: string, client?: string, token?: string, ckid?: string}) {
@@ -805,8 +804,8 @@ export class Api {
     }
 
     async getTimeline(id: string): Promise<Timeline<any> | null | undefined> {
-        if (this.streamCache[id]) {
-            const value = await this.streamCache[id]
+        if (this.timelineCache[id]) {
+            const value = await this.timelineCache[id]
             if (value !== undefined) return value
         }
         let host = id.split('@')[1] ?? this.host
@@ -817,7 +816,7 @@ export class Api {
             host = domain
         }
 
-        this.streamCache[id] = this.fetchWithOnlineCheck(host, `/timeline/${id}`, {
+        this.timelineCache[id] = this.fetchWithOnlineCheck(host, `/timeline/${id}`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
@@ -829,17 +828,17 @@ export class Api {
             if (!data.document) {
                 return undefined
             }
-            const stream = data
-            stream.id = id
-            stream._document = stream.document
-            stream.document = JSON.parse(stream.document)
-            this.streamCache[id] = stream
-            return stream
+            const timeline = data
+            timeline.id = id
+            timeline._document = timeline.document
+            timeline.document = JSON.parse(timeline.document)
+            this.timelineCache[id] = timeline
+            return timeline
         })
-        return await this.streamCache[id]
+        return await this.timelineCache[id]
     }
 
-    async getTimelineRecent(streams: string[]): Promise<TimelineItem[]> {
+    async getTimelineRecent(timelines: string[]): Promise<TimelineItem[]> {
 
         const requestOptions = {
             method: 'GET',
@@ -851,7 +850,7 @@ export class Api {
         try {
             const response = await this.fetchWithOnlineCheck(
                 this.host,
-                `/timelines/recent?timelines=${streams}`,
+                `/timelines/recent?timelines=${timelines.join(',')}`,
                 requestOptions
             ).then(async (res) => {
                 const data = await res.json()
@@ -869,9 +868,7 @@ export class Api {
         return result
     }
 
-    async getTimelineRanged(streams: string[], param: {until?: Date, since?: Date}): Promise<TimelineItem[]> {
-
-        console.log('readStreamRanged', streams, param)
+    async getTimelineRanged(timelines: string[], param: {until?: Date, since?: Date}): Promise<TimelineItem[]> {
 
         const requestOptions = {
             method: 'GET',
@@ -885,7 +882,7 @@ export class Api {
         try {
             const response = await this.fetchWithOnlineCheck(
                 this.host,
-                `/timelines/range?timelines=${streams.join(',')}${sinceQuery}${untilQuery}`,
+                `/timelines/range?timelines=${timelines.join(',')}${sinceQuery}${untilQuery}`,
                 requestOptions
             ).then(async (res) => {
                 const data = await res.json()
