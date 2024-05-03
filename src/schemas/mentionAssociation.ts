@@ -5,7 +5,12 @@
  * and run json-schema-to-typescript to regenerate this file.
  */
 
-export interface UserAckCollection {
-  ccid?: string;
-  association?: string;
+export interface MentionAssociationSchema {
+  profileOverride?: {
+    username?: string;
+    avatar?: string;
+    description?: string;
+    link?: string;
+    characterID?: string;
+  };
 }

@@ -1,7 +1,7 @@
 
 import { Entity, Message, Character, Association, Timeline, Profile, CCID, Domain, FQDN, Collection, CollectionID, CollectionItem, Ack, Key, TimelineID, TimelineItem, Subscription } from '../model/core'
 import { fetchWithTimeout, isCCID } from '../util/misc'
-import { Sign, IssueJWT, checkJwtIsValid, parseJWT, JwtPayload } from '../util/crypto'
+import { Sign, IssueJWT, checkJwtIsValid } from '../util/crypto'
 import { Schema } from '../schemas'
 import { CCDocument } from '..'
 
