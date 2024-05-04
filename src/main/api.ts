@@ -160,7 +160,12 @@ export class Api {
 
 
     // Message
-    async createMessage<T>(schema: Schema, body: T, timelines: TimelineID[]): Promise<any> {
+    async createMessage<T>(
+        schema: Schema,
+        body: T,
+        timelines: TimelineID[],
+        { policy = undefined, policyParams = undefined }: { policy?: string, policyParams?: string } = {}
+    ): Promise<any> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
 
         const documentObj: CCDocument.Message<T> = {
@@ -172,7 +177,9 @@ export class Api {
                 client: this.client
             },
             timelines,
-            signedAt: new Date()
+            signedAt: new Date(),
+            policy,
+            policyParams
         }
 
         if (this.ckid) {
@@ -498,11 +505,15 @@ export class Api {
         })
     }
 
-    async upsertProfile<T>(schema: Schema, body: T, opts: {id?: string, semanticID?: string} = {id: undefined, semanticID: undefined}): Promise<any> {
+    async upsertProfile<T>(
+        schema: Schema,
+        body: T,
+        {id = undefined, semanticID = undefined, policy = undefined, policyParams = undefined }: {id?: string, semanticID?: string, policy?: string, policyParams?: string}
+    ): Promise<any> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
         const documentObj: CCDocument.Profile<T> = {
-            id: opts.id,
-            semanticID: opts.semanticID,
+            id: id,
+            semanticID: semanticID,
             signer: this.ccid,
             type: 'profile',
             schema,
@@ -510,7 +521,9 @@ export class Api {
             meta: {
                 client: this.client
             },
-            signedAt: new Date()
+            signedAt: new Date(),
+            policy,
+            policyParams
         }
 
         if (this.ckid) {
@@ -540,7 +553,7 @@ export class Api {
     async upsertTimeline<T>(
         schema: string,
         body: T,
-        { id = undefined, semanticID = undefined, indexable = true, domainOwned = true }: { id?: string, semanticID?: string, indexable?: boolean, domainOwned?: boolean } = {}
+        { id = undefined, semanticID = undefined, indexable = true, domainOwned = true, policy = undefined, policyParams = undefined }: { id?: string, semanticID?: string, indexable?: boolean, domainOwned?: boolean, policy?: string, policyParams?: string } = {}
     ): Promise<Timeline<T>> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
 
@@ -556,7 +569,9 @@ export class Api {
             signedAt: new Date(),
             indexable,
             semanticID,
-            domainOwned
+            domainOwned,
+            policy,
+            policyParams
         }
 
         if (this.ckid) {
@@ -742,7 +757,7 @@ export class Api {
     async upsertSubscription<T>(
         schema: string,
         body: T,
-        { id = undefined, semanticID = undefined, indexable = true, domainOwned = true }: { id?: string, semanticID?: string, indexable?: boolean, domainOwned?: boolean } = {}
+        { id = undefined, semanticID = undefined, indexable = true, domainOwned = true, policy = undefined, policyParams = undefined }: { id?: string, semanticID?: string, indexable?: boolean, domainOwned?: boolean, policy?: string, policyParams?: string } = {}
     ): Promise<Timeline<T>> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
         const doc: CCDocument.Subscription<T> = {
@@ -757,7 +772,9 @@ export class Api {
             signedAt: new Date(),
             indexable,
             semanticID,
-            domainOwned
+            domainOwned,
+            policy,
+            policyParams
         }
 
         return await this.commit(doc)
@@ -1044,51 +1061,6 @@ export class Api {
         })
     }
 
-    async updateRegistration(ccid: string, registration: string, signature: string): Promise<Response> {
-        return await this.fetchWithCredential(this.host, `${apiPath}/tmp/entity/${ccid}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                ccid: ccid,
-                registration,
-                signature
-            })
-        })
-    }
-
-    async createEntity(ccid: string, meta: any = {}): Promise<Response> {
-        return await this.fetchWithCredential(this.host, `${apiPath}/admin/entity`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                ccid: ccid,
-                meta: JSON.stringify(meta)
-            })
-        })
-    }
-
-    async updateEntity(entity: Entity): Promise<Response> {
-        const body: any = entity
-        return await this.fetchWithCredential(this.host, `${apiPath}/entity/${entity.ccid}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(body)
-        })
-    }
-
-    async deleteEntity(ccid: CCID): Promise<void> {
-        await this.fetchWithCredential(this.host, `${apiPath}/entity/${ccid}`, {
-            method: 'DELETE',
-            headers: {}
-        })
-    }
-
     async getEntities(): Promise<Entity[]> {
         return await fetchWithTimeout(this.host, `${apiPath}/entities`, {}).then(async (data) => {
             return (await data.json()).content
@@ -1173,15 +1145,6 @@ export class Api {
        }).then(async (res) => {
            const data = await res.json()
            return data.content
-       })
-   }
-
-   // Admin
-   async addDomain(remote: string): Promise<string> {
-       return await this.fetchWithCredential(this.host, `${apiPath}/domain/${remote}`, {
-           method: 'POST',
-       }).then(async (data) => {
-           return await data.json()
        })
    }
 }

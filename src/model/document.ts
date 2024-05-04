@@ -8,6 +8,8 @@ export interface DocumentBase<S> {
     meta?: any
     semanticID?: string
     signedAt: Date
+    policy?: string
+    policyParams?: string
 }
 
 export interface DocumentBaseWithBody<T, S> extends DocumentBase<S> {
