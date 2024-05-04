@@ -8,8 +8,6 @@ export type MessageID = string
 export type AssociationID = string
 export type CharacterID = string
 export type ProfileID = string
-export type CollectionID = string
-export type CollectionItemID = string
 
 export interface AffiliationOption {
     info: string
@@ -23,16 +21,6 @@ export interface CommitRequest {
 }
 
 // ---
-
-export interface keyEnact {
-    CKID: string
-    root: string
-    parent: string
-}
-
-export interface keyRevoke {
-    CKID: string
-}
 
 export interface Key {
     id: string
@@ -48,6 +36,7 @@ export interface Key {
 
 export interface Entity {
     ccid: CCID
+    alias?: string
     tag: string
     domain: FQDN 
     cdate: string
@@ -80,18 +69,10 @@ export interface Message<T> {
     _document: string
     signature: string
     timelines: TimelineID[]
+    policy?: string
+    policyParams?: string
     associations: Array<Association<any>>
     ownAssociations: Array<Association<any>>
-    cdate: string
-}
-
-export interface Character<T> {
-    associations: Array<Association<any>>
-    author: CCID
-    schema: Schema
-    id: CharacterID
-    document: CCDocument.Profile<T>
-    signature: string
     cdate: string
 }
 
@@ -120,6 +101,8 @@ export interface Timeline<T> {
     author: CCID
     domainOwned: boolean
     schema: CCID
+    policy?: string
+    policyParams?: string
     document: CCDocument.Timeline<T>
     signature: string
     cdate: string
@@ -149,6 +132,8 @@ export interface Subscription<T> {
     indexable: boolean
     domainOwned: boolean
     schema: Schema
+    policy?: string
+    policyParams?: string
     document: CCDocument.Subscription<T>
     signature: string
     items: SubscriptionItem[]
@@ -156,7 +141,7 @@ export interface Subscription<T> {
     mdate: string
 }
 
-enum ResolverType {
+export enum ResolverType {
     Entity = 0,
     Domain = 1,
 }
@@ -167,25 +152,6 @@ export interface SubscriptionItem {
     entity: string
     domain: string
     subscription: string
-}
-
-export interface Collection<T> {
-    id: string
-    visible: boolean
-    author: CCID
-    maintainer: CCID[]
-    writer: CCID[]
-    reader: CCID[]
-    schema: Schema
-    cdate: Date
-    mdate: Date
-    items: CollectionItem<T>[]
-}
-
-export interface CollectionItem<T> {
-    id: string
-    collectionId: string
-    document: T
 }
 
 export interface ProfileOverride {
@@ -200,16 +166,6 @@ export interface Ack {
     from: string
     to: string
     document: string
-    signature: string
-}
-
-export interface AckObject {
-    from: string
-    to: string
-}
-
-export interface AckRequest {
-    signedObject: string
     signature: string
 }
 

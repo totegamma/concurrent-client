@@ -13,7 +13,6 @@ export * from "./schemas/"
 
 export {
     CCID,
-    Character as CoreCharacter,
     Entity as CoreEntity,
     Association as CoreAssociation,
     Message as CoreMessage,
@@ -22,6 +21,7 @@ export {
     TimelineItem as CoreTimelineItem,
     Event as CoreEvent,
     Subscription as CoreSubscription,
+    SubscriptionItem as CoreSubscriptionItem,
     Key as CoreKey,
 } from "./model/core"
 
