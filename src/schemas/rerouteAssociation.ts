@@ -5,7 +5,7 @@
  * and run json-schema-to-typescript to regenerate this file.
  */
 
-export interface RerouteAssociation {
+export interface RerouteAssociationSchema {
   messageId: string;
   messageAuthor: string;
   profileOverride?: {

@@ -1,6 +1,6 @@
 {
   "name": "@concurrent-world/client",
-  "version": "4.2.19",
+  "version": "6.0.7",
   "description": "",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -22,6 +22,9 @@
     "typescript": "^5.1.6"
   },
   "dependencies": {
+    "@cosmjs/amino": "^0.32.3",
+    "@cosmjs/crypto": "^0.32.3",
+    "@cosmjs/encoding": "^0.32.3",
     "elliptic": "^6.5.4",
     "ethers": "^6.6.3",
     "uuid": "^9.0.0"

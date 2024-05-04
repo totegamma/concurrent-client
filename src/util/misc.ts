@@ -16,6 +16,7 @@ export const fetchWithTimeout = async (
         const reqConfig: RequestInit = { ...init, signal: controller.signal }
         const res = await fetch(url, reqConfig)
         if (!res.ok) {
+            if (res.status === 404) return res
             const description = `${res.status}: ${url as string} traceID: ${res.headers.get('trace-id') ?? 'N/A'}`
             return await Promise.reject(new Error(description))
         }
@@ -30,5 +31,9 @@ export const fetchWithTimeout = async (
     } finally {
         clearTimeout(clientTimeout)
     }
+}
+
+export const isCCID = (str: string): boolean => {
+    return str.startsWith('con1') && !str.includes('.') && str.length === 42
 }
 

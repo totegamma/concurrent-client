@@ -5,7 +5,14 @@
  * and run json-schema-to-typescript to regenerate this file.
  */
 
-export interface Like {
+export interface MarkdownMessageSchema {
+  body: string;
+  emojis?: {
+    [k: string]: {
+      imageURL?: string;
+      animURL?: string;
+    };
+  };
   profileOverride?: {
     username?: string;
     avatar?: string;

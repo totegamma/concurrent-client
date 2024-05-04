@@ -5,15 +5,10 @@
  * and run json-schema-to-typescript to regenerate this file.
  */
 
-export interface Profile {
+export interface ProfileSchema {
   username?: string;
   avatar?: string;
   description?: string;
   banner?: string;
   subprofiles?: string[];
-  links?: {
-    key?: string;
-    value?: string;
-    [k: string]: unknown;
-  }[];
 }

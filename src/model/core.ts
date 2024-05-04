@@ -1,43 +1,34 @@
 import { Schema } from "../schemas"
+import { CCDocument } from ".."
 
 export type CCID = string
 export type FQDN = string
-export type StreamID = string
+export type TimelineID = string
 export type MessageID = string
 export type AssociationID = string
 export type CharacterID = string
-export type CollectionID = string
-export type CollectionItemID = string
+export type ProfileID = string
 
-export interface SignedObject<T> {
-    signer: CCID
-    type: string
-    schema?: Schema
-    body: T
-    meta?: any
-    signedAt: string
-    target?: string
-    variant?: string
-    keyID?: string
+export interface AffiliationOption {
+    info: string
+    invitation?: string
 }
 
-export interface keyEnact {
-    CKID: string
-    root: string
-    parent: string
+export interface CommitRequest {
+    document: string
+    signature: string
+    option?: string
 }
 
-export interface keyRevoke {
-    CKID: string
-}
+// ---
 
 export interface Key {
     id: string
     root: string
     parent: string
-    enactPayload: string
+    enactDocument: string
     enactSignature: string
-    revokePayload?: string
+    revokeDocument?: string
     revokeSignature?: string
     validSince: string
     validUntil: string
@@ -45,24 +36,28 @@ export interface Key {
 
 export interface Entity {
     ccid: CCID
+    alias?: string
     tag: string
     domain: FQDN 
     cdate: string
     score: number
-    certs: Certificate[]
-    payload: string
-    signature: string
+
+    affiliationDocument: string
+    affiliationSignature: string
+
+    tombstoneDocument?: string
+    tombstoneSignature?: string
 }
+
 
 export interface Association<T> {
     id: AssociationID
     author: CCID
     schema: Schema
-    payload: SignedObject<T>
-    rawpayload: string
+    document: CCDocument.Association<T>
+    _document: string
     signature: string
-    targetID: MessageID
-    targetType: 'messages' | 'characters'
+    target: MessageID
     cdate: string
 }
 
@@ -70,21 +65,23 @@ export interface Message<T> {
     id: MessageID
     author: CCID
     schema: Schema
-    payload: SignedObject<T>
-    rawpayload: string
+    document: CCDocument.Message<T>
+    _document: string
     signature: string
-    streams: StreamID[]
+    timelines: TimelineID[]
+    policy?: string
+    policyParams?: string
     associations: Array<Association<any>>
     ownAssociations: Array<Association<any>>
     cdate: string
 }
 
-export interface Character<T> {
+export interface Profile<T> {
     associations: Array<Association<any>>
     author: CCID
     schema: Schema
-    id: CharacterID
-    payload: SignedObject<T>
+    id: ProfileID
+    document: CCDocument.Profile<T>
     signature: string
     cdate: string
 }
@@ -98,58 +95,63 @@ export interface Domain {
     score: number
 }
 
-export interface Stream<T> {
-    id: StreamID
-    visible: boolean
+export interface Timeline<T> {
+    id: TimelineID
+    indexable: boolean
     author: CCID
-    maintainer: CCID[]
-    writer: CCID[]
-    reader: CCID[]
+    domainOwned: boolean
     schema: CCID
-    payload: T
+    policy?: string
+    policyParams?: string
+    document: CCDocument.Timeline<T>
+    signature: string
     cdate: string
+    mdate: string
 }
 
-export interface StreamEvent {
-    type: string
-    action: string
-    stream: string
-    item: StreamItem
-    body: Message<any> | Association<any>
+export interface Event {
+    timeline: TimelineID
+    item: TimelineItem
+    document: string
+    signature: string
+    resource: Message<any> | Association<any>
 }
 
-export interface StreamItem {
+export interface TimelineItem {
     cdate: Date
-    objectID: string
-    streamID: string
-    type: string
+    resourceID: string
+    timelineID: string
     author: string
     owner: string
     lastUpdate: Date
 }
 
-export interface Collection<T> {
+export interface Subscription<T> {
     id: string
-    visible: boolean
     author: CCID
-    maintainer: CCID[]
-    writer: CCID[]
-    reader: CCID[]
+    indexable: boolean
+    domainOwned: boolean
     schema: Schema
-    cdate: Date
-    mdate: Date
-    items: CollectionItem<T>[]
+    policy?: string
+    policyParams?: string
+    document: CCDocument.Subscription<T>
+    signature: string
+    items: SubscriptionItem[]
+    cdate: string
+    mdate: string
 }
 
-export interface CollectionItem<T> {
+export enum ResolverType {
+    Entity = 0,
+    Domain = 1,
+}
+
+export interface SubscriptionItem {
     id: string
-    collectionId: string
-    payload: T
-}
-
-export interface Certificate {
-    icon: string
-    description: string
+    resolverType: ResolverType
+    entity: string
+    domain: string
+    subscription: string
 }
 
 export interface ProfileOverride {
@@ -163,17 +165,7 @@ export interface ProfileOverride {
 export interface Ack {
     from: string
     to: string
-    payload: string
-    signature: string
-}
-
-export interface AckObject {
-    from: string
-    to: string
-}
-
-export interface AckRequest {
-    signedObject: string
+    document: string
     signature: string
 }
 

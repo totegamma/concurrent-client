@@ -5,13 +5,10 @@
  * and run json-schema-to-typescript to regenerate this file.
  */
 
-export interface DomainProfile {
-  name?: string;
-  tosURL?: string;
+export interface CommunityTimelineSchema {
+  name: string;
+  shortname?: string;
   description?: string;
-  iconURL?: string;
-  bannerURL?: string;
-  defaultBookmarkStreams?: string[];
-  defaultFollowingStreams?: string[];
-  defaultPostStreams?: string[];
+  icon?: string;
+  banner?: string;
 }

@@ -1,18 +1,28 @@
 import { Api } from './api';
-import { Association, Message, StreamEvent, StreamID } from '../model/core';
+import { Association, Message, TimelineID, Event, TimelineItem } from '../model/core';
 import { Client } from './client';
+import { CCDocument } from '..';
 
 const WS = typeof window === 'undefined' ? require('ws') : window.WebSocket;
+
+export interface TimelineEvent {
+    timeline: TimelineID
+    item: TimelineItem
+    document?: CCDocument.Message<any> | CCDocument.Association<any> | CCDocument.Delete
+    resource?: Message<any> | Association<any>
+    _document: string
+    signature: string
+}
 
 export class Socket {
 
     ws: any;
     api: Api;
     client?: Client;
-    subscriptions: Map<string, Set<(event: StreamEvent) => void>> = new Map()
+    subscriptions: Map<string, Set<(event: TimelineEvent) => void>> = new Map()
 
-    pingstate = false
     failcount = 0
+    reconnecting = false
 
     constructor(api: Api, client?: Client) {
         this.api = api;
@@ -20,59 +30,64 @@ export class Socket {
         this.connect()
         setInterval(() => {
             this.checkConnection()
-        }, 5000)
+        }, 1000)
     }
 
     connect() {
-        this.ws = new WS('wss://' + this.api.host + '/api/v1/socket');
+        this.ws = new WS('wss://' + this.api.host + '/api/v1/timelines/realtime');
 
         this.ws.onmessage = (rawevent: any) => {
-            const event: StreamEvent = JSON.parse(rawevent.data);
+
+            console.log('rawevent', rawevent)
+
+            const event: Event = JSON.parse(rawevent.data);
             if (!event) return
 
-            if (event.type === 'pong') {
-                this.pingstate = true
-                return
+            const document = undefined
+            try {
+                JSON.parse(event.document)
+            } catch (e) {
+                console.log('invalid json', event.document)
             }
 
-            switch (event.type + '.' + event.action) {
-                case 'message.create':
-                    if (event.body) {
-                        const dummy_message: any = event.body
-                        dummy_message.rawpayload = dummy_message.payload
-                        dummy_message.payload = JSON.parse(dummy_message.payload)
-                        this.api.cacheMessage(dummy_message as Message<any>)
-                    }
-                    break
-                case 'message.delete':
-                    this.api.invalidateMessage(event.body.id)
-                    this.client?.invalidateMessage(event.body.id)
-                    break
-                case 'association.create': {
-                    if (event.body) {
-                        const dummy_association: any = event.body
-                        dummy_association.rawpayload = dummy_association.payload
-                        dummy_association.payload = JSON.parse(dummy_association.payload)
-                        const association = dummy_association as Association<any>
-                        this.api.cacheAssociation(association)
-                        this.api.invalidateMessage(association.targetID)
-                        this.client?.invalidateMessage(association.targetID)
-                    }
-                    break
-                }
-                case 'association.delete': {
-                    if (event.body) {
-                        const body = event.body as Association<any>
-                        this.api.invalidateAssociation(body.id)
-                        this.api.invalidateMessage(body.targetID)
-                        this.client?.invalidateMessage(body.targetID)
-                    }
-                    break
-                }
+            const timelineEvent: TimelineEvent = {
+                timeline: event.timeline,
+                item: event.item,
+                document: document,
+                _document: event.document,
+                signature: event.signature,
+                resource: event.resource
             }
 
-            const stream = event.stream
-            this.distribute(stream, event)
+            switch (timelineEvent.document?.type) { // TODO
+                case 'message':
+                break
+                case 'association':
+                    const association = timelineEvent.document as CCDocument.Association<any>
+                    this.api.invalidateMessage(association.target)
+                    this.client?.invalidateMessage(association.target)
+                break
+                case 'delete':
+                    const deletion = timelineEvent.document as CCDocument.Delete
+                    switch (deletion.target[0]) {
+                        case 'm':
+                            this.api.invalidateMessage(deletion.target)
+                            this.client?.invalidateMessage(deletion.target)
+                        break
+                        case 'a':
+                            const resource = timelineEvent.resource as Association<any>
+                            if (resource.target) {
+                                this.api.invalidateMessage(resource.target)
+                                this.client?.invalidateMessage(resource.target)
+                            }
+                        break
+                    }
+                break
+                default:
+                console.log('unknown event document type', event)
+            }
+
+            this.distribute(event.timeline, timelineEvent)
         }
 
         this.ws.onerror = (event: any) => {
@@ -90,48 +105,53 @@ export class Socket {
     }
 
     checkConnection() {
-        this.ping()
-        if (this.pingstate) {
-            this.pingstate = false
+        if (this.ws.readyState !== WS.OPEN && !this.reconnecting) {
             this.failcount = 0
-            return
-        } else {
-            this.failcount++
-            console.log('ping fail', this.failcount)
-            if (this.failcount > 3) {
-                console.log('try to reconnect')
-                this.ws.close()
-                this.connect()
-                this.failcount = 0
-            }
+            this.reconnecting = true
+            this.reconnect()
         }
     }
 
-    distribute(stream: string, event: StreamEvent) {
-        if (this.subscriptions.has(stream)) {
-            this.subscriptions.get(stream)?.forEach(callback => {
+    reconnect() {
+        if (this.ws.readyState === WS.OPEN) {
+            console.log('reconnect confirmed')
+            this.reconnecting = false
+            this.failcount = 0
+        } else {
+            console.log('reconnecting. attempt: ', this.failcount)
+            this.connect()
+            this.failcount++
+            setTimeout(() => {
+                this.reconnect()
+            }, 500 * Math.pow(1.5, Math.min(this.failcount, 15)))
+        }
+    }
+
+    distribute(timelineID: string, event: TimelineEvent) {
+        if (this.subscriptions.has(timelineID)) {
+            this.subscriptions.get(timelineID)?.forEach(callback => {
                 callback(event)
             })
         }
     }
 
-    listen(streams: StreamID[], callback: (event: StreamEvent) => void) {
-        const currentStreams = Array.from(this.subscriptions.keys())
-        streams.forEach(topic => {
+    listen(timelines: TimelineID[], callback: (event: TimelineEvent) => void) {
+        const currenttimelines = Array.from(this.subscriptions.keys())
+        timelines.forEach(topic => {
             if (!this.subscriptions.has(topic)) {
                 this.subscriptions.set(topic, new Set())
             }
             this.subscriptions.get(topic)?.add(callback)
         })
-        const newStreams = Array.from(this.subscriptions.keys())
-        if (newStreams.length > currentStreams.length) {
-            this.ws.send(JSON.stringify({ type: 'listen', channels: newStreams }))
+        const newtimelines = Array.from(this.subscriptions.keys())
+        if (newtimelines.length > currenttimelines.length) {
+            this.ws.send(JSON.stringify({ type: 'listen', channels: newtimelines }))
         }
     }
 
-    unlisten(streams: StreamID[], callback: (event: StreamEvent) => void) {
-        const currentStreams = Array.from(this.subscriptions.keys())
-        streams.forEach(topic => {
+    unlisten(timelines: TimelineID[], callback: (event: TimelineEvent) => void) {
+        const currenttimelines = Array.from(this.subscriptions.keys())
+        timelines.forEach(topic => {
             if (this.subscriptions.has(topic)) {
                 this.subscriptions.get(topic)?.delete(callback)
 
@@ -140,9 +160,9 @@ export class Socket {
                 }
             }
         })
-        const newStreams = Array.from(this.subscriptions.keys())
-        if (newStreams.length < currentStreams.length) {
-            this.ws.send(JSON.stringify({ type: 'unlisten', channels: newStreams }))
+        const newtimelines = Array.from(this.subscriptions.keys())
+        if (newtimelines.length < currenttimelines.length) {
+            this.ws.send(JSON.stringify({ type: 'unlisten', channels: newtimelines }))
         }
     }
 

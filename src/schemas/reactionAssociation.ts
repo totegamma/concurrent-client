@@ -5,10 +5,14 @@
  * and run json-schema-to-typescript to regenerate this file.
  */
 
-export interface Commonstream {
-  name: string;
-  shortname: string;
-  description: string;
-  icon?: string;
-  banner?: string;
+export interface ReactionAssociationSchema {
+  imageUrl: string;
+  shortcode: string;
+  profileOverride?: {
+    username?: string;
+    avatar?: string;
+    description?: string;
+    link?: string;
+    characterID?: string;
+  };
 }
