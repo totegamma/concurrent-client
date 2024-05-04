@@ -43,7 +43,13 @@ export class Socket {
             const event: Event = JSON.parse(rawevent.data);
             if (!event) return
 
-            const document = JSON.parse(event.document)
+            const document = undefined
+            try {
+                JSON.parse(event.document)
+            } catch (e) {
+                console.log('invalid json', event.document)
+            }
+
             const timelineEvent: TimelineEvent = {
                 timeline: event.timeline,
                 item: event.item,

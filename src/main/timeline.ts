@@ -53,7 +53,19 @@ export class TimelineReader {
                         break;
                 }
             }
+            default:
+                if (event.item.resourceID) {
+                    switch (event.item.resourceID[0]) {
+                        case 'm': {
+                            if (this.body.find(m => m.resourceID === event.item.resourceID)) return;
+                            this.body.unshift(event.item);
+                            this.onUpdate?.();
+                            break;
+                        }
+                    }
+                }
         }
+
         this.onRealtimeEvent?.(event);
     }
 
