@@ -505,6 +505,61 @@ export class Api {
         })
     }
 
+    async getProfileByID<T>(id: string, owner: string): Promise<Profile<T> | null | undefined> {
+        const targetHost = await this.resolveAddress(owner)
+        if (!targetHost) throw new Error('domain not found')
+        return await this.fetchWithOnlineCheck(targetHost, `/profile/${id}`, {
+            method: 'GET',
+            headers: {}
+        }).then(async (res) => {
+            const data = await res.json()
+            const profile = data.content
+            if (!profile) {
+                return null
+            }
+            profile._document = profile.document
+            profile.document = JSON.parse(profile.document)
+            return profile
+        })
+    }
+
+    async getProfiles<T>(query: {author?: string, schema?: string, domain?: string}): Promise<Profile<T>[]> {
+        let requestPath = `/profiles?`
+
+        let queries: string[] = []
+        if (query.author) queries.push(`author=${query.author}`)
+        if (query.schema) queries.push(`schema=${encodeURIComponent(query.schema)}`)
+        if (query.domain) queries.push(`domain=${query.domain}`)
+
+        requestPath += queries.join('&')
+
+        return await fetchWithTimeout(this.host, `${apiPath}${requestPath}`, {}).then(async (data) => {
+            return await data.json().then((data) => {
+                return data.content.map((e: any) => {
+                    e._document = e.document
+                    e.document = JSON.parse(e.document)
+                    return e
+                })
+            })
+        })
+    }
+
+    async deleteProfile(id: string): Promise<any> {
+        if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
+        const documentObj: CCDocument.Delete = {
+            signer: this.ccid,
+            type: 'delete',
+            target: id,
+            signedAt: new Date()
+        }
+
+        if (this.ckid) {
+            documentObj.keyID = this.ckid
+        }
+
+        return await this.commit(documentObj)
+    }
+
     async upsertProfile<T>(
         schema: Schema,
         body: T,

@@ -15,6 +15,7 @@ export {
     CCID,
     Entity as CoreEntity,
     Association as CoreAssociation,
+    Profile as CoreProfile,
     Message as CoreMessage,
     Domain as CoreDomain,
     Timeline as CoreTimeline,
