@@ -1,9 +1,9 @@
 import { ec as Ec } from 'elliptic'
 import { v4 as uuidv4 } from 'uuid'
-import { keccak256, recoverAddress } from 'ethers'
+import { keccak256 } from 'ethers'
 import { Mnemonic, randomBytes, HDNodeWallet } from 'ethers'
 
-import { Secp256k1 } from "@cosmjs/crypto";
+import { ExtendedSecp256k1Signature, Secp256k1 } from "@cosmjs/crypto";
 import { toBech32 } from "@cosmjs/encoding";
 import { rawSecp256k1PubkeyToRawAddress } from "@cosmjs/amino";
 
@@ -35,10 +35,30 @@ export interface KeyPair {
     publickey: string
 }
 
-export const validateSignature = (body: string, signature: string, expectedAuthor: string): boolean => {
-    const messageHash = keccak256(new TextEncoder().encode(body))
-    const recovered = recoverAddress(messageHash, '0x' + signature)
-    return recovered.slice(2) === expectedAuthor.slice(2)
+export const validateSignature = (body: string, signature: string, expectedKeyID: string): boolean => {
+    const messageHashStr = keccak256(new TextEncoder().encode(body))
+    const messageHash = parseHexString(messageHashStr.slice(2))
+
+    const signatureR = parseHexString(signature.slice(0, 64))
+    const signatureS = parseHexString(signature.slice(64, 128))
+    const signatureV = parseInt(signature.slice(128), 16)
+
+    const sigObj = new ExtendedSecp256k1Signature(signatureR, signatureS, signatureV)
+    const recoveredPub = Secp256k1.recoverPubkey(sigObj, messageHash)
+
+    const hrp = expectedKeyID.slice(0, 3)
+    if (hrp === 'con') {
+        const recoveredCCID = ComputeCCID(toHexString(recoveredPub))
+        return recoveredCCID === expectedKeyID
+    }
+
+    if (hrp === 'cck') {
+        const recoveredCKID = ComputeCKID(toHexString(recoveredPub))
+        return recoveredCKID === expectedKeyID
+    }
+
+    console.error('unexpected key hrp:', expectedKeyID)
+    return false
 }
 
 export const LoadKey = (privateKey: string): KeyPair | null => {
