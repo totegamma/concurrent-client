@@ -1,6 +1,6 @@
 import { Entity, Message, Association, Timeline, Profile, CCID, Domain, FQDN, Ack, Key, TimelineID, TimelineItem, Subscription } from '../model/core'
-import { fetchWithTimeout, isCCID } from '../util/misc'
-import { Sign, IssueJWT, checkJwtIsValid } from '../util/crypto'
+import { fetchWithTimeout, IsCCID } from '../util/misc'
+import { Sign, IssueJWT, CheckJwtIsValid } from '../util/crypto'
 import { Schema } from '../schemas'
 import { CCDocument } from '..'
 
@@ -123,7 +123,7 @@ export class Api {
     async fetchWithCredential(domain: string, path: string, init: RequestInit, timeoutMs?: number): Promise<Response> {
 
         let credential = this.tokens[domain]
-        if (!credential || !checkJwtIsValid(credential)) {
+        if (!credential || !CheckJwtIsValid(credential)) {
             if (!this.privatekey) return Promise.reject(new JWTExpiredError())
             credential = this.generateApiToken(domain)
         }
@@ -718,7 +718,7 @@ export class Api {
         }
         let host = id.split('@')[1] ?? this.host
 
-        if (isCCID(host)) {
+        if (IsCCID(host)) {
             const domain = await this.resolveAddress(host)
             if (!domain) throw new Error('domain not found: ' + host)
             host = domain
@@ -867,7 +867,7 @@ export class Api {
         const key = id.split('@')[0]
         let host = id.split('@')[1] ?? this.host
 
-        if (isCCID(host)) {
+        if (IsCCID(host)) {
             const domain = await this.resolveAddress(host)
             if (!domain) throw new Error('domain not found')
             host = domain

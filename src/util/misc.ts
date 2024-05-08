@@ -33,7 +33,7 @@ export const fetchWithTimeout = async (
     }
 }
 
-export const isCCID = (str: string): boolean => {
+export const IsCCID = (str: string): boolean => {
     return str.startsWith('con1') && !str.includes('.') && str.length === 42
 }
 

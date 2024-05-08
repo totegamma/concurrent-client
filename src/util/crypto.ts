@@ -18,7 +18,7 @@ export interface Identity {
     CCID: string
 }
 
-export const mnemonic_ja2en = (mnemonic_ja: string): string | null => {
+const mnemonic_ja2en = (mnemonic_ja: string): string | null => {
     try {
         mnemonic_ja = mnemonic_ja.trim().normalize('NFKD')
         const mnemonic_en = mnemonic_ja.split(' ')
@@ -34,7 +34,7 @@ export const mnemonic_ja2en = (mnemonic_ja: string): string | null => {
     }
 }
 
-export const mnemonic_en2ja = (mnemonic_en: string): string | null => {
+const mnemonic_en2ja = (mnemonic_en: string): string | null => {
     try {
         mnemonic_en = mnemonic_en.trim().normalize('NFKD')
         const mnemonic_ja = mnemonic_en.split(' ')
@@ -50,7 +50,7 @@ export const mnemonic_en2ja = (mnemonic_en: string): string | null => {
     }
 }
 
-export const generateIdentity = (): Identity => {
+export const GenerateIdentity = (): Identity => {
     const entrophy = randomBytes(16)
     const mnemonic = Mnemonic.fromEntropy(entrophy, null).phrase
     const wallet = HDNodeWallet.fromPhrase(mnemonic, undefined, HDPath)
@@ -112,7 +112,7 @@ export interface KeyPair {
     publickey: string
 }
 
-export const validateSignature = (body: string, signature: string, expectedKeyID: string): boolean => {
+export const ValidateSignature = (body: string, signature: string, expectedKeyID: string): boolean => {
     const messageHashStr = keccak256(new TextEncoder().encode(body))
     const messageHash = parseHexString(messageHashStr.slice(2))
 
@@ -287,7 +287,7 @@ export const SignJWT = (payload: string, privatekey: string): string => {
     return body + '.' + base64
 }
 
-export const parseJWT = (jwt: string): JwtPayload => {
+export const ParseJWT = (jwt: string): JwtPayload => {
     const split = jwt.split('.')
     if (split.length !== 3) return {}
     const encoded = split[1]
@@ -302,8 +302,8 @@ export const parseJWT = (jwt: string): JwtPayload => {
     return {}
 }
 
-export const checkJwtIsValid = (jwt: string): boolean => {
-    const claims = parseJWT(jwt)
+export const CheckJwtIsValid = (jwt: string): boolean => {
+    const claims = ParseJWT(jwt)
     if (!claims) return false
     if (!claims.exp) return true
     const exp = parseInt(claims.exp)
