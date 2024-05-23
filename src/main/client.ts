@@ -32,7 +32,7 @@ import {
 
 import { ComputeCCID, KeyPair, LoadKey, LoadSubKey } from "../util/crypto";
 import { CreateCurrentOptions } from "../model/others";
-import { CCDocument, fetchWithTimeout } from '..';
+import { CCDocument, CoreProfile, fetchWithTimeout } from '..';
 
 const cacheLifetime = 5 * 60 * 1000
 
@@ -187,7 +187,7 @@ export class Client {
         })
     }
 
-    async setProfile(updates: {username?: string, description?: string, avatar?: string, banner?: string, subprofiles?: string[]}): Promise<void> {
+    async setProfile(updates: {username?: string, description?: string, avatar?: string, banner?: string, subprofiles?: string[]}): Promise<CoreProfile<ProfileSchema>> {
         if (!this.ccid) throw new Error('ccid is not set')
 
 
@@ -241,7 +241,7 @@ export class Client {
 
         const currentprof = (await this.api.getProfileBySemanticID<ProfileSchema>('world.concrnt.p', this.ccid))?.document.body
 
-        await this.api.upsertProfile<ProfileSchema>(Schemas.profile, {
+        const updated = await this.api.upsertProfile<ProfileSchema>(Schemas.profile, {
             username: updates.username ?? currentprof?.username,
             description: updates.description ?? currentprof?.description,
             avatar: updates.avatar ?? currentprof?.avatar,
@@ -250,6 +250,8 @@ export class Client {
         }, { semanticID: 'world.concrnt.p'})
 
         await this.reloadUser()
+
+        return updated
     }
 
     async newSocket(): Promise<Socket> {

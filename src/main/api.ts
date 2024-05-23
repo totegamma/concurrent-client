@@ -564,7 +564,7 @@ export class Api {
         schema: Schema,
         body: T,
         {id = undefined, semanticID = undefined, policy = undefined, policyParams = undefined }: {id?: string, semanticID?: string, policy?: string, policyParams?: string}
-    ): Promise<any> {
+    ): Promise<Profile<T>> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
         const documentObj: CCDocument.Profile<T> = {
             id: id,
@@ -600,8 +600,12 @@ export class Api {
         }
 
         const res = await this.fetchWithCredential(this.host, `${apiPath}/commit`, requestOptions)
+        const profile = (await res.json()).content
 
-        return await res.json()
+        profile._document = profile.document
+        profile.document = JSON.parse(profile.document)
+
+        return profile
     }
 
     // Timeline
