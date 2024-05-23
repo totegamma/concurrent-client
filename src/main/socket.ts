@@ -43,9 +43,9 @@ export class Socket {
             const event: Event = JSON.parse(rawevent.data);
             if (!event) return
 
-            const document = undefined
+            let document = undefined
             try {
-                JSON.parse(event.document)
+                document = JSON.parse(event.document)
             } catch (e) {
                 console.log('invalid json', event.document)
             }
