@@ -93,6 +93,7 @@ export interface Domain {
     pubkey: string
     cdate: Date
     score: number
+    meta: Record<string, any>
 }
 
 export interface Timeline<T> {
