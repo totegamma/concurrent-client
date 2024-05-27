@@ -279,6 +279,7 @@ export class User implements CoreEntity {
     client: Client
 
     ccid: CCID
+    alias?: string
     tag: string
     domain: FQDN 
     cdate: string
@@ -312,6 +313,7 @@ export class User implements CoreEntity {
         this.api = client.api
         this.client = client
         this.ccid = entity.ccid
+        this.alias = entity.alias
         this.tag = entity.tag
         this.domain = domain
         this.cdate = entity.cdate
