@@ -529,11 +529,12 @@ export class Api {
         let queries: string[] = []
         if (query.author) queries.push(`author=${query.author}`)
         if (query.schema) queries.push(`schema=${encodeURIComponent(query.schema)}`)
-        if (query.domain) queries.push(`domain=${query.domain}`)
 
         requestPath += queries.join('&')
 
-        return await fetchWithTimeout(this.host, `${apiPath}${requestPath}`, {}).then(async (data) => {
+        const targetHost = query.domain ?? (query.author && await this.resolveAddress(query.author)) ?? this.host
+
+        return await fetchWithTimeout(targetHost, `${apiPath}${requestPath}`, {}).then(async (data) => {
             return await data.json().then((data) => {
                 return data.content.map((e: any) => {
                     e._document = e.document
