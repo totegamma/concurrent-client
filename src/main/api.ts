@@ -51,7 +51,7 @@ export class Api {
         if (conf.token) {
             this.tokens[conf.host] = conf.token
         } else {
-            this.tokens[conf.host] = this.generateApiToken(conf.host)
+            if (this.privatekey) this.tokens[conf.host] = this.generateApiToken(conf.host)
         }
         console.log('oOoOoOoOoO API SERVICE CREATED OoOoOoOoOo')
     }
@@ -124,16 +124,18 @@ export class Api {
 
         let credential = this.tokens[domain]
         if (!credential || !CheckJwtIsValid(credential)) {
-            if (!this.privatekey) return Promise.reject(new JWTExpiredError())
-            credential = this.generateApiToken(domain)
+            //if (!this.privatekey) return Promise.reject(new JWTExpiredError())
+            if (this.privatekey) credential = this.generateApiToken(domain)
         }
 
         const headers: any = {
             ...init.headers,
-            authorization: 'Bearer ' + credential
+            //authorization: 'Bearer ' + credential
         }
 
-        if (domain !== this.host) {
+        if (credential) headers['authorization'] = 'Bearer ' + credential
+
+        if (domain !== this.host && this.privatekey) {
             if (!this.passport) {
                 await this.getPassport()
             }
