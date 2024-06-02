@@ -14,14 +14,7 @@ export const fetchWithTimeout = async (
 
     try {
         const reqConfig: RequestInit = { ...init, signal: controller.signal }
-        const res = await fetch(url, reqConfig)
-        if (!res.ok) {
-            if (res.status === 404) return res
-            const description = `${res.status}: ${url as string} traceID: ${res.headers.get('trace-id') ?? 'N/A'}`
-            return await Promise.reject(new Error(description))
-        }
-
-        return res
+        return await fetch(url, reqConfig)
     } catch (e: unknown) {
         if (e instanceof Error) {
             return await Promise.reject(new Error(`${e.name}: ${e.message}`))
