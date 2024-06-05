@@ -31,6 +31,9 @@ export class Socket {
         setInterval(() => {
             this.checkConnection()
         }, 1000)
+        setInterval(() => {
+            this.heartbeat()
+        }, 30000)
     }
 
     connect() {
@@ -43,9 +46,9 @@ export class Socket {
             const event: Event = JSON.parse(rawevent.data);
             if (!event) return
 
-            const document = undefined
+            let document = undefined
             try {
-                JSON.parse(event.document)
+                document = JSON.parse(event.document)
             } catch (e) {
                 console.log('invalid json', event.document)
             }
@@ -102,6 +105,10 @@ export class Socket {
             console.log('socket open', event)
             this.ws.send(JSON.stringify({ type: 'listen', channels: Array.from(this.subscriptions.keys()) }))
         }
+    }
+
+    heartbeat() {
+        this.ws.send(JSON.stringify({ type: 'h' }))
     }
 
     checkConnection() {

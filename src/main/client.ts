@@ -32,7 +32,7 @@ import {
 
 import { ComputeCCID, KeyPair, LoadKey, LoadSubKey } from "../util/crypto";
 import { CreateCurrentOptions } from "../model/others";
-import { CCDocument, fetchWithTimeout } from '..';
+import { CCDocument, CoreProfile, fetchWithTimeout } from '..';
 
 const cacheLifetime = 5 * 60 * 1000
 
@@ -187,31 +187,61 @@ export class Client {
         })
     }
 
-    async setProfile(updates: {username?: string, description?: string, avatar?: string, banner?: string, subprofiles?: string[]}): Promise<void> {
+    async setProfile(updates: {username?: string, description?: string, avatar?: string, banner?: string, subprofiles?: string[]}): Promise<CoreProfile<ProfileSchema>> {
         if (!this.ccid) throw new Error('ccid is not set')
 
 
         let homeStream = await this.api.getTimeline('world.concrnt.t-home@' + this.ccid)
         if (!homeStream) {
-            const res0 = await this.api.upsertTimeline(Schemas.emptyTimeline, {}, { semanticID: 'world.concrnt.t-home', indexable: false, domainOwned: false })
+            const res0 = await this.api.upsertTimeline(
+                Schemas.emptyTimeline,
+                {},
+                {
+                    semanticID: 'world.concrnt.t-home',
+                    indexable: false,
+                    domainOwned: false,
+                    policy: 'https://policy.concrnt.world/t/inline-read-write.json',
+                    policyParams: '{"isWritePublic": false, "isReadPublic": true, "writer": [], "reader": []}'
+                }
+            )
             console.log('home', res0)
         }
 
         let notificationStream = await this.api.getTimeline('world.concrnt.t-notify@' + this.ccid)
         if (!notificationStream) {
-            const res1 = await this.api.upsertTimeline(Schemas.emptyTimeline, {}, { semanticID: 'world.concrnt.t-notify', indexable: false, domainOwned: false })
+            const res1 = await this.api.upsertTimeline(
+                Schemas.emptyTimeline,
+                {},
+                {
+                    semanticID: 'world.concrnt.t-notify',
+                    indexable: false,
+                    domainOwned: false,
+                    policy: 'https://policy.concrnt.world/t/inline-read-write.json',
+                    policyParams: '{"isWritePublic": true, "isReadPublic": false, "writer": [], "reader": []}'
+                }
+            )
             console.log('notification', res1)
         }
 
         let associationStream = await this.api.getTimeline('world.concrnt.t-assoc@' + this.ccid)
         if (!associationStream) {
-            const res2 = await this.api.upsertTimeline(Schemas.emptyTimeline, {}, { semanticID: 'world.concrnt.t-assoc', indexable: false, domainOwned: false })
+            const res2 = await this.api.upsertTimeline(
+                Schemas.emptyTimeline,
+                {},
+                {
+                    semanticID: 'world.concrnt.t-assoc',
+                    indexable: false,
+                    domainOwned: false,
+                    policy: 'https://policy.concrnt.world/t/inline-read-write.json',
+                    policyParams: '{"isWritePublic": false, "isReadPublic": true, "writer": [], "reader": []}'
+                }
+            )
             console.log('association', res2)
         }
 
         const currentprof = (await this.api.getProfileBySemanticID<ProfileSchema>('world.concrnt.p', this.ccid))?.document.body
 
-        await this.api.upsertProfile<ProfileSchema>(Schemas.profile, {
+        const updated = await this.api.upsertProfile<ProfileSchema>(Schemas.profile, {
             username: updates.username ?? currentprof?.username,
             description: updates.description ?? currentprof?.description,
             avatar: updates.avatar ?? currentprof?.avatar,
@@ -220,6 +250,8 @@ export class Client {
         }, { semanticID: 'world.concrnt.p'})
 
         await this.reloadUser()
+
+        return updated
     }
 
     async newSocket(): Promise<Socket> {
@@ -247,6 +279,7 @@ export class User implements CoreEntity {
     client: Client
 
     ccid: CCID
+    alias?: string
     tag: string
     domain: FQDN 
     cdate: string
@@ -280,6 +313,7 @@ export class User implements CoreEntity {
         this.api = client.api
         this.client = client
         this.ccid = entity.ccid
+        this.alias = entity.alias
         this.tag = entity.tag
         this.domain = domain
         this.cdate = entity.cdate

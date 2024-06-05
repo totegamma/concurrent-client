@@ -1,6 +1,6 @@
 import { Entity, Message, Association, Timeline, Profile, CCID, Domain, FQDN, Ack, Key, TimelineID, TimelineItem, Subscription } from '../model/core'
-import { fetchWithTimeout, isCCID } from '../util/misc'
-import { Sign, IssueJWT, checkJwtIsValid } from '../util/crypto'
+import { fetchWithTimeout, IsCCID } from '../util/misc'
+import { Sign, IssueJWT, CheckJwtIsValid } from '../util/crypto'
 import { Schema } from '../schemas'
 import { CCDocument } from '..'
 
@@ -51,7 +51,7 @@ export class Api {
         if (conf.token) {
             this.tokens[conf.host] = conf.token
         } else {
-            this.tokens[conf.host] = this.generateApiToken(conf.host)
+            if (this.privatekey) this.tokens[conf.host] = this.generateApiToken(conf.host)
         }
         console.log('oOoOoOoOoO API SERVICE CREATED OoOoOoOoOo')
     }
@@ -123,17 +123,19 @@ export class Api {
     async fetchWithCredential(domain: string, path: string, init: RequestInit, timeoutMs?: number): Promise<Response> {
 
         let credential = this.tokens[domain]
-        if (!credential || !checkJwtIsValid(credential)) {
-            if (!this.privatekey) return Promise.reject(new JWTExpiredError())
-            credential = this.generateApiToken(domain)
+        if (!credential || !CheckJwtIsValid(credential)) {
+            //if (!this.privatekey) return Promise.reject(new JWTExpiredError())
+            if (this.privatekey) credential = this.generateApiToken(domain)
         }
 
         const headers: any = {
             ...init.headers,
-            authorization: 'Bearer ' + credential
+            //authorization: 'Bearer ' + credential
         }
 
-        if (domain !== this.host) {
+        if (credential) headers['authorization'] = 'Bearer ' + credential
+
+        if (domain !== this.host && this.privatekey) {
             if (!this.passport) {
                 await this.getPassport()
             }
@@ -529,11 +531,12 @@ export class Api {
         let queries: string[] = []
         if (query.author) queries.push(`author=${query.author}`)
         if (query.schema) queries.push(`schema=${encodeURIComponent(query.schema)}`)
-        if (query.domain) queries.push(`domain=${query.domain}`)
 
         requestPath += queries.join('&')
 
-        return await fetchWithTimeout(this.host, `${apiPath}${requestPath}`, {}).then(async (data) => {
+        const targetHost = query.domain ?? (query.author && await this.resolveAddress(query.author)) ?? this.host
+
+        return await fetchWithTimeout(targetHost, `${apiPath}${requestPath}`, {}).then(async (data) => {
             return await data.json().then((data) => {
                 return data.content.map((e: any) => {
                     e._document = e.document
@@ -564,7 +567,7 @@ export class Api {
         schema: Schema,
         body: T,
         {id = undefined, semanticID = undefined, policy = undefined, policyParams = undefined }: {id?: string, semanticID?: string, policy?: string, policyParams?: string}
-    ): Promise<any> {
+    ): Promise<Profile<T>> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
         const documentObj: CCDocument.Profile<T> = {
             id: id,
@@ -600,8 +603,12 @@ export class Api {
         }
 
         const res = await this.fetchWithCredential(this.host, `${apiPath}/commit`, requestOptions)
+        const profile = (await res.json()).content
 
-        return await res.json()
+        profile._document = profile.document
+        profile.document = JSON.parse(profile.document)
+
+        return profile
     }
 
     // Timeline
@@ -718,7 +725,7 @@ export class Api {
         }
         let host = id.split('@')[1] ?? this.host
 
-        if (isCCID(host)) {
+        if (IsCCID(host)) {
             const domain = await this.resolveAddress(host)
             if (!domain) throw new Error('domain not found: ' + host)
             host = domain
@@ -867,7 +874,7 @@ export class Api {
         const key = id.split('@')[0]
         let host = id.split('@')[1] ?? this.host
 
-        if (isCCID(host)) {
+        if (IsCCID(host)) {
             const domain = await this.resolveAddress(host)
             if (!domain) throw new Error('domain not found')
             host = domain
