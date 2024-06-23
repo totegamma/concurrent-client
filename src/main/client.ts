@@ -79,12 +79,12 @@ export class Client {
         const c = new Client(key.domain, key.keypair, key.ccid, {ckid: key.ckid, client})
         if (!c.ccid) throw new Error('invalid ccid')
         c.user = await c.getUser(c.ccid).catch((e) => {
-            console.log('CLIENT::create::getUser::error', e)
+            console.error('CLIENT::create::getUser::error', e)
             return null
         })
         c.ackings = await c.user?.getAcking()
         c.domainServices = await fetchWithTimeout(key.domain, '/services', {}).then((res) => res.json()).catch((e) => {
-            console.log('CLIENT::create::fetch::error', e)
+            console.error('CLIENT::create::fetch::error', e)
             return {}
         })
 
@@ -98,13 +98,13 @@ export class Client {
         const c = new Client(host, keyPair, ccid, {client})
         if (!c.ccid) throw new Error('invalid ccid')
         const user = await c.getUser(c.ccid).catch((e) => {
-            console.log('CLIENT::create::getUser::error', e)
+            console.error('CLIENT::create::getUser::error', e)
             return null
         })
         c.user = user
         c.ackings = await c.user?.getAcking()
         c.domainServices = await fetchWithTimeout(host, '/services', {}).then((res) => res.json()).catch((e) => {
-            console.log('CLIENT::create::fetch::error', e)
+            console.error('CLIENT::create::fetch::error', e)
             return {}
         })
 
@@ -114,7 +114,7 @@ export class Client {
     async reloadUser(): Promise<void> {
         if (!this.ccid) return
         this.user = await this.getUser(this.ccid).catch((e) => {
-            console.log('CLIENT::create::getUser::error', e)
+            console.error('CLIENT::create::getUser::error', e)
             return null
         })
     }
@@ -163,10 +163,6 @@ export class Client {
         if(options?.mentions && options.mentions.length > 0) {
             const associationStream = []
             for(const mention of options.mentions) {
-                //const user = await this.getUser(mention)
-                //if(user?.profile?.notificationStream) {
-                //    associationStream.push(user.profile?.notificationStream)
-                //}
                 associationStream.push('world.concrnt.t-notify@' + mention)
             }
             await this.api.createAssociation(Schemas.mentionAssociation, {}, newMessage.content.id, this.ccid, associationStream)
@@ -193,7 +189,7 @@ export class Client {
 
         let homeStream = await this.api.getTimeline('world.concrnt.t-home@' + this.ccid)
         if (!homeStream) {
-            const res0 = await this.api.upsertTimeline(
+            await this.api.upsertTimeline(
                 Schemas.emptyTimeline,
                 {},
                 {
@@ -203,13 +199,14 @@ export class Client {
                     policy: 'https://policy.concrnt.world/t/inline-read-write.json',
                     policyParams: '{"isWritePublic": false, "isReadPublic": true, "writer": [], "reader": []}'
                 }
-            )
-            console.log('home', res0)
+            ).catch((e) => {
+                console.error('CLIENT::setProfile::upsertTimeline::error', e)
+            })
         }
 
         let notificationStream = await this.api.getTimeline('world.concrnt.t-notify@' + this.ccid)
         if (!notificationStream) {
-            const res1 = await this.api.upsertTimeline(
+            await this.api.upsertTimeline(
                 Schemas.emptyTimeline,
                 {},
                 {
@@ -219,13 +216,14 @@ export class Client {
                     policy: 'https://policy.concrnt.world/t/inline-read-write.json',
                     policyParams: '{"isWritePublic": true, "isReadPublic": false, "writer": [], "reader": []}'
                 }
-            )
-            console.log('notification', res1)
+            ).catch((e) => {
+                console.error('CLIENT::setProfile::upsertTimeline::error', e)
+            })
         }
 
         let associationStream = await this.api.getTimeline('world.concrnt.t-assoc@' + this.ccid)
         if (!associationStream) {
-            const res2 = await this.api.upsertTimeline(
+            await this.api.upsertTimeline(
                 Schemas.emptyTimeline,
                 {},
                 {
@@ -235,8 +233,9 @@ export class Client {
                     policy: 'https://policy.concrnt.world/t/inline-read-write.json',
                     policyParams: '{"isWritePublic": false, "isReadPublic": true, "writer": [], "reader": []}'
                 }
-            )
-            console.log('association', res2)
+            ).catch((e) => {
+                console.error('CLIENT::setProfile::upsertTimeline::error', e)
+            })
         }
 
         const currentprof = (await this.api.getProfileBySemanticID<ProfileSchema>('world.concrnt.p', this.ccid))?.document.body
@@ -328,18 +327,18 @@ export class User implements CoreEntity {
 
     static async load(client: Client, id: CCID): Promise<User | null> {
         const domain = await client.api.resolveAddress(id).catch((e) => {
-            console.log('CLIENT::getUser::resolveAddress::error', e)
+            console.error('CLIENT::getUser::resolveAddress::error', e)
             return null
         })
         if (!domain) return null
         const entity = await client.api.getEntity(id).catch((e) => {
-            console.log('CLIENT::getUser::readEntity::error', e)
+            console.error('CLIENT::getUser::readEntity::error', e)
             return null
         })
         if (!entity) return null
 
         const profile = await client.api.getProfileBySemanticID<ProfileSchema>('world.concrnt.p', id).catch((e) => {
-            console.log('CLIENT::getUser::readProfile::error', e)
+            console.error('CLIENT::getUser::readProfile::error', e)
             return null
         })
 
@@ -410,7 +409,7 @@ export class Association<T> implements CoreAssociation<T> {
 
     static async load<T>(client: Client, id: AssociationID, owner: CCID): Promise<Association<T> | null> {
         const coreAss = await client.api.getAssociationWithOwner(id, owner).catch((e) => {
-            console.log('CLIENT::getAssociation::readAssociationWithOwner::error', e)
+            console.error('CLIENT::getAssociation::readAssociationWithOwner::error', e)
             return null
         })
         if (!coreAss) return null
@@ -483,7 +482,7 @@ export class Timeline<T> implements CoreTimeline<T> {
 
     static async load<T>(client: Client, id: TimelineID): Promise<Timeline<T> | null> {
         const stream = await client.api.getTimeline(id).catch((e) => {
-            console.log('CLIENT::Timeline::load::error', e)
+            console.error('CLIENT::Timeline::load::error', e)
             return null
         })
         if (!stream) return null
@@ -533,7 +532,7 @@ export class Message<T> implements CoreMessage<T> {
 
     static async load<T>(client: Client, id: MessageID, authorID: CCID, hint?: string): Promise<Message<T> | null> {
         const coreMsg = await client.api.getMessageWithAuthor(id, authorID, hint).catch((e) => {
-            console.log('CLIENT::getMessage::readMessageWithAuthor::error', e)
+            console.error('CLIENT::getMessage::readMessageWithAuthor::error', e)
             return null
         })
         if (!coreMsg) return null
@@ -545,7 +544,7 @@ export class Message<T> implements CoreMessage<T> {
             message.associationCounts = await client.api.getMessageAssociationCountsByTarget(id, authorID)
             message.reactionCounts = await client.api.getMessageAssociationCountsByTarget(id, authorID, {schema: Schemas.reactionAssociation})
         } catch (e) {
-            console.log('CLIENT::getMessage::error', e)
+            console.error('CLIENT::getMessage::error', e)
         }
 
         const timelines = await Promise.all(
@@ -645,7 +644,6 @@ export class Message<T> implements CoreMessage<T> {
 
     async favorite() {
         const author = await this.getAuthor()
-        //const targetStream = [author.profile?.notificationStream, this.client.user?.profile?.associationStream].filter((e) => e) as string[]
         const targetStream = ['world.concrnt.t-notify@' + author.ccid, 'world.concrnt.t-assoc@' + this.user.ccid]
         await this.api.createAssociation<LikeAssociationSchema>(Schemas.likeAssociation, {}, this.id, author.ccid, targetStream)
         this.api.invalidateMessage(this.id)
@@ -653,7 +651,6 @@ export class Message<T> implements CoreMessage<T> {
 
     async reaction(shortcode: string, imageUrl: string) {
         const author = await this.getAuthor()
-        //const targetStream = [author.profile?.notificationStream, this.client.user?.profile?.associationStream].filter((e) => e) as string[]
         const targetStream = ['world.concrnt.t-notify@' + author.ccid, 'world.concrnt.t-assoc@' + this.user.ccid]
         await this.client.api.createAssociation<ReactionAssociationSchema>(
             Schemas.reactionAssociation,
@@ -687,7 +684,6 @@ export class Message<T> implements CoreMessage<T> {
         )
 
         const author = await this.getAuthor()
-        //const targetStream = [author.profile?.notificationStream, this.user.profile?.associationStream].filter((e) => e) as string[]
         const targetStream = ['world.concrnt.t-notify@' + author.ccid, 'world.concrnt.t-assoc@' + this.user.ccid]
 
         await this.api.createAssociation<ReplyAssociationSchema>(
@@ -713,7 +709,6 @@ export class Message<T> implements CoreMessage<T> {
         const created = content
 
         const author = await this.getAuthor()
-        //const targetStream = [author.profile?.notificationStream, this.user.profile?.associationStream].filter((e) => e) as string[]
         const targetStream = ['world.concrnt.t-notify@' + author.ccid, 'world.concrnt.t-assoc@' + this.user.ccid]
 
         await this.api.createAssociation<RerouteAssociationSchema>(

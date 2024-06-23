@@ -124,13 +124,11 @@ export class Api {
 
         let credential = this.tokens[domain]
         if (!credential || !CheckJwtIsValid(credential)) {
-            //if (!this.privatekey) return Promise.reject(new JWTExpiredError())
             if (this.privatekey) credential = this.generateApiToken(domain)
         }
 
         const headers: any = {
             ...init.headers,
-            //authorization: 'Bearer ' + credential
         }
 
         if (credential) headers['authorization'] = 'Bearer ' + credential
@@ -146,7 +144,6 @@ export class Api {
             ...init,
             headers
         }
-        console.log('fetching', domain, path, requestInit)
 
         return await fetchWithTimeout(domain, path, requestInit, timeoutMs)
     }
@@ -154,7 +151,6 @@ export class Api {
     async resolveAddress(ccid: string, hint?: string): Promise<string | null | undefined> {
         const entity = await this.getEntity(ccid, hint)
         if (!entity) {
-            console.log(`entity not found: ${ccid}`)
             return null
         }
         return entity.domain
