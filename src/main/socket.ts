@@ -64,6 +64,12 @@ export class Socket {
 
             switch (timelineEvent.document?.type) { // TODO
                 case 'message':
+                    if (event.resource) {
+                        const dummy_message: any = event.resource
+                        dummy_message._document = dummy_message.document
+                        dummy_message.document = JSON.parse(dummy_message.document)
+                        this.api.cacheMessage(dummy_message as Message<any>)
+                    }
                 break
                 case 'association':
                     const association = timelineEvent.document as CCDocument.Association<any>
