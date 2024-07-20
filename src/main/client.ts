@@ -88,6 +88,10 @@ export class Client {
             return {}
         })
 
+        if (await c.checkProfileIsOk() === false) {
+            await c.setProfile({})
+        }
+
         return c
     }
 
@@ -107,6 +111,10 @@ export class Client {
             console.error('CLIENT::create::fetch::error', e)
             return {}
         })
+
+        if (await c.checkProfileIsOk() === false) {
+            await c.setProfile({})
+        }
 
         return c
     }
@@ -184,9 +192,61 @@ export class Client {
         })
     }
 
+    async checkProfileIsOk(): Promise<boolean> {
+        if (!this.ccid) return false
+
+        let homeStream = await this.api.getTimeline('world.concrnt.t-home@' + this.ccid)
+        if (!homeStream) {
+            return false
+        }
+        if (homeStream.policy !== 'https://policy.concrnt.world/t/inline-read-write.json' && !homeStream.policyParams) {
+            return false
+        }
+        if (homeStream.policyParams) {
+            const policyParams = JSON.parse(homeStream.policyParams)
+            if (policyParams.writer.indexOf(this.ccid) === -1) {
+                return false
+            }
+        }
+
+        let notificationStream = await this.api.getTimeline('world.concrnt.t-notify@' + this.ccid)
+        if (!notificationStream) {
+            return false
+        }
+        if (notificationStream.policy !== 'https://policy.concrnt.world/t/inline-read-write.json' && !notificationStream.policyParams) {
+            return false
+        }
+        if (notificationStream.policyParams) {
+            const policyParams = JSON.parse(notificationStream.policyParams)
+            if (policyParams.reader.indexOf(this.ccid) === -1) {
+                return false
+            }
+        }
+
+        let associationStream = await this.api.getTimeline('world.concrnt.t-assoc@' + this.ccid)
+        if (!associationStream) {
+            return false
+        }
+        if (associationStream.policy !== 'https://policy.concrnt.world/t/inline-read-write.json' && !associationStream.policyParams) {
+            return false
+        }
+        if (associationStream.policyParams) {
+            const policyParams = JSON.parse(associationStream.policyParams)
+            if (policyParams.writer.indexOf(this.ccid) === -1) {
+                return false
+            }
+        }
+
+        const currentprof = await this.api.getProfileBySemanticID<ProfileSchema>('world.concrnt.p', this.ccid)
+        if (!currentprof) {
+            return false
+        }
+
+        return true
+    }
+
     async setProfile(updates: {username?: string, description?: string, avatar?: string, banner?: string, subprofiles?: string[]}): Promise<CoreProfile<ProfileSchema>> {
         if (!this.ccid) throw new Error('ccid is not set')
-
 
         let homeStream = await this.api.getTimeline('world.concrnt.t-home@' + this.ccid)
         if (!homeStream) {
@@ -198,11 +258,50 @@ export class Client {
                     indexable: false,
                     domainOwned: false,
                     policy: 'https://policy.concrnt.world/t/inline-read-write.json',
-                    policyParams: '{"isWritePublic": false, "isReadPublic": true, "writer": [], "reader": []}'
+                    policyParams: `{"isWritePublic": false, "isReadPublic": true, "writer": ["${this.ccid}"], "reader": []}`
                 }
             ).catch((e) => {
                 console.error('CLIENT::setProfile::upsertTimeline::error', e)
             })
+        } else {
+            const policy = homeStream.policy
+            if (policy === 'https://policy.concrnt.world/t/inline-read-write.json') {
+                if (homeStream.policyParams) {
+                    const policyParams = JSON.parse(homeStream.policyParams)
+                    if (policyParams.writer.indexOf(this.ccid) === -1) {
+                        policyParams.writer.push(this.ccid)
+                        await this.api.upsertTimeline(
+                            Schemas.emptyTimeline,
+                            {},
+                            {
+                                id: homeStream.id + '@' + this.ccid,
+                                // semanticID: 'world.concrnt.t-home',
+                                indexable: false,
+                                domainOwned: false,
+                                policy: 'https://policy.concrnt.world/t/inline-read-write.json',
+                                policyParams: JSON.stringify(policyParams)
+                            }
+                        ).catch((e) => {
+                            console.error('CLIENT::setProfile::upsertTimeline::error', e)
+                        })
+                    }
+                } else {
+                    await this.api.upsertTimeline(
+                        Schemas.emptyTimeline,
+                        {},
+                        {
+                            id: homeStream.id + '@' + this.ccid,
+                            // semanticID: 'world.concrnt.t-home',
+                            indexable: false,
+                            domainOwned: false,
+                            policy: 'https://policy.concrnt.world/t/inline-read-write.json',
+                            policyParams: `{"isWritePublic": false, "isReadPublic": true, "writer": ["${this.ccid}"], "reader": []}`
+                        }
+                    ).catch((e) => {
+                        console.error('CLIENT::setProfile::upsertTimeline::error', e)
+                    })
+                }
+            }
         }
 
         let notificationStream = await this.api.getTimeline('world.concrnt.t-notify@' + this.ccid)
@@ -215,11 +314,50 @@ export class Client {
                     indexable: false,
                     domainOwned: false,
                     policy: 'https://policy.concrnt.world/t/inline-read-write.json',
-                    policyParams: '{"isWritePublic": true, "isReadPublic": false, "writer": [], "reader": []}'
+                    policyParams: `{"isWritePublic": true, "isReadPublic": false, "writer": [], "reader": ["${this.ccid}"]}`
                 }
             ).catch((e) => {
                 console.error('CLIENT::setProfile::upsertTimeline::error', e)
             })
+        } else {
+            const policy = notificationStream.policy
+            if (policy === 'https://policy.concrnt.world/t/inline-read-write.json') {
+                if (notificationStream.policyParams) {
+                    const policyParams = JSON.parse(notificationStream.policyParams)
+                    if (policyParams.reader.indexOf(this.ccid) === -1) {
+                        policyParams.reader.push(this.ccid)
+                        await this.api.upsertTimeline(
+                            Schemas.emptyTimeline,
+                            {},
+                            {
+                                id: notificationStream.id + '@' + this.ccid,
+                                // semanticID: 'world.concrnt.t-notify',
+                                indexable: false,
+                                domainOwned: false,
+                                policy: 'https://policy.concrnt.world/t/inline-read-write.json',
+                                policyParams: JSON.stringify(policyParams)
+                            }
+                        ).catch((e) => {
+                            console.error('CLIENT::setProfile::upsertTimeline::error', e)
+                        })
+                    }
+                } else {
+                    await this.api.upsertTimeline(
+                        Schemas.emptyTimeline,
+                        {},
+                        {
+                            id: notificationStream.id + '@' + this.ccid,
+                            // semanticID: 'world.concrnt.t-notify',
+                            indexable: false,
+                            domainOwned: false,
+                            policy: 'https://policy.concrnt.world/t/inline-read-write.json',
+                            policyParams: `{"isWritePublic": true, "isReadPublic": false, "writer": [], "reader": ["${this.ccid}"]}`
+                        }
+                    ).catch((e) => {
+                        console.error('CLIENT::setProfile::upsertTimeline::error', e)
+                    })
+                }
+            }
         }
 
         let associationStream = await this.api.getTimeline('world.concrnt.t-assoc@' + this.ccid)
@@ -232,11 +370,50 @@ export class Client {
                     indexable: false,
                     domainOwned: false,
                     policy: 'https://policy.concrnt.world/t/inline-read-write.json',
-                    policyParams: '{"isWritePublic": false, "isReadPublic": true, "writer": [], "reader": []}'
+                    policyParams: `{"isWritePublic": false, "isReadPublic": true, "writer": ["${this.ccid}"], "reader": []}`
                 }
             ).catch((e) => {
                 console.error('CLIENT::setProfile::upsertTimeline::error', e)
             })
+        } else {
+            const policy = associationStream.policy
+            if (policy === 'https://policy.concrnt.world/t/inline-read-write.json') {
+                if (associationStream.policyParams) {
+                    const policyParams = JSON.parse(associationStream.policyParams)
+                    if (policyParams.writer.indexOf(this.ccid) === -1) {
+                        policyParams.writer.push(this.ccid)
+                        await this.api.upsertTimeline(
+                            Schemas.emptyTimeline,
+                            {},
+                            {
+                                id: associationStream.id + '@' + this.ccid,
+                                // semanticID: 'world.concrnt.t-assoc',
+                                indexable: false,
+                                domainOwned: false,
+                                policy: 'https://policy.concrnt.world/t/inline-read-write.json',
+                                policyParams: JSON.stringify(policyParams)
+                            }
+                        ).catch((e) => {
+                            console.error('CLIENT::setProfile::upsertTimeline::error', e)
+                        })
+                    }
+                } else {
+                    await this.api.upsertTimeline(
+                        Schemas.emptyTimeline,
+                        {},
+                        {
+                            id: associationStream.id + '@' + this.ccid,
+                            // semanticID: 'world.concrnt.t-assoc',
+                            indexable: false,
+                            domainOwned: false,
+                            policy: 'https://policy.concrnt.world/t/inline-read-write.json',
+                            policyParams: `{"isWritePublic": false, "isReadPublic": true, "writer": ["${this.ccid}"], "reader": []}`
+                        }
+                    ).catch((e) => {
+                        console.error('CLIENT::setProfile::upsertTimeline::error', e)
+                    })
+                }
+            }
         }
 
         const currentprof = (await this.api.getProfileBySemanticID<ProfileSchema>('world.concrnt.p', this.ccid))?.document.body
