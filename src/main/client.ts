@@ -154,6 +154,7 @@ export class Client {
     }
 
     invalidateMessage(id: MessageID): void {
+        this.api.invalidateMessage(id)
         delete this.messageCache[id]
     }
 
