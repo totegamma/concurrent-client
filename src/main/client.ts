@@ -248,6 +248,8 @@ export class Client {
             subprofiles: updates.subprofiles ?? currentprof?.subprofiles,
         }, { semanticID: 'world.concrnt.p'})
 
+        this.api.invalidateProfile('world.concrnt.p', this.ccid)
+
         await this.reloadUser()
 
         return updated

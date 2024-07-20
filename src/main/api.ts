@@ -38,6 +38,7 @@ export class Api {
     entityCache: Record<string, Promise<Entity> | null | undefined> = {}
     messageCache: Record<string, Promise<Message<any>> | null | undefined> = {}
     associationCache: Record<string, Promise<Association<any>> | null | undefined> = {}
+    profileCache: Record<string, Promise<Profile<any>> | null | undefined> = {}
     timelineCache: Record<string, Promise<Timeline<any>> | null | undefined> = {}
     domainCache: Record<string, Promise<Domain> | null | undefined> = {}
 
@@ -486,9 +487,17 @@ export class Api {
     // Profile
 
     async getProfileBySemanticID<T>(semanticID: string, owner: string): Promise<Profile<T> | null | undefined> {
+
+        const cacheKey = `${owner}/${semanticID}`
+
+        if (this.profileCache[cacheKey]) {
+            const value = await this.profileCache[cacheKey]
+            if (value !== undefined) return value
+        }
+
         const targetHost = await this.resolveAddress(owner)
         if (!targetHost) throw new Error('domain not found')
-        return await this.fetchWithOnlineCheck(targetHost, `/profile/${owner}/${semanticID}`, {
+        this.profileCache[cacheKey] = this.fetchWithOnlineCheck(targetHost, `/profile/${owner}/${semanticID}`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
@@ -501,12 +510,21 @@ export class Api {
             profile.document = JSON.parse(profile.document)
             return profile
         })
+
+        return await this.profileCache[cacheKey]
     }
 
     async getProfileByID<T>(id: string, owner: string): Promise<Profile<T> | null | undefined> {
+
+        const cacheKey = `${owner}/${id}`
+        if (this.profileCache[cacheKey]) {
+            const value = await this.profileCache[cacheKey]
+            if (value !== undefined) return value
+        }
+
         const targetHost = await this.resolveAddress(owner)
         if (!targetHost) throw new Error('domain not found')
-        return await this.fetchWithOnlineCheck(targetHost, `/profile/${id}`, {
+        this.profileCache[cacheKey] = this.fetchWithOnlineCheck(targetHost, `/profile/${id}`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
@@ -519,6 +537,12 @@ export class Api {
             profile.document = JSON.parse(profile.document)
             return profile
         })
+
+        return await this.profileCache[cacheKey]
+    }
+
+    invalidateProfile(id: string, owner: string): void {
+        delete this.profileCache[`${owner}/${id}`]
     }
 
     async getProfiles<T>(query: {author?: string, schema?: string, domain?: string}): Promise<Profile<T>[]> {
