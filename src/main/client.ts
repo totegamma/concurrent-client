@@ -88,7 +88,7 @@ export class Client {
             return {}
         })
 
-        if (await c.checkProfileIsOk() === false) {
+        if (c.user && await c.checkProfileIsOk() === false) {
             await c.setProfile({})
         }
 
@@ -101,18 +101,17 @@ export class Client {
         const ccid = ComputeCCID(keyPair.publickey)
         const c = new Client(host, keyPair, ccid, {client})
         if (!c.ccid) throw new Error('invalid ccid')
-        const user = await c.getUser(c.ccid).catch((e) => {
+        c.user = await c.getUser(c.ccid).catch((e) => {
             console.error('CLIENT::create::getUser::error', e)
             return null
         })
-        c.user = user
         c.ackings = await c.user?.getAcking()
         c.domainServices = await fetchWithTimeout(host, '/services', {}).then((res) => res.json()).catch((e) => {
             console.error('CLIENT::create::fetch::error', e)
             return {}
         })
 
-        if (await c.checkProfileIsOk() === false) {
+        if (c.user && await c.checkProfileIsOk() === false) {
             await c.setProfile({})
         }
 
