@@ -35,7 +35,6 @@ export class TimelineReader {
                 break;
             }
             case 'delete': {
-                console.log('delete:', event)
                 if (!event.document) return;
                 const document = event.document as CCDocument.Delete
                 switch (document.target[0]) {

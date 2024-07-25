@@ -54,7 +54,7 @@ export class Subscription {
                     }
                     break;
                 default:
-                    console.log('unknown event', event)
+                    console.info('unknown event', event)
             }
         })
     }

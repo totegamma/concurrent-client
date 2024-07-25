@@ -41,8 +41,6 @@ export class Socket {
 
         this.ws.onmessage = (rawevent: any) => {
 
-            console.log('rawevent', rawevent)
-
             const event: Event = JSON.parse(rawevent.data);
             if (!event) return
 
@@ -50,7 +48,7 @@ export class Socket {
             try {
                 document = JSON.parse(event.document)
             } catch (e) {
-                console.log('invalid json', event.document)
+                console.error('invalid json', event.document)
             }
 
             const timelineEvent: TimelineEvent = {
@@ -93,22 +91,22 @@ export class Socket {
                     }
                 break
                 default:
-                console.log('unknown event document type', event)
+                console.info('unknown event document type', event)
             }
 
             this.distribute(event.timeline, timelineEvent)
         }
 
         this.ws.onerror = (event: any) => {
-            console.log('socket error', event)
+            console.info('socket error', event)
         }
 
         this.ws.onclose = (event: any) => {
-            console.log('socket close', event)
+            console.info('socket close', event)
         }
 
         this.ws.onopen = (event: any) => {
-            console.log('socket open', event)
+            console.info('socket open', event)
             this.ws.send(JSON.stringify({ type: 'listen', channels: Array.from(this.subscriptions.keys()) }))
         }
     }
@@ -127,11 +125,11 @@ export class Socket {
 
     reconnect() {
         if (this.ws.readyState === WS.OPEN) {
-            console.log('reconnect confirmed')
+            console.info('reconnect confirmed')
             this.reconnecting = false
             this.failcount = 0
         } else {
-            console.log('reconnecting. attempt: ', this.failcount)
+            console.info('reconnecting. attempt: ', this.failcount)
             this.connect()
             this.failcount++
             setTimeout(() => {

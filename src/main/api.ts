@@ -36,7 +36,7 @@ export class Api {
     client: string
 
     entityCache: Record<string, Promise<Entity> | null | undefined> = {}
-    messageCache: Record<string, Promise<Message<any>> | null | undefined> = {}
+    messageCache: Record<string, Promise<Message<any>> | null> = {}
     associationCache: Record<string, Promise<Association<any>> | null | undefined> = {}
     profileCache: Record<string, Promise<Profile<any>> | null | undefined> = {}
     timelineCache: Record<string, Promise<Timeline<any>> | null | undefined> = {}
@@ -54,7 +54,7 @@ export class Api {
         } else {
             if (this.privatekey) this.tokens[conf.host] = this.generateApiToken(conf.host)
         }
-        console.log('oOoOoOoOoO API SERVICE CREATED OoOoOoOoOo')
+        console.info('oOoOoOoOoO API SERVICE CREATED OoOoOoOoOo')
     }
 
     async getPassport(): Promise<string> {
@@ -204,7 +204,7 @@ export class Api {
         return await res.json()
     }
 
-    async getMessage(id: string, host: string = ''): Promise<Message<any> | null | undefined> {
+    async getMessage(id: string, host: string = ''): Promise<Message<any> | null> {
 
         if (this.messageCache[id]) {
             const value = await this.messageCache[id]
@@ -222,11 +222,11 @@ export class Api {
 
                 if (!res.ok) {
                     if (res.status === 404) return null 
-                    return await Promise.reject(new Error(`fetch failed: ${res.status} ${await res.text()}`))
+                    return await Promise.reject(new Error(`fetch failed on transport: ${res.status} ${await res.text()}`))
                 }
                 const data = await res.json()
                 if (data.status != 'ok') {
-                    return undefined
+                    return await Promise.reject(new Error(`getMessage failed on application: ${data.error}`))
                 }
                 const message = data.content
                 message._document = message.document
@@ -245,11 +245,11 @@ export class Api {
 
                 if (!res.ok) {
                     if (res.status === 404) return null 
-                    return await Promise.reject(new Error(`fetch failed: ${res.status} ${await res.text()}`))
+                    return await Promise.reject(new Error(`getMessage failed on transport: ${res.status} ${await res.text()}`))
                 }
                 const data = await res.json()
                 if (data.status != 'ok') {
-                    return undefined
+                    return await Promise.reject(new Error(`getMessage failed on application: ${data.error}`))
                 }
                 const message = data.content
                 message._document = message.document

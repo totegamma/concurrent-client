@@ -147,7 +147,6 @@ export const LoadKey = (privateKey: string): KeyPair | null => {
         let publickey = keyPair.getPublic().encode('hex', false)
 
         privatekey = '0'.repeat(64 - privatekey.length) + privatekey
-        console.log('priv', privatekey)
 
         return {
             privatekey,
@@ -297,7 +296,7 @@ export const ParseJWT = (jwt: string): JwtPayload => {
     try {
         return JSON.parse(payload)
     } catch (e) {
-        console.log(e)
+        console.error(e)
     }
     return {}
 }
@@ -348,7 +347,6 @@ export const IssueJWT = (key: string, claim?: JwtPayload): string => {
         exp: Math.floor((new Date().getTime() + 5 * 60 * 1000) / 1000).toString(),
         ...claim
     })
-    console.log(payload)
     return SignJWT(payload, key)
 }
 

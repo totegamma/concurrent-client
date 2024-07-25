@@ -710,21 +710,14 @@ export class Message<T> implements CoreMessage<T> {
     }
 
     static async load<T>(client: Client, id: MessageID, authorID: CCID, hint?: string): Promise<Message<T> | null> {
-        const coreMsg = await client.api.getMessageWithAuthor(id, authorID, hint).catch((e) => {
-            console.error('CLIENT::getMessage::readMessageWithAuthor::error', e)
-            return null
-        })
+        const coreMsg = await client.api.getMessageWithAuthor(id, authorID, hint)
         if (!coreMsg) return null
 
         const message = new Message(client, coreMsg)
 
         message.authorUser = await client.getUser(authorID) ?? undefined
-        try {
-            message.associationCounts = await client.api.getMessageAssociationCountsByTarget(id, authorID)
-            message.reactionCounts = await client.api.getMessageAssociationCountsByTarget(id, authorID, {schema: Schemas.reactionAssociation})
-        } catch (e) {
-            console.error('CLIENT::getMessage::error', e)
-        }
+        message.associationCounts = await client.api.getMessageAssociationCountsByTarget(id, authorID)
+        message.reactionCounts = await client.api.getMessageAssociationCountsByTarget(id, authorID, {schema: Schemas.reactionAssociation})
 
         const timelines = await Promise.all(
             message.timelines.map((e) => client.getTimeline(e))
