@@ -11,4 +11,8 @@ export interface ProfileSchema {
   description?: string;
   banner?: string;
   subprofiles?: string[];
+  badges?: {
+    seriesId: string;
+    badgeId: string;
+  }[];
 }

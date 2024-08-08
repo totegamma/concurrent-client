@@ -170,3 +170,8 @@ export interface Ack {
     signature: string
 }
 
+export interface BadgeRef {
+    seriesId: string
+    badgeId: string
+}
+

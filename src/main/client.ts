@@ -14,6 +14,7 @@ import {
     MessageID,
     AssociationID,
     TimelineID,
+    BadgeRef,
 } from "../model/core";
 
 import { Schemas, Schema } from "../schemas";
@@ -244,7 +245,7 @@ export class Client {
         return true
     }
 
-    async setProfile(updates: {username?: string, description?: string, avatar?: string, banner?: string, subprofiles?: string[]}): Promise<CoreProfile<ProfileSchema>> {
+    async setProfile(updates: {username?: string, description?: string, avatar?: string, banner?: string, subprofiles?: string[], badges?: BadgeRef[]}): Promise<CoreProfile<ProfileSchema>> {
         if (!this.ccid) throw new Error('ccid is not set')
 
         let homeStream = await this.api.getTimeline('world.concrnt.t-home@' + this.ccid)
@@ -423,6 +424,7 @@ export class Client {
             avatar: updates.avatar ?? currentprof?.avatar,
             banner: updates.banner ?? currentprof?.banner,
             subprofiles: updates.subprofiles ?? currentprof?.subprofiles,
+            badges: updates.badges ?? currentprof?.badges
         }, { semanticID: 'world.concrnt.p'})
 
         this.api.invalidateProfile('world.concrnt.p', this.ccid)

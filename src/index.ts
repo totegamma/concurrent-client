@@ -13,6 +13,7 @@ export * from "./schemas/"
 
 export {
     CCID,
+    BadgeRef,
     Entity as CoreEntity,
     Association as CoreAssociation,
     Profile as CoreProfile,
