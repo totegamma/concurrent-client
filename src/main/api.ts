@@ -1,4 +1,4 @@
-import { Entity, Message, Association, Timeline, Profile, CCID, Domain, FQDN, Ack, Key, TimelineID, TimelineItem, Subscription } from '../model/core'
+import { Entity, Message, Association, Timeline, Profile, CCID, Domain, FQDN, Ack, Key, TimelineID, TimelineItem, Subscription, ApiResponse } from '../model/core'
 import { fetchWithTimeout, IsCCID } from '../util/misc'
 import { Sign, IssueJWT, CheckJwtIsValid } from '../util/crypto'
 import { Schema } from '../schemas'
@@ -362,7 +362,7 @@ export class Api {
         targetAuthor: CCID,
         timelines: TimelineID[],
         variant: string = ''
-    ): Promise<any> {
+    ): Promise<ApiResponse<Association<T>>> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
         const targetHost = await this.resolveAddress(targetAuthor)
         if (!targetHost) throw new Error('domain not found')

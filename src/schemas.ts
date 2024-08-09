@@ -8,6 +8,7 @@ export const Schemas = {
     replyAssociation:    'https://schema.concrnt.world/a/reply.json',
     rerouteAssociation:  'https://schema.concrnt.world/a/reroute.json',
     reactionAssociation: 'https://schema.concrnt.world/a/reaction.json',
+    upgradeAssociation: 'https://schema.concrnt.world/a/upgrade.json',
 
     profile:             'https://schema.concrnt.world/p/main.json',
 

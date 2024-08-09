@@ -34,6 +34,7 @@ import {
 import { ComputeCCID, KeyPair, LoadKey, LoadSubKey } from "../util/crypto";
 import { CreateCurrentOptions } from "../model/others";
 import { CCDocument, CoreProfile, fetchWithTimeout } from '..';
+import { UpgradeAssociationSchema } from '../schemas/upgradeAssociation';
 
 const cacheLifetime = 5 * 60 * 1000
 
@@ -823,10 +824,10 @@ export class Message<T> implements CoreMessage<T> {
         this.api.invalidateMessage(this.id)
     }
 
-    async reaction(shortcode: string, imageUrl: string) {
+    async reaction(shortcode: string, imageUrl: string): Promise<CoreAssociation<ReactionAssociationSchema>>{
         const author = await this.getAuthor()
         const targetStream = ['world.concrnt.t-notify@' + author.ccid, 'world.concrnt.t-assoc@' + this.user.ccid]
-        await this.client.api.createAssociation<ReactionAssociationSchema>(
+        const result = await this.client.api.createAssociation<ReactionAssociationSchema>(
             Schemas.reactionAssociation,
             {
                 shortcode,
@@ -838,6 +839,24 @@ export class Message<T> implements CoreMessage<T> {
             imageUrl
         )
         this.api.invalidateMessage(this.id)
+        return result.content
+    }
+
+    async upgrade(txhash: string): Promise<CoreAssociation<UpgradeAssociationSchema>>{
+        const author = await this.getAuthor()
+        const targetStream = ['world.concrnt.t-notify@' + author.ccid, 'world.concrnt.t-assoc@' + this.user.ccid]
+        const result = await this.client.api.createAssociation<UpgradeAssociationSchema>(
+            Schemas.upgradeAssociation,
+            {
+                txhash
+            },
+            this.id,
+            author.ccid,
+            targetStream,
+            txhash
+        )
+        this.api.invalidateMessage(this.id)
+        return result.content
     }
 
     async deleteAssociation(associationID: string) {

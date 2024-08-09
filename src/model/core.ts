@@ -9,6 +9,12 @@ export type AssociationID = string
 export type CharacterID = string
 export type ProfileID = string
 
+export interface ApiResponse<T> {
+    status: string
+    error?: string
+    content: T
+}
+
 export interface AffiliationOption {
     info: string
     invitation?: string
