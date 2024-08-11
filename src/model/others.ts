@@ -15,6 +15,7 @@ export interface CreatePlaintextCrntOptions {
 }
 
 export interface CreateMediaCrntOptions {
+    emojis?: Record<string, {imageURL?: string, animURL?: string}>
     profileOverride?: SubProfile
     medias?: {
         mediaURL: string;

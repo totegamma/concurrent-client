@@ -13,6 +13,6 @@ export interface ReactionAssociationSchema {
     avatar?: string;
     description?: string;
     link?: string;
-    characterID?: string;
+    profileID?: string;
   };
 }

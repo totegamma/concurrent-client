@@ -20,6 +20,6 @@ export interface ReplyMessageSchema {
     avatar?: string;
     description?: string;
     link?: string;
-    characterID?: string;
+    profileID?: string;
   };
 }

@@ -166,7 +166,7 @@ export interface ProfileOverride {
     avatar?: string;
     description?: string;
     link?: string;
-    characterID?: string;
+    profileID?: string;
 }
 
 export interface Ack {

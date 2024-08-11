@@ -20,6 +20,6 @@ export interface RerouteMessageSchema {
     avatar?: string;
     description?: string;
     link?: string;
-    characterID?: string;
+    profileID?: string;
   };
 }

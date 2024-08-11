@@ -11,6 +11,6 @@ export interface LikeAssociationSchema {
     avatar?: string;
     description?: string;
     link?: string;
-    characterID?: string;
+    profileID?: string;
   };
 }
