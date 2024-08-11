@@ -32,9 +32,11 @@ import {
 } from "../schemas/";
 
 import { ComputeCCID, KeyPair, LoadKey, LoadSubKey } from "../util/crypto";
-import { CreateCurrentOptions } from "../model/others";
+import { CreateCurrentOptions, CreateMediaCrntOptions, CreatePlaintextCrntOptions } from "../model/others";
 import { CCDocument, CoreProfile, fetchWithTimeout } from '..';
 import { UpgradeAssociationSchema } from '../schemas/upgradeAssociation';
+import { PlaintextMessageSchema } from '../schemas/plaintextMessage';
+import { MediaMessageSchema } from '../schemas/mediaMessage';
 
 const cacheLifetime = 5 * 60 * 1000
 
@@ -177,6 +179,18 @@ export class Client {
             }
             await this.api.createAssociation(Schemas.mentionAssociation, {}, newMessage.content.id, this.ccid, associationStream)
         }
+        return newMessage
+    }
+
+    async createPlainTextCrnt(body: string, streams: TimelineID[], options?: CreatePlaintextCrntOptions): Promise<Error | null> {
+        if (!this.ccid) return new Error('ccid is not set')
+        const newMessage = await this.api.createMessage<PlaintextMessageSchema>(Schemas.plaintextMessage, {body, ...options}, streams)
+        return newMessage
+    }
+
+    async createMediaCrnt(body: string, streams: TimelineID[], options?: CreateMediaCrntOptions): Promise<Error | null> {
+        if (!this.ccid) return new Error('ccid is not set')
+        const newMessage = await this.api.createMessage<MediaMessageSchema>(Schemas.mediaMessage, {body, ...options}, streams)
         return newMessage
     }
 

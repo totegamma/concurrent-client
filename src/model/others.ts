@@ -5,3 +5,21 @@ export interface CreateCurrentOptions {
     profileOverride?: ProfileOverride
     mentions?: CCID[]
 }
+
+export interface SubProfile {
+    profileID?: string;
+}
+
+export interface CreatePlaintextCrntOptions {
+    profileOverride?: SubProfile
+}
+
+export interface CreateMediaCrntOptions {
+    profileOverride?: SubProfile
+    medias?: {
+        mediaURL: string;
+        mediaType: string;
+        thumbnailURL?: string;
+        blurhash?: string;
+    }[]
+}
