@@ -116,8 +116,14 @@ export const ValidateSignature = (body: string, signature: string, expectedKeyID
     const messageHashStr = keccak256(new TextEncoder().encode(body))
     const messageHash = parseHexString(messageHashStr.slice(2))
 
-    const signatureR = parseHexString(signature.slice(0, 64))
-    const signatureS = parseHexString(signature.slice(64, 128))
+    let signatureR = parseHexString(signature.slice(0, 64))
+    while (signatureR[0] === 0) {
+        signatureR = signatureR.slice(1)
+    }
+    let signatureS = parseHexString(signature.slice(64, 128))
+    while (signatureS[0] === 0) {
+        signatureS = signatureS.slice(1)
+    }
     const signatureV = parseInt(signature.slice(128), 16)
 
     const sigObj = new ExtendedSecp256k1Signature(signatureR, signatureS, signatureV)
