@@ -660,6 +660,8 @@ export class Timeline<T> implements CoreTimeline<T> {
     signature: string
     cdate: string
     mdate: string
+    policy?: string
+    policyParams?: any
 
     constructor(client: Client, data: CoreTimeline<T>) {
         this.api = client.api
@@ -674,6 +676,14 @@ export class Timeline<T> implements CoreTimeline<T> {
         this.signature = data.signature
         this.cdate = data.cdate
         this.mdate = data.mdate
+        this.policy = data.policy
+        if (data.policyParams) {
+            try {
+                this.policyParams = JSON.parse(data.policyParams)
+            } catch (e) {
+                console.error('CLIENT::Timeline::constructor::error', e)
+            }
+        }
     }
 
     static async load<T>(client: Client, id: TimelineID): Promise<Timeline<T> | null> {
