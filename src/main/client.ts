@@ -171,7 +171,29 @@ export class Client {
 
     async createMarkdownCrnt(body: string, streams: TimelineID[], options?: CreateCurrentOptions): Promise<Error | null> {
         if (!this.ccid) return new Error('ccid is not set')
-        const newMessage = await this.api.createMessage<MarkdownMessageSchema>(Schemas.markdownMessage, {body, ...options}, streams)
+        let policy = undefined
+        let policyParams = undefined
+
+        if (options?.whisper && options.whisper.length > 0) {
+            policy = 'https://policy.concrnt.world/m/whisper.json'
+            policyParams = JSON.stringify({
+                participants: options.whisper
+            })
+        }
+
+        const newMessage = await this.api.createMessage<MarkdownMessageSchema>(
+            Schemas.markdownMessage,
+            {
+                body,
+                emojis: options?.emojis,
+                profileOverride: options?.profileOverride,
+            },
+            streams,
+            {
+                policy,
+                policyParams
+            }
+        )
         if(options?.mentions && options.mentions.length > 0) {
             const associationStream = []
             for(const mention of options.mentions) {
@@ -184,13 +206,59 @@ export class Client {
 
     async createPlainTextCrnt(body: string, streams: TimelineID[], options?: CreatePlaintextCrntOptions): Promise<Error | null> {
         if (!this.ccid) return new Error('ccid is not set')
-        const newMessage = await this.api.createMessage<PlaintextMessageSchema>(Schemas.plaintextMessage, {body, ...options}, streams)
+
+        let policy = undefined
+        let policyParams = undefined
+
+        if (options?.whisper && options.whisper.length > 0) {
+            policy = 'https://policy.concrnt.world/m/whisper.json'
+            policyParams = JSON.stringify({
+                participants: options.whisper
+            })
+        }
+
+        const newMessage = await this.api.createMessage<PlaintextMessageSchema>(
+            Schemas.plaintextMessage,
+            {
+                body: body,
+                profileOverride: options?.profileOverride
+            },
+            streams,
+            {
+                policy,
+                policyParams
+            }
+        )
         return newMessage
     }
 
     async createMediaCrnt(body: string, streams: TimelineID[], options?: CreateMediaCrntOptions): Promise<Error | null> {
         if (!this.ccid) return new Error('ccid is not set')
-        const newMessage = await this.api.createMessage<MediaMessageSchema>(Schemas.mediaMessage, {body, ...options}, streams)
+
+        let policy = undefined
+        let policyParams = undefined
+
+        if (options?.whisper && options.whisper.length > 0) {
+            policy = 'https://policy.concrnt.world/m/whisper.json'
+            policyParams = JSON.stringify({
+                participants: options.whisper
+            })
+        }
+
+        const newMessage = await this.api.createMessage<MediaMessageSchema>(
+            Schemas.mediaMessage,
+            {
+                body: body,
+                emojis: options?.emojis,
+                profileOverride: options?.profileOverride,
+                medias: options?.medias
+            },
+            streams,
+            {
+                policy,
+                policyParams
+            }
+        )
         return newMessage
     }
 
@@ -713,6 +781,8 @@ export class Message<T> implements CoreMessage<T> {
     schema: Schema
     signature: string
     timelines: TimelineID[]
+    policy?: string
+    policyParams?: any
 
     associationCounts?: Record<string, number>
     reactionCounts?: Record<string, number>
@@ -734,6 +804,14 @@ export class Message<T> implements CoreMessage<T> {
         this.schema = data.schema
         this.signature = data.signature
         this.timelines = data.timelines
+        this.policy = data.policy
+        if (data.policyParams) {
+            try {
+                this.policyParams = JSON.parse(data.policyParams)
+            } catch (e) {
+                console.error('CLIENT::Timeline::constructor::error', e)
+            }
+        }
     }
 
     static async load<T>(client: Client, id: MessageID, authorID: CCID, hint?: string): Promise<Message<T> | null> {
@@ -889,15 +967,31 @@ export class Message<T> implements CoreMessage<T> {
     }
 
     async reply(streams: string[], body: string, options?: CreateCurrentOptions) {
+
+        let policy = undefined
+        let policyParams = undefined
+
+        if (options?.whisper && options.whisper.length > 0) {
+            policy = 'https://policy.concrnt.world/m/whisper.json'
+            policyParams = JSON.stringify({
+                participants: options.whisper
+            })
+        }
+
         const data = await this.api.createMessage<ReplyMessageSchema>(
           Schemas.replyMessage,
           {
               body,
               replyToMessageId: this.id,
               replyToMessageAuthor: this.author,
-              ...options
+              emojis: options?.emojis,
+              profileOverride: options?.profileOverride,
           },
-          streams
+          streams,
+          {
+              policy,
+              policyParams
+          }
         )
 
         const author = await this.getAuthor()
@@ -913,15 +1007,31 @@ export class Message<T> implements CoreMessage<T> {
     }
 
     async reroute(streams: string[], body?: string, options?: CreateCurrentOptions) {
+
+        let policy = undefined
+        let policyParams = undefined
+
+        if (options?.whisper && options.whisper.length > 0) {
+            policy = 'https://policy.concrnt.world/m/whisper.json'
+            policyParams = JSON.stringify({
+                participants: options.whisper
+            })
+        }
+
         const { content } = await this.api.createMessage<RerouteMessageSchema>(
             Schemas.rerouteMessage,
             {
                 body,
                 rerouteMessageId: this.id,
                 rerouteMessageAuthor: this.author,
-                ...options
+                emojis: options?.emojis,
+                profileOverride: options?.profileOverride,
             },
-            streams
+            streams,
+            {
+                policy,
+                policyParams
+            }
         )
         const created = content
 

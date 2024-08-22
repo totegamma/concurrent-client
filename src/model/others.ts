@@ -4,6 +4,7 @@ export interface CreateCurrentOptions {
     emojis?: Record<string, {imageURL?: string, animURL?: string}>
     profileOverride?: ProfileOverride
     mentions?: CCID[]
+    whisper?: CCID[]
 }
 
 export interface SubProfile {
@@ -12,6 +13,7 @@ export interface SubProfile {
 
 export interface CreatePlaintextCrntOptions {
     profileOverride?: SubProfile
+    whisper?: CCID[]
 }
 
 export interface CreateMediaCrntOptions {
@@ -23,4 +25,5 @@ export interface CreateMediaCrntOptions {
         thumbnailURL?: string;
         blurhash?: string;
     }[]
+    whisper?: CCID[]
 }
