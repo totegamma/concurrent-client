@@ -33,7 +33,7 @@ import {
 
 import { ComputeCCID, KeyPair, LoadKey, LoadSubKey } from "../util/crypto";
 import { CreateCurrentOptions, CreateMediaCrntOptions, CreatePlaintextCrntOptions } from "../model/others";
-import { CCDocument, CoreProfile, fetchWithTimeout } from '..';
+import { CCDocument, CoreProfile, QueryTimelineReader, fetchWithTimeout } from '..';
 import { UpgradeAssociationSchema } from '../schemas/upgradeAssociation';
 import { PlaintextMessageSchema } from '../schemas/plaintextMessage';
 import { MediaMessageSchema } from '../schemas/mediaMessage';
@@ -528,6 +528,10 @@ export class Client {
     async newTimelineReader(): Promise<TimelineReader> {
         const socket = await this.newSocket()
         return new TimelineReader(this.api, socket)
+    }
+
+    async newTimelineQuery(): Promise<QueryTimelineReader> {
+        return new QueryTimelineReader(this.api)
     }
 
     async newSubscription(): Promise<Subscription> {

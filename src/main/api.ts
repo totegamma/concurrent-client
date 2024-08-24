@@ -803,6 +803,53 @@ export class Api {
         return result
     }
 
+    async queryTimeline(timeline: string, query: {schema?: string, owner?: string, author?: string }, until?: Date, limit?: number): Promise<TimelineItem[]> {
+
+        const split = timeline.split('@')
+        let host = split[1] ?? this.host
+
+        if (IsCCID(host)) {
+            const domain = await this.resolveAddress(host)
+            if (!domain) throw new Error('domain not found: ' + host)
+            host = domain
+        }
+
+        const requestOptions = {
+            method: 'GET',
+            headers: {}
+        }
+
+        let result: TimelineItem[] = []
+
+        const apiPath = `/timeline/${timeline}/query?`
+        const queries: string[] = []
+        if (query.schema) queries.push(`schema=${query.schema}`)
+        if (query.owner) queries.push(`owner=${query.owner}`)
+        if (query.author) queries.push(`author=${query.author}`)
+        if (until) queries.push(`until=${Math.ceil(until.getTime()/1000)}`)
+        if (limit) queries.push(`limit=${limit}`)
+
+        try {
+            const response = await this.fetchWithOnlineCheck(
+                host,
+                apiPath + queries.join('&'),
+                requestOptions
+            ).then(async (res) => {
+                const data = await res.json()
+                const formed = data.content.map((e: any) => {
+                    e.cdate = new Date(e.cdate)
+                    return e
+                })
+                return formed
+            })
+            result = [...result, ...response]
+        } catch (e) {
+            console.warn(e)
+        }
+
+        return result
+    }
+
     async getTimelineRanged(timelines: string[], param: {until?: Date, since?: Date}): Promise<TimelineItem[]> {
 
         const requestOptions = {
