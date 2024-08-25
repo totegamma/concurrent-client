@@ -594,19 +594,16 @@ export class User implements CoreEntity {
     }
 
     static async load(client: Client, id: CCID): Promise<User | null> {
-        const domain = await client.api.resolveAddress(id).catch((e) => {
-            console.error('CLIENT::getUser::resolveAddress::error', e)
+        const domain = await client.api.resolveAddress(id).catch((_e) => {
             return null
         })
         if (!domain) return null
-        const entity = await client.api.getEntity(id).catch((e) => {
-            console.error('CLIENT::getUser::readEntity::error', e)
+        const entity = await client.api.getEntity(id).catch((_e) => {
             return null
         })
         if (!entity) return null
 
-        const profile = await client.api.getProfileBySemanticID<ProfileSchema>('world.concrnt.p', id).catch((e) => {
-            console.error('CLIENT::getUser::readProfile::error', e)
+        const profile = await client.api.getProfileBySemanticID<ProfileSchema>('world.concrnt.p', id).catch((_e) => {
             return null
         })
 
@@ -759,8 +756,7 @@ export class Timeline<T> implements CoreTimeline<T> {
     }
 
     static async load<T>(client: Client, id: TimelineID): Promise<Timeline<T> | null> {
-        const stream = await client.api.getTimeline(id).catch((e) => {
-            console.error('CLIENT::Timeline::load::error', e)
+        const stream = await client.api.getTimeline(id).catch((_e) => {
             return null
         })
         if (!stream) return null

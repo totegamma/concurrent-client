@@ -39,6 +39,7 @@ export class QueryTimelineReader {
 
     async readMore(): Promise<boolean> {
         if (!this.timeline) return false;
+        if (this.body.length === 0) return false
         const last = this.body[this.body.length - 1];
         const items = await this.api.queryTimeline(this.timeline, this.query, last.cdate, this.batch);
 

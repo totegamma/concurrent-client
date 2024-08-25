@@ -47,8 +47,8 @@ export class Socket {
             let document = undefined
             try {
                 document = JSON.parse(event.document)
-            } catch (e) {
-                console.error('invalid json', event.document)
+            } catch (_) {
+                // do nothing
             }
 
             const timelineEvent: TimelineEvent = {
@@ -60,39 +60,41 @@ export class Socket {
                 resource: event.resource
             }
 
-            switch (timelineEvent.document?.type) { // TODO
-                case 'message':
-                    if (event.resource) {
-                        const dummy_message: any = event.resource
-                        dummy_message._document = dummy_message.document
-                        dummy_message.document = JSON.parse(dummy_message.document)
-                        dummy_message.ownAssociations = []
-                        this.api.cacheMessage(dummy_message as Message<any>)
-                    }
-                break
-                case 'association':
-                    const association = timelineEvent.document as CCDocument.Association<any>
-                    this.api.invalidateMessage(association.target)
-                    this.client?.invalidateMessage(association.target)
-                break
-                case 'delete':
-                    const deletion = timelineEvent.document as CCDocument.Delete
-                    switch (deletion.target[0]) {
-                        case 'm':
-                            this.api.invalidateMessage(deletion.target)
-                            this.client?.invalidateMessage(deletion.target)
-                        break
-                        case 'a':
-                            const resource = timelineEvent.resource as Association<any>
-                            if (resource.target) {
-                                this.api.invalidateMessage(resource.target)
-                                this.client?.invalidateMessage(resource.target)
-                            }
-                        break
-                    }
-                break
-                default:
-                console.info('unknown event document type', event)
+            if (timelineEvent.document) {
+                switch (timelineEvent.document.type) { // TODO
+                    case 'message':
+                        if (event.resource) {
+                            const dummy_message: any = event.resource
+                            dummy_message._document = dummy_message.document
+                            dummy_message.document = JSON.parse(dummy_message.document)
+                            dummy_message.ownAssociations = []
+                            this.api.cacheMessage(dummy_message as Message<any>)
+                        }
+                    break
+                    case 'association':
+                        const association = timelineEvent.document as CCDocument.Association<any>
+                        this.api.invalidateMessage(association.target)
+                        this.client?.invalidateMessage(association.target)
+                    break
+                    case 'delete':
+                        const deletion = timelineEvent.document as CCDocument.Delete
+                        switch (deletion.target[0]) {
+                            case 'm':
+                                this.api.invalidateMessage(deletion.target)
+                                this.client?.invalidateMessage(deletion.target)
+                            break
+                            case 'a':
+                                const resource = timelineEvent.resource as Association<any>
+                                if (resource.target) {
+                                    this.api.invalidateMessage(resource.target)
+                                    this.client?.invalidateMessage(resource.target)
+                                }
+                            break
+                        }
+                    break
+                    default:
+                    console.info('unknown event document type', event)
+                }
             }
 
             this.distribute(event.timeline, timelineEvent)

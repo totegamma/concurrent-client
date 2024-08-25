@@ -796,8 +796,7 @@ export class Api {
                 return formed
             })
             result = [...result, ...response]
-        } catch (e) {
-            console.warn(e)
+        } catch (_e) {
         }
 
         return result
@@ -843,8 +842,7 @@ export class Api {
                 return formed
             })
             result = [...result, ...response]
-        } catch (e) {
-            console.warn(e)
+        } catch (_e) {
         }
 
         return result
@@ -875,8 +873,7 @@ export class Api {
                 return formed
             })
             result = [...result, ...response]
-        } catch (e) {
-            console.warn(e)
+        } catch (_e) {
         }
 
         return result
@@ -1018,8 +1015,7 @@ export class Api {
             const host = data
             this.domainCache[fqdn] = host
             return host
-        }).catch((e) => {
-            console.warn(e)
+        }).catch((_e) => {
             return null
         })
         return await this.domainCache[fqdn]

@@ -88,6 +88,7 @@ export class TimelineReader {
     }
 
     async readMore(): Promise<boolean> {
+        if (this.body.length === 0) return false
         const last = this.body[this.body.length - 1];
         const items = await this.api.getTimelineRanged(this.streams, {until: last.cdate});
         const newdata = items.filter(item => !this.body.find(i => i.resourceID === item.resourceID));
