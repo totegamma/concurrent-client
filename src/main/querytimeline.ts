@@ -24,6 +24,7 @@ export class QueryTimelineReader {
         this.timeline = id;
         let hasMore = true;
         this.batch = limit;
+        this.query = query;
 
         await this.api.queryTimeline(id, query, undefined, limit).then((items: TimelineItem[]) => {
             this.body = items;
