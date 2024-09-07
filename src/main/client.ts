@@ -784,6 +784,8 @@ export class Message<T> implements CoreMessage<T> {
     policy?: string
     policyParams?: any
 
+    onUpdate?: () => void
+
     associationCounts?: Record<string, number>
     reactionCounts?: Record<string, number>
     postedStreams?: Timeline<any>[]
@@ -919,17 +921,87 @@ export class Message<T> implements CoreMessage<T> {
         return await Message.load<RerouteMessageSchema>(this.client, reroutePayload.rerouteMessageId, reroutePayload.rerouteMessageAuthor)
     }
 
-    async favorite() {
+    async favorite(): Promise<CoreAssociation<LikeAssociationSchema>> {
         const author = await this.getAuthor()
         const targetStream = ['world.concrnt.t-notify@' + author.ccid, 'world.concrnt.t-assoc@' + this.user.ccid]
-        await this.api.createAssociation<LikeAssociationSchema>(Schemas.likeAssociation, {}, this.id, author.ccid, targetStream)
-        this.api.invalidateMessage(this.id)
+
+        const dummyAssoc: CoreAssociation<LikeAssociationSchema> = {
+            id: new Date().getTime().toString(),
+            author: this.user.ccid,
+            schema: Schemas.likeAssociation,
+            target: this.id,
+            cdate: new Date().toISOString(),
+            document: {
+                type: 'association',
+                body: {},
+                schema: Schemas.likeAssociation,
+                signer: this.user.ccid,
+                target: this.id,
+                owner: this.author,
+                variant: '',
+                timelines: targetStream,
+                signedAt: new Date()
+            },
+            _document: '',
+            signature: 'DUMMY'
+        }
+
+        this.associations.push(dummyAssoc)
+        this.ownAssociations.push(dummyAssoc)
+        if (this.associationCounts) {
+            this.associationCounts[Schemas.likeAssociation] = (this.associationCounts[Schemas.likeAssociation] ?? 0) + 1
+        }
+        this.onUpdate?.()
+
+        this.client.invalidateMessage(this.id)
+        const result = this.api.createAssociation<LikeAssociationSchema>(Schemas.likeAssociation, {}, this.id, author.ccid, targetStream)
+        .then((resp) => {
+            return resp.content
+        })
+        .catch((e) => {
+            this.deleteAssociation(dummyAssoc)
+            return Promise.reject(e)
+        })
+        return result
     }
 
     async reaction(shortcode: string, imageUrl: string): Promise<CoreAssociation<ReactionAssociationSchema>>{
         const author = await this.getAuthor()
         const targetStream = ['world.concrnt.t-notify@' + author.ccid, 'world.concrnt.t-assoc@' + this.user.ccid]
-        const result = await this.client.api.createAssociation<ReactionAssociationSchema>(
+
+        const dummyAssoc: CoreAssociation<ReactionAssociationSchema> = {
+            id: new Date().getTime().toString(),
+            author: this.user.ccid,
+            schema: Schemas.reactionAssociation,
+            target: this.id,
+            cdate: new Date().toISOString(),
+            document: {
+                type: 'association',
+                body: {
+                    shortcode,
+                    imageUrl
+                },
+                schema: Schemas.reactionAssociation,
+                signer: this.user.ccid,
+                target: this.id,
+                owner: this.author,
+                variant: '',
+                timelines: targetStream,
+                signedAt: new Date()
+            },
+            _document: '',
+            signature: 'DUMMY'
+        }
+
+        this.associations.push(dummyAssoc)
+        this.ownAssociations.push(dummyAssoc)
+        if (this.reactionCounts) {
+            this.reactionCounts[imageUrl] = (this.reactionCounts[imageUrl] ?? 0) + 1
+        }
+        this.onUpdate?.()
+
+        this.api.invalidateMessage(this.id)
+        const result = this.client.api.createAssociation<ReactionAssociationSchema>(
             Schemas.reactionAssociation,
             {
                 shortcode,
@@ -939,9 +1011,13 @@ export class Message<T> implements CoreMessage<T> {
             author.ccid,
             targetStream,
             imageUrl
-        )
-        this.api.invalidateMessage(this.id)
-        return result.content
+        ).then((resp) => {
+            return resp.content
+        }).catch((e) => {
+            this.deleteAssociation(dummyAssoc)
+            return Promise.reject(e)
+        })
+        return result
     }
 
     async upgrade(txhash: string): Promise<CoreAssociation<UpgradeAssociationSchema>>{
@@ -961,9 +1037,31 @@ export class Message<T> implements CoreMessage<T> {
         return result.content
     }
 
-    async deleteAssociation(associationID: string) {
-        const { content } = await this.api.deleteAssociation(associationID, this.author)
-        this.api.invalidateMessage(content.target)
+    async deleteAssociation(a: CoreAssociation<any>) {
+
+        if (this.associationCounts) {
+            this.associationCounts[a.schema] = (this.associationCounts[a.schema] ?? 0) - 1
+            if (this.associationCounts[a.schema] <= 0) {
+                delete this.associationCounts[a.schema]
+            }
+        }
+
+        if (a.schema === Schemas.reactionAssociation) {
+            if (this.reactionCounts) {
+                this.reactionCounts[a.document.body.imageUrl] = (this.reactionCounts[a.document.body.imageUrl] ?? 0) - 1
+                if (this.reactionCounts[a.document.body.imageUrl] <= 0) {
+                    delete this.reactionCounts[a.document.body.imageUrl]
+                }
+            }
+        }
+
+        this.associations = this.associations.filter((e) => e.id !== a.id)
+        this.ownAssociations = this.ownAssociations.filter((e) => e.id !== a.id)
+
+        this.onUpdate?.()
+
+        this.client.invalidateMessage(this.id)
+        await this.api.deleteAssociation(a.id, this.author)
     }
 
     async reply(streams: string[], body: string, options?: CreateCurrentOptions) {
