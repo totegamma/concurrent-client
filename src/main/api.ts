@@ -150,11 +150,11 @@ export class Api {
     }
 
     async resolveAddress(ccid: string, hint?: string): Promise<string | null | undefined> {
-        const entity = await this.getEntity(ccid, hint)
-        if (!entity) {
-            return null
-        }
-        return entity.domain
+        const entity = await this.getEntity(ccid, hint).catch(() => null)
+        if (entity) return entity.domain
+        const domain = await this.getDomain(ccid).catch(() => null)
+        if (domain) return domain.fqdn
+        return null
     }
 
 
@@ -398,11 +398,10 @@ export class Api {
             })
         }
 
-        return await this.fetchWithCredential(targetHost, `${apiPath}/commit`, requestOptions)
-            .then(async (res) => await res.json())
-            .then((data) => {
-                return data
-            })
+        const resp = await this.fetchWithCredential(targetHost, `${apiPath}/commit`, requestOptions)
+        console.log(resp.headers)
+        const data = await resp.json()
+        return data
     }
 
     async deleteAssociation(
@@ -994,14 +993,16 @@ export class Api {
 
     // Domain
     async getDomain(remote?: string): Promise<Domain | null | undefined> {
-        const fqdn = remote || this.host
-        if (!fqdn) throw new Error(`invalid remote: ${fqdn}`)
-        if (this.domainCache[fqdn]) {
-            const value = await this.domainCache[fqdn]
+
+        let target = remote ?? this.host
+        let resolver = remote ? (IsCCID(remote) ? this.host : remote) : this.host
+
+        if (this.domainCache[target]) {
+            const value = await this.domainCache[target]
             if (value !== undefined) return value
         }
 
-        this.domainCache[fqdn] = fetchWithTimeout(fqdn, `${apiPath}/domain`, {
+        this.domainCache[target] = fetchWithTimeout(resolver, `${apiPath}/domain`, {
             method: 'GET',
             headers: {}
         }).then(async (res) => {
@@ -1013,12 +1014,12 @@ export class Api {
                 return null
             }
             const host = data
-            this.domainCache[fqdn] = host
+            this.domainCache[target] = host
             return host
         }).catch((_e) => {
             return null
         })
-        return await this.domainCache[fqdn]
+        return await this.domainCache[target]
     }
 
     async deleteDomain(remote: string): Promise<void> {
