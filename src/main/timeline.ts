@@ -51,6 +51,7 @@ export class TimelineReader {
                         this.onUpdate?.();
                         break;
                 }
+                break;
             }
             default:
                 if (event.item.resourceID) {
