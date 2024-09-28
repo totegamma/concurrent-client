@@ -9,6 +9,7 @@ import {
     Association as CoreAssociation,
     Entity as CoreEntity,
     Timeline as CoreTimeline,
+    Domain as CoreDomain,
     CCID,
     FQDN,
     MessageID,
@@ -54,6 +55,7 @@ export class Client {
     ccid?: CCID
     ckid?: string
     host: FQDN
+    server?: CoreDomain
     keyPair?: KeyPair;
     socket?: Socket
     domainServices: Record<string, Service> = {}
@@ -92,6 +94,11 @@ export class Client {
             return {}
         })
 
+        c.server = await c.api.getDomain(c.host).catch((e) => {
+            console.error('CLIENT::create::getDomain::error', e)
+            return null
+        }) ?? undefined
+
         if (c.user && await c.checkProfileIsOk() === false) {
             await c.setProfile({})
         }
@@ -114,6 +121,11 @@ export class Client {
             console.error('CLIENT::create::fetch::error', e)
             return {}
         })
+
+        c.server = await c.api.getDomain(c.host).catch((e) => {
+            console.error('CLIENT::create::getDomain::error', e)
+            return null
+        }) ?? undefined
 
         if (c.user && await c.checkProfileIsOk() === false) {
             await c.setProfile({})
@@ -267,11 +279,11 @@ export class Client {
         return streams.map((e) => new Timeline<T>(this, e))
     }
 
-    async createCommunityTimeline(name: string, description: string): Promise<void> {
-        await this.api.upsertTimeline<CommunityTimelineSchema>(Schemas.communityTimeline, {
-            name,
-            shortname: name,
-            description
+    async createCommunityTimeline(body: CommunityTimelineSchema): Promise<CoreTimeline<CommunityTimelineSchema>> {
+        if (!this.server) throw new Error('server is not set')
+        console.log(this.server)
+        return await this.api.upsertTimeline<CommunityTimelineSchema>(Schemas.communityTimeline, body, {
+            owner: this.server.csid,
         })
     }
 
@@ -338,6 +350,7 @@ export class Client {
                 {},
                 {
                     semanticID: 'world.concrnt.t-home',
+                    owner: this.ccid,
                     indexable: false,
                     domainOwned: false,
                     policy: 'https://policy.concrnt.world/t/inline-read-write.json',
@@ -359,6 +372,7 @@ export class Client {
                             {
                                 id: homeStream.id + '@' + this.ccid,
                                 // semanticID: 'world.concrnt.t-home',
+                                owner: this.ccid,
                                 indexable: false,
                                 domainOwned: false,
                                 policy: 'https://policy.concrnt.world/t/inline-read-write.json',
@@ -375,6 +389,7 @@ export class Client {
                         {
                             id: homeStream.id + '@' + this.ccid,
                             // semanticID: 'world.concrnt.t-home',
+                            owner: this.ccid,
                             indexable: false,
                             domainOwned: false,
                             policy: 'https://policy.concrnt.world/t/inline-read-write.json',
@@ -394,6 +409,7 @@ export class Client {
                 {},
                 {
                     semanticID: 'world.concrnt.t-notify',
+                    owner: this.ccid,
                     indexable: false,
                     domainOwned: false,
                     policy: 'https://policy.concrnt.world/t/inline-read-write.json',
@@ -415,6 +431,7 @@ export class Client {
                             {
                                 id: notificationStream.id + '@' + this.ccid,
                                 // semanticID: 'world.concrnt.t-notify',
+                                owner: this.ccid,
                                 indexable: false,
                                 domainOwned: false,
                                 policy: 'https://policy.concrnt.world/t/inline-read-write.json',
@@ -431,6 +448,7 @@ export class Client {
                         {
                             id: notificationStream.id + '@' + this.ccid,
                             // semanticID: 'world.concrnt.t-notify',
+                            owner: this.ccid,
                             indexable: false,
                             domainOwned: false,
                             policy: 'https://policy.concrnt.world/t/inline-read-write.json',
@@ -450,6 +468,7 @@ export class Client {
                 {},
                 {
                     semanticID: 'world.concrnt.t-assoc',
+                    owner: this.ccid,
                     indexable: false,
                     domainOwned: false,
                     policy: 'https://policy.concrnt.world/t/inline-read-write.json',
@@ -471,6 +490,7 @@ export class Client {
                             {
                                 id: associationStream.id + '@' + this.ccid,
                                 // semanticID: 'world.concrnt.t-assoc',
+                                owner: this.ccid,
                                 indexable: false,
                                 domainOwned: false,
                                 policy: 'https://policy.concrnt.world/t/inline-read-write.json',
@@ -487,6 +507,7 @@ export class Client {
                         {
                             id: associationStream.id + '@' + this.ccid,
                             // semanticID: 'world.concrnt.t-assoc',
+                            owner: this.ccid,
                             indexable: false,
                             domainOwned: false,
                             policy: 'https://policy.concrnt.world/t/inline-read-write.json',

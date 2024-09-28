@@ -43,6 +43,7 @@ export interface DeleteDocument extends DocumentBase<'delete'> {
 }
 
 export interface TimelineDocument<T> extends DocumentBaseWithBody<T, 'timeline'> {
+    owner: string
     indexable: boolean
     domainOwned: boolean
 }
@@ -68,6 +69,7 @@ export interface RevokeDocument extends DocumentBase<'revoke'> {
 }
 
 export interface SubscriptionDocument<T> extends DocumentBaseWithBody<T, 'subscription'> {
+    owner: string
     indexable: boolean
     domainOwned: boolean
 }

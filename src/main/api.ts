@@ -1,5 +1,5 @@
 import { Entity, Message, Association, Timeline, Profile, CCID, Domain, FQDN, Ack, Key, TimelineID, TimelineItem, Subscription, ApiResponse } from '../model/core'
-import { fetchWithTimeout, IsCCID } from '../util/misc'
+import { fetchWithTimeout, IsCCID, IsCSID } from '../util/misc'
 import { Sign, IssueJWT, CheckJwtIsValid } from '../util/crypto'
 import { Schema } from '../schemas'
 import { CCDocument } from '..'
@@ -149,12 +149,24 @@ export class Api {
         return await fetchWithTimeout(domain, path, requestInit, timeoutMs)
     }
 
-    async resolveAddress(ccid: string, hint?: string): Promise<string | null | undefined> {
-        const entity = await this.getEntity(ccid, hint)
-        if (!entity) {
-            return null
+    async resolveAddress(resolver: string, hint?: string): Promise<string | null | undefined> {
+        if (IsCCID(resolver)) {
+            const entity = await this.getEntity(resolver, hint)
+            if (!entity) {
+                return null
+            }
+            return entity.domain
         }
-        return entity.domain
+
+        if (IsCSID(resolver)) {
+            const domain = await this.getDomainByCSID(resolver)
+            if (!domain) {
+                return null
+            }
+            return domain.fqdn
+        }
+
+        return Promise.reject(new Error('invalid resolver'))
     }
 
 
@@ -635,12 +647,13 @@ export class Api {
     async upsertTimeline<T>(
         schema: string,
         body: T,
-        { id = undefined, semanticID = undefined, indexable = true, domainOwned = true, policy = undefined, policyParams = undefined }: { id?: string, semanticID?: string, indexable?: boolean, domainOwned?: boolean, policy?: string, policyParams?: string } = {}
+        { id = undefined, semanticID = undefined, owner = undefined, indexable = true, domainOwned = true, policy = undefined, policyParams = undefined }: { id?: string, semanticID?: string, owner?: string, indexable?: boolean, domainOwned?: boolean, policy?: string, policyParams?: string } = {}
     ): Promise<Timeline<T>> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
 
         const documentObj: CCDocument.Timeline<T> = {
             id,
+            owner: owner || this.ccid,
             signer: this.ccid,
             type: 'timeline',
             schema,
@@ -883,11 +896,12 @@ export class Api {
     async upsertSubscription<T>(
         schema: string,
         body: T,
-        { id = undefined, semanticID = undefined, indexable = true, domainOwned = true, policy = undefined, policyParams = undefined }: { id?: string, semanticID?: string, indexable?: boolean, domainOwned?: boolean, policy?: string, policyParams?: string } = {}
+        { id = undefined, semanticID = undefined, owner = undefined, indexable = true, domainOwned = true, policy = undefined, policyParams = undefined }: { id?: string, semanticID?: string, owner?: string, indexable?: boolean, domainOwned?: boolean, policy?: string, policyParams?: string } = {}
     ): Promise<Timeline<T>> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
         const doc: CCDocument.Subscription<T> = {
             id,
+            owner: owner || this.ccid,
             signer: this.ccid,
             type: 'subscription',
             schema,
@@ -1019,6 +1033,36 @@ export class Api {
             return null
         })
         return await this.domainCache[fqdn]
+    }
+
+    async getDomainByCSID(remote?: string): Promise<Domain | null | undefined> {
+
+        let target = remote ?? this.host
+        let resolver = remote ? ((IsCCID(remote) || IsCSID(remote)) ? this.host : remote) : this.host
+
+        if (this.domainCache[target]) {
+            const value = await this.domainCache[target]
+            if (value !== undefined) return value
+        }
+
+        this.domainCache[target] = fetchWithTimeout(resolver, `${apiPath}/domain/${target}`, {
+            method: 'GET',
+            headers: {}
+        }).then(async (res) => {
+            if (!res.ok) {
+                return null
+            }
+            const data = (await res.json()).content
+            if (!data.ccid) {
+                return null
+            }
+            const host = data
+            this.domainCache[target] = host
+            return host
+        }).catch((_e) => {
+            return null
+        })
+        return await this.domainCache[target]
     }
 
     async deleteDomain(remote: string): Promise<void> {

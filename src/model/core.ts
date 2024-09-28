@@ -2,6 +2,8 @@ import { Schema } from "../schemas"
 import { CCDocument } from ".."
 
 export type CCID = string
+export type CSID = string
+export type CKID = string
 export type FQDN = string
 export type TimelineID = string
 export type MessageID = string
@@ -95,6 +97,7 @@ export interface Profile<T> {
 export interface Domain {
     fqdn: FQDN
     ccid: CCID
+    csid: CSID
     tag: string
     pubkey: string
     cdate: Date

@@ -26,3 +26,11 @@ export const IsCCID = (str: string): boolean => {
     return str.startsWith('con1') && !str.includes('.') && str.length === 42
 }
 
+export const IsCSID = (str: string): boolean => {
+    return str.startsWith('ccs1') && !str.includes('.') && str.length === 42
+}
+
+export const IsCKID = (str: string): boolean => {
+    return str.startsWith('cck1') && !str.includes('.') && str.length === 42
+}
+
