@@ -108,8 +108,8 @@ export interface Domain {
 export interface Timeline<T> {
     id: TimelineID
     indexable: boolean
+    owner: CCID | CSID
     author: CCID
-    domainOwned: boolean
     schema: CCID
     policy?: string
     policyParams?: string
@@ -139,8 +139,8 @@ export interface TimelineItem {
 export interface Subscription<T> {
     id: string
     author: CCID
+    owner: CCID | CSID
     indexable: boolean
-    domainOwned: boolean
     schema: Schema
     policy?: string
     policyParams?: string

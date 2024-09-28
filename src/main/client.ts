@@ -16,6 +16,7 @@ import {
     AssociationID,
     TimelineID,
     BadgeRef,
+    CSID,
 } from "../model/core";
 
 import { Schemas, Schema } from "../schemas";
@@ -743,8 +744,8 @@ export class Timeline<T> implements CoreTimeline<T> {
 
     id: TimelineID
     indexable: boolean
+    owner: CCID | CSID
     author: CCID
-    domainOwned: boolean
     schema: CCID
     document: CCDocument.Timeline<T>
     signature: string
@@ -759,8 +760,8 @@ export class Timeline<T> implements CoreTimeline<T> {
 
         this.id = data.id
         this.indexable = data.indexable
+        this.owner = data.owner
         this.author = data.author
-        this.domainOwned = data.domainOwned
         this.schema = data.schema
         this.document = data.document
         this.signature = data.signature
