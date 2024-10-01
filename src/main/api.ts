@@ -150,13 +150,6 @@ export class Api {
     }
 
     async resolveAddress(resolver: string, hint?: string): Promise<string | null | undefined> {
-        if (IsCCID(resolver)) {
-            const entity = await this.getEntity(resolver, hint)
-            if (!entity) {
-                return null
-            }
-            return entity.domain
-        }
 
         if (IsCSID(resolver)) {
             const domain = await this.getDomainByCSID(resolver)
@@ -166,7 +159,11 @@ export class Api {
             return domain.fqdn
         }
 
-        return Promise.reject(new Error('invalid resolver'))
+        const entity = await this.getEntity(resolver, hint)
+        if (!entity) {
+            return null
+        }
+        return entity.domain
     }
 
 
