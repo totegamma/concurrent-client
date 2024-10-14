@@ -723,18 +723,6 @@ export class Api {
             })
     }
 
-    async removeFromStream(elementID: string, stream: string): Promise<any> {
-        const requestOptions = {
-            method: 'DELETE'
-        }
-
-        return await this.fetchWithCredential(
-            this.host,
-            `${apiPath}/stream/${stream}/${elementID}`,
-            requestOptions
-        ).then(async (res) => await res.json())
-    }
-
     async getTimelineListBySchema<T>(schema: string, remote?: FQDN): Promise<Array<Timeline<T>>> {
         schema = encodeURIComponent(schema)
         return await fetchWithTimeout(remote ?? this.host, `${apiPath}/timelines?schema=${schema}`, {}).then(
@@ -887,6 +875,20 @@ export class Api {
         }
 
         return result
+    }
+
+    async retractItem(timeline: string, item: string): Promise<any> {
+        if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
+
+        const document: CCDocument.Retract = {
+            signer: this.ccid,
+            type: 'retract',
+            target: item,
+            timeline: timeline,
+            signedAt: new Date()
+        }
+
+        return await this.commit(document)
     }
 
     // Subscription

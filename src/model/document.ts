@@ -84,3 +84,8 @@ export interface UnsubscribeDocument extends DocumentBase<'unsubscribe'> {
     subscription: string
 }
 
+export interface RetractDocument extends DocumentBase<'retract'> {
+    timeline: string
+    target: string
+}
+

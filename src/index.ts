@@ -45,6 +45,7 @@ import {
     SubscriptionDocument,
     SubscribeDocument,
     UnsubscribeDocument,
+    RetractDocument,
 } from "./model/document"
 
 export namespace CCDocument {
@@ -62,5 +63,6 @@ export namespace CCDocument {
     export type Subscription<T> = SubscriptionDocument<T>
     export type Subscribe = SubscribeDocument
     export type Unsubscribe = UnsubscribeDocument
+    export type Retract = RetractDocument
 }
 
