@@ -376,7 +376,7 @@ export class Api {
         const targetHost = await this.resolveAddress(targetAuthor)
         if (!targetHost) throw new Error('domain not found')
 
-        const documentObj: CCDocument.Association<T> = {
+        const document: CCDocument.Association<T> = {
             signer: this.ccid,
             type: 'association',
             schema,
@@ -391,27 +391,7 @@ export class Api {
             signedAt: new Date(),
         }
 
-        if (this.ckid) {
-            documentObj.keyID = this.ckid
-        }
-
-        const document = JSON.stringify(documentObj)
-        const signature = Sign(this.privatekey, document)
-
-        const requestOptions = {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-                document,
-                signature,
-            })
-        }
-
-        return await this.fetchWithCredential(targetHost, `${apiPath}/commit`, requestOptions)
-            .then(async (res) => await res.json())
-            .then((data) => {
-                return data
-            })
+        return await this.commit(document, targetHost)
     }
 
     async deleteAssociation(
@@ -641,6 +621,20 @@ export class Api {
     }
 
     // Timeline
+
+    async findTimelineHost(timeline: string): Promise<string> {
+        const split = timeline.split('@')
+        let host = split[1] ?? this.host
+
+        if (IsCCID(host)) {
+            const domain = await this.resolveAddress(host)
+            if (!domain) throw new Error('domain not found: ' + host)
+            host = domain
+        }
+
+        return host
+    }
+
     async upsertTimeline<T>(
         schema: string,
         body: T,
@@ -741,13 +735,7 @@ export class Api {
             const value = await this.timelineCache[id]
             if (value !== undefined) return value
         }
-        let host = id.split('@')[1] ?? this.host
-
-        if (IsCCID(host)) {
-            const domain = await this.resolveAddress(host)
-            if (!domain) throw new Error('domain not found: ' + host)
-            host = domain
-        }
+        let host = await this.findTimelineHost(id)
 
         this.timelineCache[id] = this.fetchWithOnlineCheck(host, `/timeline/${id}`, {
             method: 'GET',
@@ -880,6 +868,8 @@ export class Api {
     async retractItem(timeline: string, item: string): Promise<any> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
 
+        const host = await this.findTimelineHost(timeline)
+
         const document: CCDocument.Retract = {
             signer: this.ccid,
             type: 'retract',
@@ -888,7 +878,7 @@ export class Api {
             signedAt: new Date()
         }
 
-        return await this.commit(document)
+        return await this.commit(document, host)
     }
 
     // Subscription
