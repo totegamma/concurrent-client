@@ -186,11 +186,18 @@ export class Client {
         if (!this.ccid) return new Error('ccid is not set')
         let policy = undefined
         let policyParams = undefined
+        let policyDefaults = undefined
 
         if (options?.whisper && options.whisper.length > 0) {
             policy = 'https://policy.concrnt.world/m/whisper.json'
             policyParams = JSON.stringify({
                 participants: options.whisper
+            })
+        }
+
+        if (options?.isPrivate) {
+            policyDefaults = JSON.stringify({
+                'timeline.message.read': false,
             })
         }
 
@@ -204,7 +211,8 @@ export class Client {
             streams,
             {
                 policy,
-                policyParams
+                policyParams,
+                policyDefaults
             }
         )
         if(options?.mentions && options.mentions.length > 0) {
@@ -222,11 +230,18 @@ export class Client {
 
         let policy = undefined
         let policyParams = undefined
+        let policyDefaults = undefined
 
         if (options?.whisper && options.whisper.length > 0) {
             policy = 'https://policy.concrnt.world/m/whisper.json'
             policyParams = JSON.stringify({
                 participants: options.whisper
+            })
+        }
+
+        if (options?.isPrivate) {
+            policyDefaults = JSON.stringify({
+                'timeline.message.read': false,
             })
         }
 
@@ -239,7 +254,8 @@ export class Client {
             streams,
             {
                 policy,
-                policyParams
+                policyParams,
+                policyDefaults
             }
         )
         return newMessage
@@ -250,11 +266,18 @@ export class Client {
 
         let policy = undefined
         let policyParams = undefined
+        let policyDefaults = undefined
 
         if (options?.whisper && options.whisper.length > 0) {
             policy = 'https://policy.concrnt.world/m/whisper.json'
             policyParams = JSON.stringify({
                 participants: options.whisper
+            })
+        }
+
+        if (options?.isPrivate) {
+            policyDefaults = JSON.stringify({
+                'timeline.message.read': false,
             })
         }
 
@@ -269,7 +292,8 @@ export class Client {
             streams,
             {
                 policy,
-                policyParams
+                policyParams,
+                policyDefaults
             }
         )
         return newMessage

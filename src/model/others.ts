@@ -5,6 +5,7 @@ export interface CreateCurrentOptions {
     profileOverride?: ProfileOverride
     mentions?: CCID[]
     whisper?: CCID[]
+    isPrivate?: boolean
 }
 
 export interface SubProfile {
@@ -14,6 +15,7 @@ export interface SubProfile {
 export interface CreatePlaintextCrntOptions {
     profileOverride?: SubProfile
     whisper?: CCID[]
+    isPrivate?: boolean
 }
 
 export interface CreateMediaCrntOptions {
@@ -25,5 +27,6 @@ export interface CreateMediaCrntOptions {
         thumbnailURL?: string;
         blurhash?: string;
     }[]
-    whisper?: CCID[]
+    whisper?: CCID[],
+    isPrivate?: boolean
 }

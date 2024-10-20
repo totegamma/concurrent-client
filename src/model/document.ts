@@ -10,6 +10,7 @@ export interface DocumentBase<S> {
     signedAt: Date
     policy?: string
     policyParams?: string
+    policyDefaults?: string
 }
 
 export interface DocumentBaseWithBody<T, S> extends DocumentBase<S> {

@@ -172,7 +172,7 @@ export class Api {
         schema: Schema,
         body: T,
         timelines: TimelineID[],
-        { policy = undefined, policyParams = undefined }: { policy?: string, policyParams?: string } = {}
+        { policy = undefined, policyParams = undefined, policyDefaults = undefined }: { policy?: string, policyParams?: string, policyDefaults?: string } = {}
     ): Promise<any> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
 
@@ -187,7 +187,8 @@ export class Api {
             timelines,
             signedAt: new Date(),
             policy,
-            policyParams
+            policyParams,
+            policyDefaults
         }
 
         if (this.ckid) {
