@@ -643,8 +643,19 @@ export class Api {
     ): Promise<Timeline<T>> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
 
+        let host = this.host
+        if (id && id.includes('@')) {
+            try {
+                host = await this.findTimelineHost(id)
+            } catch (e) {
+                return Promise.reject(e)
+            }
+        }
+
+        const normalizedID = id?.split('@')[0]
+
         const documentObj: CCDocument.Timeline<T> = {
-            id,
+            id: normalizedID,
             owner: owner || this.ccid,
             signer: this.ccid,
             type: 'timeline',
@@ -661,27 +672,13 @@ export class Api {
             policyParams
         }
 
-        if (this.ckid) {
-            documentObj.keyID = this.ckid
-        }
+        const result = await this.commit<Timeline<T>>(documentObj, host)
+        if (id) this.invalidateTimeline(id)
+        return result
+    }
 
-        const document = JSON.stringify(documentObj)
-        const signature = Sign(this.privatekey, document)
-
-        const requestOptions = {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-                document,
-                signature
-            })
-        }
-
-        return await this.fetchWithCredential(this.host, `${apiPath}/commit`, requestOptions)
-            .then(async (res) => await res.json())
-            .then((data) => {
-                return data.content
-            })
+    invalidateTimeline(id: string): void {
+        delete this.timelineCache[id]
     }
 
     async deleteTimeline(target: string, host: string = ''): Promise<any> {
