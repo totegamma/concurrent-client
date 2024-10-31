@@ -60,7 +60,8 @@ export class Client {
     keyPair?: KeyPair;
     socket?: Socket
     domainServices: Record<string, Service> = {}
-    ackings?: User[]
+    ackings: User[] = []
+    ackers: User[] = []
 
     user: User | null = null
 
@@ -89,7 +90,8 @@ export class Client {
             console.error('CLIENT::create::getUser::error', e)
             return null
         })
-        c.ackings = await c.user?.getAcking()
+        c.ackings = (await c.user?.getAcking()) ?? []
+        c.ackers = (await c.user?.getAcker()) ?? []
         c.domainServices = await fetchWithTimeout(key.domain, '/services', {}).then((res) => res.json()).catch((e) => {
             console.error('CLIENT::create::fetch::error', e)
             return {}
@@ -117,7 +119,8 @@ export class Client {
             console.error('CLIENT::create::getUser::error', e)
             return null
         })
-        c.ackings = await c.user?.getAcking()
+        c.ackings = (await c.user?.getAcking()) ?? []
+        c.ackers = (await c.user?.getAcker()) ?? []
         c.domainServices = await fetchWithTimeout(host, '/services', {}).then((res) => res.json()).catch((e) => {
             console.error('CLIENT::create::fetch::error', e)
             return {}
