@@ -18,6 +18,7 @@ export interface MediaMessageSchema {
     mediaType: string;
     thumbnailURL?: string;
     blurhash?: string;
+    flag?: string;
   }[];
   profileOverride?: {
     profileID?: string;

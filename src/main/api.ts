@@ -639,7 +639,7 @@ export class Api {
     async upsertTimeline<T>(
         schema: string,
         body: T,
-        { id = undefined, semanticID = undefined, owner = undefined, indexable = true, domainOwned = true, policy = undefined, policyParams = undefined }: { id?: string, semanticID?: string, owner?: string, indexable?: boolean, domainOwned?: boolean, policy?: string, policyParams?: string } = {}
+        { id = undefined, semanticID = undefined, owner = undefined, indexable = true, policy = undefined, policyParams = undefined }: { id?: string, semanticID?: string, owner?: string, indexable?: boolean, policy?: string, policyParams?: string } = {}
     ): Promise<Timeline<T>> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
 
@@ -667,7 +667,6 @@ export class Api {
             signedAt: new Date(),
             indexable,
             semanticID,
-            domainOwned,
             policy,
             policyParams
         }
@@ -883,7 +882,7 @@ export class Api {
     async upsertSubscription<T>(
         schema: string,
         body: T,
-        { id = undefined, semanticID = undefined, owner = undefined, indexable = true, domainOwned = true, policy = undefined, policyParams = undefined }: { id?: string, semanticID?: string, owner?: string, indexable?: boolean, domainOwned?: boolean, policy?: string, policyParams?: string } = {}
+        { id = undefined, semanticID = undefined, owner = undefined, indexable = true, policy = undefined, policyParams = undefined }: { id?: string, semanticID?: string, owner?: string, indexable?: boolean, policy?: string, policyParams?: string } = {}
     ): Promise<Timeline<T>> {
         if (!this.ccid || !this.privatekey) return Promise.reject(new InvalidKeyError())
         const doc: CCDocument.Subscription<T> = {
@@ -899,7 +898,6 @@ export class Api {
             signedAt: new Date(),
             indexable,
             semanticID,
-            domainOwned,
             policy,
             policyParams
         }

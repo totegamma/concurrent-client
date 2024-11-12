@@ -16,6 +16,7 @@ export * from './profile';
 
 export * from './communityTimeline';
 export * from './emptyTimeline';
+export * from './subprofileTimeline';
 
 export * from './listSubscription';
 

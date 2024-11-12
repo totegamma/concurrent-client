@@ -380,7 +380,6 @@ export class Client {
                     semanticID: 'world.concrnt.t-home',
                     owner: this.ccid,
                     indexable: false,
-                    domainOwned: false,
                     policy: 'https://policy.concrnt.world/t/inline-read-write.json',
                     policyParams: `{"isWritePublic": false, "isReadPublic": true, "writer": ["${this.ccid}"], "reader": []}`
                 }
@@ -402,7 +401,6 @@ export class Client {
                                 // semanticID: 'world.concrnt.t-home',
                                 owner: this.ccid,
                                 indexable: false,
-                                domainOwned: false,
                                 policy: 'https://policy.concrnt.world/t/inline-read-write.json',
                                 policyParams: JSON.stringify(policyParams)
                             }
@@ -419,7 +417,6 @@ export class Client {
                             // semanticID: 'world.concrnt.t-home',
                             owner: this.ccid,
                             indexable: false,
-                            domainOwned: false,
                             policy: 'https://policy.concrnt.world/t/inline-read-write.json',
                             policyParams: `{"isWritePublic": false, "isReadPublic": true, "writer": ["${this.ccid}"], "reader": []}`
                         }
@@ -439,7 +436,6 @@ export class Client {
                     semanticID: 'world.concrnt.t-notify',
                     owner: this.ccid,
                     indexable: false,
-                    domainOwned: false,
                     policy: 'https://policy.concrnt.world/t/inline-read-write.json',
                     policyParams: `{"isWritePublic": true, "isReadPublic": false, "writer": [], "reader": ["${this.ccid}"]}`
                 }
@@ -461,7 +457,6 @@ export class Client {
                                 // semanticID: 'world.concrnt.t-notify',
                                 owner: this.ccid,
                                 indexable: false,
-                                domainOwned: false,
                                 policy: 'https://policy.concrnt.world/t/inline-read-write.json',
                                 policyParams: JSON.stringify(policyParams)
                             }
@@ -478,7 +473,6 @@ export class Client {
                             // semanticID: 'world.concrnt.t-notify',
                             owner: this.ccid,
                             indexable: false,
-                            domainOwned: false,
                             policy: 'https://policy.concrnt.world/t/inline-read-write.json',
                             policyParams: `{"isWritePublic": true, "isReadPublic": false, "writer": [], "reader": ["${this.ccid}"]}`
                         }
@@ -498,7 +492,6 @@ export class Client {
                     semanticID: 'world.concrnt.t-assoc',
                     owner: this.ccid,
                     indexable: false,
-                    domainOwned: false,
                     policy: 'https://policy.concrnt.world/t/inline-read-write.json',
                     policyParams: `{"isWritePublic": false, "isReadPublic": true, "writer": ["${this.ccid}"], "reader": []}`
                 }
@@ -520,7 +513,6 @@ export class Client {
                                 // semanticID: 'world.concrnt.t-assoc',
                                 owner: this.ccid,
                                 indexable: false,
-                                domainOwned: false,
                                 policy: 'https://policy.concrnt.world/t/inline-read-write.json',
                                 policyParams: JSON.stringify(policyParams)
                             }
@@ -537,7 +529,6 @@ export class Client {
                             // semanticID: 'world.concrnt.t-assoc',
                             owner: this.ccid,
                             indexable: false,
-                            domainOwned: false,
                             policy: 'https://policy.concrnt.world/t/inline-read-write.json',
                             policyParams: `{"isWritePublic": false, "isReadPublic": true, "writer": ["${this.ccid}"], "reader": []}`
                         }
