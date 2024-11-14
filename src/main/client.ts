@@ -51,6 +51,11 @@ interface Service {
     path: string
 }
 
+interface ClientOptions {
+    appName?: string
+    progressCallback?: (status: string) => void
+}
+
 export class Client {
     api: Api
     ccid?: CCID
@@ -81,56 +86,81 @@ export class Client {
         })
     }
 
-    static async createFromSubkey(subkey: string, client?: string): Promise<Client> {
+    static async createFromSubkey(subkey: string, opts?: ClientOptions): Promise<Client> {
         const key = LoadSubKey(subkey)
         if (!key) throw new Error('invalid subkey')
-        const c = new Client(key.domain, key.keypair, key.ccid, {ckid: key.ckid, client})
+
+        opts?.progressCallback?.("creating client")
+        const c = new Client(key.domain, key.keypair, key.ccid, {ckid: key.ckid, client: opts?.appName})
         if (!c.ccid) throw new Error('invalid ccid')
+
+        opts?.progressCallback?.("loading user")
         c.user = await c.getUser(c.ccid).catch((e) => {
             console.error('CLIENT::create::getUser::error', e)
             return null
         })
+
+        opts?.progressCallback?.("loading acking")
         c.ackings = (await c.user?.getAcking()) ?? []
+
+        opts?.progressCallback?.("loading acker")
         c.ackers = (await c.user?.getAcker()) ?? []
+
+        opts?.progressCallback?.("loading domain services")
         c.domainServices = await fetchWithTimeout(key.domain, '/services', {}).then((res) => res.json()).catch((e) => {
             console.error('CLIENT::create::fetch::error', e)
             return {}
         })
 
+        opts?.progressCallback?.("loading domain")
         c.server = await c.api.getDomain(c.host).catch((e) => {
             console.error('CLIENT::create::getDomain::error', e)
             return null
         }) ?? undefined
 
+        opts?.progressCallback?.("validating profile")
         if (c.user && await c.checkProfileIsOk() === false) {
             await c.setProfile({})
         }
 
+        opts?.progressCallback?.("done")
         return c
     }
 
-    static async create(privatekey: string, host: FQDN, client?: string): Promise<Client> {
+    static async create(privatekey: string, host: FQDN, opts?: ClientOptions): Promise<Client> {
         const keyPair = LoadKey(privatekey)
         if (!keyPair) throw new Error('invalid private key')
         const ccid = ComputeCCID(keyPair.publickey)
-        const c = new Client(host, keyPair, ccid, {client})
+
+        opts?.progressCallback?.("creating client")
+        const c = new Client(host, keyPair, ccid, {client: opts?.appName})
         if (!c.ccid) throw new Error('invalid ccid')
+
+        opts?.progressCallback?.("loading user")
         c.user = await c.getUser(c.ccid).catch((e) => {
             console.error('CLIENT::create::getUser::error', e)
             return null
         })
+
+        opts?.progressCallback?.("loading acking")
         c.ackings = (await c.user?.getAcking()) ?? []
+
+        opts?.progressCallback?.("loading acker")
         c.ackers = (await c.user?.getAcker()) ?? []
+
+        opts?.progressCallback?.("loading domain services")
         c.domainServices = await fetchWithTimeout(host, '/services', {}).then((res) => res.json()).catch((e) => {
             console.error('CLIENT::create::fetch::error', e)
             return {}
         })
 
+        opts?.progressCallback?.("loading domain")
         c.server = await c.api.getDomain(c.host).catch((e) => {
             console.error('CLIENT::create::getDomain::error', e)
             return null
         }) ?? undefined
 
+        opts?.progressCallback?.("validating profile")
         if (c.user && await c.checkProfileIsOk() === false) {
             await c.setProfile({})
         }
