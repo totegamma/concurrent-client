@@ -11,6 +11,7 @@ export * from './replyAssociation';
 export * from './rerouteAssociation';
 export * from './reactionAssociation';
 export * from './upgradeAssociation';
+export * from './readAccessRequestAssociation';
 
 export * from './profile';
 

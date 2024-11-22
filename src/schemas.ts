@@ -11,6 +11,7 @@ export const Schemas = {
     rerouteAssociation:  'https://schema.concrnt.world/a/reroute.json',
     reactionAssociation: 'https://schema.concrnt.world/a/reaction.json',
     upgradeAssociation:  'https://schema.concrnt.world/a/upgrade.json',
+    readAccessRequestAssociation:  'https://schema.concrnt.world/a/readaccessrequest.json',
 
     profile:             'https://schema.concrnt.world/p/main.json',
 

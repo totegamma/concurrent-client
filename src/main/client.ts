@@ -642,6 +642,23 @@ export class User implements CoreEntity {
         return 'world.concrnt.t-home@' + this.ccid
     }
 
+    toJSON() {
+        return {
+            ccid: this.ccid,
+            alias: this.alias,
+            tag: this.tag,
+            domain: this.domain,
+            cdate: this.cdate,
+            score: this.score,
+            affiliationDocument: this.affiliationDocument,
+            affiliationSignature: this.affiliationSignature,
+            tombstoneDocument: this.tombstoneDocument,
+            tombstoneSignature: this.tombstoneSignature,
+            profile: this.profile
+        }
+    }
+
+
     constructor(client: Client,
                 domain: FQDN,
                 entity: CoreEntity,
@@ -742,6 +759,22 @@ export class Association<T> implements CoreAssociation<T> {
         }
     }
 
+    toJSON() {
+        return {
+            author: this.author,
+            cdate: this.cdate,
+            id: this.id,
+            document: this.document,
+            _document: this._document,
+            schema: this.schema,
+            signature: this.signature,
+            target: this.target,
+            targetType: this.targetType,
+            owner: this.owner,
+            authorUser: this.authorUser
+        }
+    }
+
     static async load<T>(client: Client, id: AssociationID, owner: CCID): Promise<Association<T> | null> {
         const coreAss = await client.api.getAssociationWithOwner(id, owner).catch((e) => {
             console.error('CLIENT::getAssociation::readAssociationWithOwner::error', e)
@@ -825,6 +858,22 @@ export class Timeline<T> implements CoreTimeline<T> {
         }
     }
 
+    toJSON() {
+        return {
+            id: this.id,
+            indexable: this.indexable,
+            owner: this.owner,
+            author: this.author,
+            schema: this.schema,
+            document: this.document,
+            signature: this.signature,
+            cdate: this.cdate,
+            mdate: this.mdate,
+            policy: this.policy,
+            policyParams: this.policyParams
+        }
+    }
+
     static async load<T>(client: Client, id: TimelineID): Promise<Timeline<T> | null> {
         const stream = await client.api.getTimeline(id).catch((_e) => {
             return null
@@ -832,6 +881,12 @@ export class Timeline<T> implements CoreTimeline<T> {
         if (!stream) return null
 
         return new Timeline<T>(client, stream)
+    }
+
+    async getAssociations(): Promise<Association<any>[]> {
+        const coreass = await this.client.api.getTimelineAssociations(this.id)
+        const ass: Array<Association<any> | null> = await Promise.all(coreass.map((e) => Association.loadByBody<any>(this.client, e, this.owner)))
+        return ass.filter(e => e) as Array<Association<any>>
     }
 
 }
@@ -883,6 +938,27 @@ export class Message<T> implements CoreMessage<T> {
             } catch (e) {
                 console.error('CLIENT::Timeline::constructor::error', e)
             }
+        }
+    }
+
+    toJSON() {
+        return {
+            associations: this.associations,
+            ownAssociations: this.ownAssociations,
+            author: this.author,
+            cdate: this.cdate,
+            id: this.id,
+            document: this.document,
+            _document: this._document,
+            schema: this.schema,
+            signature: this.signature,
+            timelines: this.timelines,
+            policy: this.policy,
+            policyParams: this.policyParams,
+            associationCounts: this.associationCounts,
+            reactionCounts: this.reactionCounts,
+            postedStreams: this.postedStreams,
+            authorUser: this.authorUser
         }
     }
 

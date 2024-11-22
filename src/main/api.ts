@@ -627,7 +627,7 @@ export class Api {
         const split = timeline.split('@')
         let host = split[1] ?? this.host
 
-        if (IsCCID(host)) {
+        if (IsCCID(host) || IsCSID(host)) {
             const domain = await this.resolveAddress(host)
             if (!domain) throw new Error('domain not found: ' + host)
             host = domain
@@ -860,6 +860,36 @@ export class Api {
         }
 
         return result
+    }
+
+    async getTimelineAssociations(id: string): Promise<Association<any>[]> {
+
+        let host = this.host
+        if (id && id.includes('@')) {
+            try {
+                host = await this.findTimelineHost(id)
+            } catch (e) {
+                return Promise.reject(e)
+            }
+        }
+
+        const requestOptions = {
+            method: 'GET',
+            headers: {}
+        }
+
+        const documentID = id.split('@')[0]
+
+        const association = await this.fetchWithOnlineCheck(host, `/timeline/${documentID}/associations`, requestOptions).then(async (res) => {
+            const data = await res.json()
+            return data.content
+        })
+
+        return association.map((a: any) => {
+            a._document = a.document
+            a.document = JSON.parse(a.document)
+            return a
+        })
     }
 
     async retractItem(timeline: string, item: string): Promise<any> {
