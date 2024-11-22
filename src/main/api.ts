@@ -747,7 +747,6 @@ export class Api {
                 return undefined
             }
             const timeline = data
-            timeline.id = id
             timeline._document = timeline.document
             timeline.document = JSON.parse(timeline.document)
             this.timelineCache[id] = timeline

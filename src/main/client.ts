@@ -822,6 +822,7 @@ export class Timeline<T> implements CoreTimeline<T> {
 
     api: Api
     client: Client
+    cacheKey?: string
 
     id: TimelineID
     indexable: boolean
@@ -875,12 +876,14 @@ export class Timeline<T> implements CoreTimeline<T> {
     }
 
     static async load<T>(client: Client, id: TimelineID): Promise<Timeline<T> | null> {
-        const stream = await client.api.getTimeline(id).catch((_e) => {
+        const coreTimeline = await client.api.getTimeline(id).catch((_e) => {
             return null
         })
-        if (!stream) return null
+        if (!coreTimeline) return null
 
-        return new Timeline<T>(client, stream)
+        const timeline = new Timeline<T>(client, coreTimeline)
+        timeline.cacheKey = id
+        return timeline
     }
 
     async getAssociations(): Promise<Association<any>[]> {
@@ -889,6 +892,9 @@ export class Timeline<T> implements CoreTimeline<T> {
         return ass.filter(e => e) as Array<Association<any>>
     }
 
+    invalidate(): void {
+        if (this.cacheKey) this.api.invalidateTimeline(this.cacheKey)
+    }
 }
 
 export class Message<T> implements CoreMessage<T> {
