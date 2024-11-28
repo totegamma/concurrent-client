@@ -100,11 +100,11 @@ export class Client {
             return null
         })
 
-        opts?.progressCallback?.("loading acking")
-        c.ackings = (await c.user?.getAcking()) ?? []
-
-        opts?.progressCallback?.("loading acker")
-        c.ackers = (await c.user?.getAcker()) ?? []
+        const loadAA = async () => {
+            c.ackings = (await c.user?.getAcking()) ?? []
+            c.ackers = (await c.user?.getAcker()) ?? []
+        }
+        loadAA()
 
         opts?.progressCallback?.("loading domain services")
         c.domainServices = await fetchWithTimeout(key.domain, '/services', {}).then((res) => res.json()).catch((e) => {
@@ -142,11 +142,11 @@ export class Client {
             return null
         })
 
-        opts?.progressCallback?.("loading acking")
-        c.ackings = (await c.user?.getAcking()) ?? []
-
-        opts?.progressCallback?.("loading acker")
-        c.ackers = (await c.user?.getAcker()) ?? []
+        const loadAA = async () => {
+            c.ackings = (await c.user?.getAcking()) ?? []
+            c.ackers = (await c.user?.getAcker()) ?? []
+        }
+        loadAA()
 
         opts?.progressCallback?.("loading domain services")
         c.domainServices = await fetchWithTimeout(host, '/services', {}).then((res) => res.json()).catch((e) => {
