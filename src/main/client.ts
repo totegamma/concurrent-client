@@ -595,7 +595,10 @@ export class Client {
         return this.socket!
     }
 
-    async newTimelineReader(): Promise<TimelineReader> {
+    async newTimelineReader(opts?: {withoutSocket: boolean}): Promise<TimelineReader> {
+        if (opts?.withoutSocket) {
+            return new TimelineReader(this.api, undefined)
+        }
         const socket = await this.newSocket()
         return new TimelineReader(this.api, socket)
     }

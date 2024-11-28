@@ -8,11 +8,11 @@ export class TimelineReader {
     body: TimelineItem[] = [];
     onUpdate?: () => void;
     onRealtimeEvent?: (event: TimelineEvent) => void;
-    socket: Socket;
+    socket?: Socket;
     api: Api;
     streams: string[] = [];
 
-    constructor(api: Api, socket: Socket) {
+    constructor(api: Api, socket?: Socket) {
         this.api = api;
         this.socket = socket;
     }
@@ -83,7 +83,7 @@ export class TimelineReader {
             this.onUpdate?.();
         })
 
-        this.socket.listen(streams, this.processEvent.bind(this));
+        this.socket?.listen(streams, this.processEvent.bind(this));
     
         return hasMore
     }
@@ -111,7 +111,7 @@ export class TimelineReader {
     }
 
     dispose() {
-        this.socket.unlisten(this.streams, this.processEvent);
+        this.socket?.unlisten(this.streams, this.processEvent);
         this.onUpdate = undefined;
         this.onRealtimeEvent = undefined;
     }
