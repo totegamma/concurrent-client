@@ -1111,7 +1111,7 @@ export class Message<T> implements CoreMessage<T> {
         this.client.invalidateMessage(this.id)
         const result = this.api.createAssociation<LikeAssociationSchema>(Schemas.likeAssociation, {}, this.id, author.ccid, targetStream)
         .then((resp) => {
-            return resp.content
+            return resp
         })
         .catch((e) => {
             this.deleteAssociation(dummyAssoc)
@@ -1167,7 +1167,7 @@ export class Message<T> implements CoreMessage<T> {
             targetStream,
             imageUrl
         ).then((resp) => {
-            return resp.content
+            return resp
         }).catch((e) => {
             this.deleteAssociation(dummyAssoc)
             return Promise.reject(e)
@@ -1189,7 +1189,7 @@ export class Message<T> implements CoreMessage<T> {
             txhash
         )
         this.api.invalidateMessage(this.id)
-        return result.content
+        return result
     }
 
     async deleteAssociation(a: CoreAssociation<any>) {
