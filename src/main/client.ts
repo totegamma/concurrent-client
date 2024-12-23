@@ -181,8 +181,8 @@ export class Client {
         this.ackings = await this.user.getAcking()
     }
 
-    async getUser(id: CCID): Promise<User | null> {
-        return await User.load(this, id)
+    async getUser(id: CCID, hint?: string): Promise<User | null> {
+        return await User.load(this, id, hint)
     }
 
     async getTimeline<T>(id: TimelineID): Promise<Timeline<T> | null> {
@@ -683,8 +683,8 @@ export class User implements CoreEntity {
         this.profile = profile
     }
 
-    static async load(client: Client, id: CCID): Promise<User | null> {
-        const domain = await client.api.resolveAddress(id).catch((_e) => {
+    static async load(client: Client, id: CCID, hint?: string): Promise<User | null> {
+        const domain = await client.api.resolveAddress(id, hint).catch((_e) => {
             return null
         })
         if (!domain) return null
