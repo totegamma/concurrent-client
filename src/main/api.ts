@@ -535,12 +535,15 @@ export class Api {
         delete this.profileCache[`${owner}/${id}`]
     }
 
-    async getProfiles<T>(query: {author?: string, schema?: string, domain?: string}): Promise<Profile<T>[]> {
+    async getProfiles<T>(query: {author?: string, schema?: string, since?: number, until?: number, limit?: number, domain?: string}): Promise<Profile<T>[]> {
         let requestPath = `/profiles?`
 
         let queries: string[] = []
         if (query.author) queries.push(`author=${query.author}`)
         if (query.schema) queries.push(`schema=${encodeURIComponent(query.schema)}`)
+        if (query.since) queries.push(`since=${query.since}`)
+        if (query.until) queries.push(`until=${query.until}`)
+        if (query.limit) queries.push(`limit=${query.limit}`)
 
         requestPath += queries.join('&')
 
