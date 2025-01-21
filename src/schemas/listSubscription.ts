@@ -7,5 +7,6 @@
 
 export interface ListSubscriptionSchema {
   name: string;
+  iconURL?: string;
   description?: string;
 }
